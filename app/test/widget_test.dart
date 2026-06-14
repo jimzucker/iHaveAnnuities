@@ -41,9 +41,12 @@ void main() {
     expect(find.textContaining('Updated 12-Jun-2026'), findsOneWidget);
   });
 
-  testWidgets('empty state offers loading the sample', (tester) async {
+  testWidgets('empty state offers add / import / template / sample', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));
+    expect(find.text('Add a holding manually'), findsOneWidget);
+    expect(find.text('Import .xlsx…'), findsOneWidget);
+    expect(find.text('Download template'), findsOneWidget);
     expect(find.text('Load sample portfolio'), findsOneWidget);
   });
 

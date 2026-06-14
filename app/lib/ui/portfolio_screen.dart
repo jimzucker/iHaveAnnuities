@@ -66,8 +66,10 @@ class PortfolioScreen extends StatelessWidget {
           Expanded(
             child: store.isEmpty
                 ? _Empty(
-                    onSample: () => _menu(context, store, 'sample'),
                     onAdd: () => _add(context, store),
+                    onImport: () => _menu(context, store, 'import'),
+                    onTemplate: () => _menu(context, store, 'template'),
+                    onSample: () => _menu(context, store, 'sample'),
                   )
                 : const Padding(
                     padding: EdgeInsets.all(8),
@@ -187,23 +189,45 @@ class _Summary extends StatelessWidget {
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty({required this.onSample, required this.onAdd});
-  final VoidCallback onSample;
+  const _Empty({
+    required this.onAdd,
+    required this.onImport,
+    required this.onTemplate,
+    required this.onSample,
+  });
   final VoidCallback onAdd;
+  final VoidCallback onImport;
+  final VoidCallback onTemplate;
+  final VoidCallback onSample;
+
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('No holdings yet.'),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Add a holding manually')),
-          const SizedBox(height: 8),
-          OutlinedButton(onPressed: onSample, child: const Text('Load sample portfolio')),
-          const SizedBox(height: 8),
-          const Text('or use the ⋮ menu to import your .xlsx',
-              style: TextStyle(color: Colors.grey)),
-        ]),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('No holdings yet',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            const Text('Add a contract, import your tracker, or load the sample.',
+                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: const Text('Add a holding manually')),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+                onPressed: onImport,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Import .xlsx…')),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+                onPressed: onTemplate,
+                icon: const Icon(Icons.download),
+                label: const Text('Download template')),
+            const SizedBox(height: 8),
+            TextButton(onPressed: onSample, child: const Text('Load sample portfolio')),
+          ]),
+        ),
       );
 }
