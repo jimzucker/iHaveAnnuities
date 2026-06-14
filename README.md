@@ -9,6 +9,10 @@ types (the tracker's *Floor* column):
 2. **Buffer** (negative, *Hard*) — absorbs the first *X%* of losses; you lose only beyond it.
 3. **Barrier** (negative, *Soft*) — fully protected unless the index breaches it, then full loss applies.
 
+**▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
+(source in [`app/`](app/)). Load the sample portfolio, or import/export your own
+tracker `.xlsx`; index prices refresh daily at 5 PM ET on trading days.
+
 ![Overview](docs/overview.png)
 
 ## Payoff math
@@ -76,6 +80,28 @@ negative Hard buffer, negative Soft barrier; **cap** — capped + uncapped; **pa
 — <100% / 100% / >100%; **reset** — Annual / Monthly / 4‑Year / 5‑Year / 6‑Year; **index**
 — SPX / NDX / RUT / worst‑of; **account** — Non‑Qual / IRA / ROTH; plus a monthly‑coupon
 income note alongside the standard indexed annuities.
+
+## App (Flutter)
+
+Cross-platform Flutter app in [`app/`](app/). The portfolio is stored as an
+`.xlsx` in the Zucker Annuity Tracker format — import your real spreadsheet, edit,
+and export; on web it persists in the browser between visits.
+
+```bash
+cd app
+flutter pub get
+flutter test            # 50 tests; core 100% / data ≥95% coverage gate
+flutter run -d chrome   # run the web app locally
+```
+
+- **Core** (`lib/core`): payoff engine + model (floor / Hard buffer / Soft barrier,
+  participation, capped/uncapped, income notes).
+- **Data** (`lib/data`): robust `.xlsx` reader/writer (the tracker schema), market
+  feed, and browser-persisted store.
+- **Prices**: `data/market.json` is refreshed by a GitHub Action at 5 PM ET on
+  trading days (Yahoo Finance, no API key); the web app is published to GitHub Pages.
+- The example/template spreadsheets and `docs/overview.png` are all generated from
+  `docs/gen_overview.py` (`python3 docs/gen_overview.py`).
 
 ## License
 
