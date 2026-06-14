@@ -23,6 +23,8 @@
 #     --window-size=2380,470 --screenshot=docs/overview.png docs/overview.html
 
 import datetime, os
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 
 TODAY = datetime.date(2026, 6, 14)
 PRICES = {"SPX": 7400.0, "NDX": 29600.0, "RUT": 2950.0}
@@ -220,7 +222,126 @@ out = os.path.join(os.path.dirname(__file__), "overview.html")
 with open(out, "w") as f:
     f.write(HTML)
 
+
+# ---- emit the canonical .xlsx (Annuity Tracker schema) ----
+HEADERS = [
+    "Position", "Index Gain %", "Proj Gain @ Reset", "CAP", "Part.", "Floor",
+    "Floor Type", "Strike", "Open", "Last Reset", "Maturity", "Days to Maturity",
+    "Reset Freq", "Next Reset", "Days to Reset", "Initial ($000)", "Realized ($000)",
+    "Proj Value @ Reset ($000)", "Proj $ Gain @ Reset ($000)", "Type", "Issuer", "Index",
+]
+PCT = "0.00%"; MONEY = "$#,##0.00"; DATE = "mm/dd/yyyy"; NUM = "#,##0.00"
+HEAD_FILL = PatternFill("solid", fgColor="1F3A5F")
+HEAD_FONT = Font(color="FFFFFF", bold=True)
+
+
+def _row_values(r):
+    return [
+        r["pos"], r["idx"], r["proj_gain"],
+        ("Uncapped" if r["cap"] is None else r["cap"]), r["part"], r["floor"],
+        ("Soft" if r["soft"] else "Hard"), round(r["strike"], 2),
+        r["open"], r["last"], r["mat"], days(r["mat"]),
+        r["freq"], r["nxt"], days(r["nxt"]),
+        100.00, r["realized_v"], r["proj_value"], r["proj_gain_dollars"],
+        r["acct"], r["issuer"], r["index"],
+    ]
+
+
+def _style_sheet(ws, header_row):
+    # number formats per column (1-indexed): 2,3,4*,5,6 pct; 8 num; 9-11,14 date;
+    # 16-19 money. (* CAP may be the text "Uncapped".)
+    for col in (2, 3, 5, 6):
+        for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
+            for cell in c: cell.number_format = PCT
+    for cell_col in (4,):
+        for c in ws.iter_cols(min_col=cell_col, max_col=cell_col, min_row=header_row + 1):
+            for cell in c:
+                if isinstance(cell.value, (int, float)): cell.number_format = PCT
+    for col in (9, 10, 11, 14):
+        for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
+            for cell in c: cell.number_format = DATE
+    for col in (16, 17, 18, 19):
+        for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
+            for cell in c: cell.number_format = MONEY
+    for c in ws.iter_cols(min_col=8, max_col=8, min_row=header_row + 1):
+        for cell in c: cell.number_format = NUM
+
+
+def write_xlsx(path, rows, *, with_data, with_instructions):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Annuity Tracker"
+    ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%B %d, %Y} "
+               f"(prices: SPX {PRICES['SPX']:,.2f}  NDX {PRICES['NDX']:,.0f}  RUT {PRICES['RUT']:,.2f})"])
+    ws.append(["Blue=inputs  Black=formula | Floor 0% = floor; negative Hard = buffer; "
+               "negative Soft = barrier | $ columns in $000s"])
+    ws.append(HEADERS)
+    for cell in ws[3]:
+        cell.fill = HEAD_FILL; cell.font = HEAD_FONT; cell.alignment = Alignment(wrap_text=True)
+    body = rows if with_data else []
+    for r in body:
+        ws.append(_row_values(r))
+    if with_data:
+        tot = ["TOTAL"] + [None] * 14 + [
+            100.0 * len(rows), sum(r["realized_v"] for r in rows),
+            sum(r["proj_value"] for r in rows), sum(r["proj_gain_dollars"] for r in rows),
+        ] + [None, None, None]
+        ws.append(tot)
+        for cell in ws[ws.max_row]:
+            cell.font = Font(bold=True)
+    _style_sheet(ws, header_row=3)
+    for i, _ in enumerate(HEADERS, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 15
+    if with_instructions:
+        ins = wb.create_sheet("Instructions")
+        guide = [
+            ["iHaveAnnuities — Tracker template"],
+            [""],
+            ["Fill one row per contract on the 'Annuity Tracker' sheet. INPUT columns"],
+            ["are read by the app; FORMULA columns are recomputed on import."],
+            [""],
+            ["Column", "Kind", "Notes"],
+            ["Position", "input", "Free-text name, e.g. 'AIG 11%-17Jan29'"],
+            ["Index Gain %", "formula", "Recomputed: current level / Strike - 1"],
+            ["Proj Gain @ Reset", "formula", "Recomputed payoff for the period"],
+            ["CAP", "input", "e.g. 11.25%  — or the word 'Uncapped'"],
+            ["Part.", "input", "Participation rate, e.g. 100% (or 92.25%, 105%)"],
+            ["Floor", "input", "<= 0. 0% = floor; negative = buffer/barrier amount"],
+            ["Floor Type", "input", "'Hard' (floor/buffer) or 'Soft' (barrier)"],
+            ["Strike", "input", "Index level at open / last reset"],
+            ["Open / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
+            ["Reset Freq", "input", "Annual, Monthly, 4-Year, 5-Year, or 6-Year"],
+            ["Next Reset", "formula", "Recomputed from Reset Freq"],
+            ["Initial ($000)", "input", "Principal in thousands, e.g. 100 = $100,000"],
+            ["Realized ($000)", "input", "Gains locked at prior resets, in $000"],
+            ["Proj Value / Proj $ Gain", "formula", "Recomputed"],
+            ["Type", "input", "Non-Qual, IRA, or ROTH"],
+            ["Issuer", "input", "Carrier, e.g. AIG"],
+            ["Index", "input", "SPX, NDX, RUT, or 'worst-of SPX/NDX/RUT'"],
+        ]
+        for row in guide:
+            ins.append(row)
+        ins["A1"].font = Font(bold=True, size=14)
+        for cell in ins[6]:
+            cell.font = Font(bold=True)
+        ins.column_dimensions["A"].width = 28
+        ins.column_dimensions["B"].width = 10
+        ins.column_dimensions["C"].width = 60
+    wb.save(path)
+    return path
+
+
+_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+os.makedirs(_data_dir, exist_ok=True)
+xlsx_example = write_xlsx(os.path.join(_data_dir, "example-portfolio.xlsx"),
+                          ROWS, with_data=True, with_instructions=False)
+# Template: headers + Instructions + two sample rows to copy.
+xlsx_template = write_xlsx(os.path.join(_data_dir, "template.xlsx"),
+                           ROWS[:2], with_data=True, with_instructions=True)
+
 print("wrote", out)
+print("wrote", xlsx_example)
+print("wrote", xlsx_template)
 for r in ROWS:
     print(f"  {r['pos']:26s} idx={pct(r['idx']):>9s} -> proj={pct(r['proj_gain']):>9s}  PV={money(r['proj_value']):>9s}")
 print(f"  TOTAL Init={money(tot_init)} Realized={money(tot_real)} PV={money(tot_pv)} Gain={money(tot_pg)}")
