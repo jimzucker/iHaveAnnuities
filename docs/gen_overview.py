@@ -20,7 +20,7 @@
 #   python3 docs/gen_overview.py
 #   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
 #     --headless --disable-gpu --force-device-scale-factor=2 --hide-scrollbars \
-#     --window-size=2380,470 --screenshot=docs/overview.png docs/overview.html
+#     --window-size=2420,470 --screenshot=docs/overview.png docs/overview.html
 
 import datetime, os
 import openpyxl
@@ -131,15 +131,16 @@ for r in ROWS:
     else:
         prot, prot_lbl = "hard", "Hard"
     rows_html.append(f"""      <tr>
-        <td class="l">{r['pos']}</td>
+        <td class="l">{r['issuer']}</td>
         <td class="{ic}">{pct(r['idx'])}</td><td class="{pc}">{pct(r['proj_gain'])}</td>
+        <td class="c">{r['index']}</td>
         <td>{cell_cap(r)}</td><td>{r['part']*100:,.2f}%</td>
         <td>{cell_floor(r)}</td><td class="c"><span class="pill {prot}">{prot_lbl}</span></td>
         <td>{r['strike']:,.2f}</td>
         <td class="c">{mdy(r['open'])}</td><td class="c">{mdy(r['last'])}</td><td class="c">{mdy(r['mat'])}</td><td>{days(r['mat']):,}</td>
         <td class="c">{r['freq']}</td><td class="c">{mdy(r['nxt'])}</td><td>{days(r['nxt']):,}</td>
         <td>$100.00</td><td>{money(r['realized_v'])}</td><td>{money(r['proj_value'])}</td><td class="{pc}">{money(r['proj_gain_dollars'])}</td>
-        <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td><td class="l">{r['issuer']}</td><td class="c">{r['index']}</td>
+        <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td>
       </tr>""")
 
 HTML = f"""<!--
@@ -186,9 +187,10 @@ HTML = f"""<!--
   <table>
     <thead>
       <tr>
-        <th class="l">Position</th>
+        <th class="l">Issuer</th>
         <th>Index<br>Gain %</th>
         <th>Proj Gain<br>@ Reset</th>
+        <th class="c">Index</th>
         <th>CAP</th>
         <th>Part.</th>
         <th>Floor</th>
@@ -206,8 +208,6 @@ HTML = f"""<!--
         <th>Proj Value<br>@ Reset ($000)</th>
         <th>Proj $ Gain<br>@ Reset ($000)</th>
         <th class="c">Type</th>
-        <th class="l">Issuer</th>
-        <th class="c">Index</th>
       </tr>
     </thead>
     <tbody>
@@ -215,9 +215,9 @@ HTML = f"""<!--
     </tbody>
     <tfoot>
       <tr>
-        <td class="l" colspan="15">Totals &mdash; {len(ROWS)} contracts</td>
+        <td class="l" colspan="16">Totals &mdash; {len(ROWS)} contracts</td>
         <td>{money(tot_init)}</td><td>{money(tot_real)}</td><td>{money(tot_pv)}</td><td>{money(tot_pg)}</td>
-        <td colspan="3"></td>
+        <td></td>
       </tr>
     </tfoot>
   </table>
@@ -232,10 +232,11 @@ with open(out, "w") as f:
 
 # ---- emit the canonical .xlsx (Annuity Tracker schema) ----
 HEADERS = [
-    "Position", "Index Gain %", "Proj Gain @ Reset", "CAP", "Part.", "Floor",
-    "Floor Type", "Strike", "Open", "Last Reset", "Maturity", "Days to Maturity",
-    "Reset Freq", "Next Reset", "Days to Reset", "Initial ($000)", "Realized ($000)",
-    "Proj Value @ Reset ($000)", "Proj $ Gain @ Reset ($000)", "Type", "Issuer", "Index",
+    "Issuer", "Index Gain %", "Proj Gain @ Reset", "Index", "CAP", "Part.",
+    "Floor", "Floor Type", "Strike", "Open", "Last Reset", "Maturity",
+    "Days to Maturity", "Reset Freq", "Next Reset", "Days to Reset",
+    "Initial ($000)", "Realized ($000)", "Proj Value @ Reset ($000)",
+    "Proj $ Gain @ Reset ($000)", "Type",
 ]
 PCT = "0.00%"; MONEY = "$#,##0.00"; DATE = "mm/dd/yyyy"; NUM = "#,##0.00"
 HEAD_FILL = PatternFill("solid", fgColor="1F3A5F")
@@ -244,33 +245,32 @@ HEAD_FONT = Font(color="FFFFFF", bold=True)
 
 def _row_values(r):
     return [
-        r["pos"], r["idx"], r["proj_gain"],
+        r["issuer"], r["idx"], r["proj_gain"], r["index"],
         ("Uncapped" if r["cap"] is None else r["cap"]), r["part"], r["floor"],
         ("Absolute" if r["floor"] == 0 else ("Soft" if r["soft"] else "Hard")), round(r["strike"], 2),
         r["open"], r["last"], r["mat"], days(r["mat"]),
         r["freq"], r["nxt"], days(r["nxt"]),
         100.00, r["realized_v"], r["proj_value"], r["proj_gain_dollars"],
-        r["acct"], r["issuer"], r["index"],
+        r["acct"],
     ]
 
 
 def _style_sheet(ws, header_row):
-    # number formats per column (1-indexed): 2,3,4*,5,6 pct; 8 num; 9-11,14 date;
-    # 16-19 money. (* CAP may be the text "Uncapped".)
-    for col in (2, 3, 5, 6):
+    # 1-indexed columns: 2,3,6,7 pct; 5 pct-if-number (CAP/"Uncapped"); 9 num
+    # (Strike); 10,11,12,15 date; 17,18,19,20 money.
+    for col in (2, 3, 6, 7):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = PCT
-    for cell_col in (4,):
-        for c in ws.iter_cols(min_col=cell_col, max_col=cell_col, min_row=header_row + 1):
-            for cell in c:
-                if isinstance(cell.value, (int, float)): cell.number_format = PCT
-    for col in (9, 10, 11, 14):
+    for c in ws.iter_cols(min_col=5, max_col=5, min_row=header_row + 1):
+        for cell in c:
+            if isinstance(cell.value, (int, float)): cell.number_format = PCT
+    for col in (10, 11, 12, 15):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = DATE
-    for col in (16, 17, 18, 19):
+    for col in (17, 18, 19, 20):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = MONEY
-    for c in ws.iter_cols(min_col=8, max_col=8, min_row=header_row + 1):
+    for c in ws.iter_cols(min_col=9, max_col=9, min_row=header_row + 1):
         for cell in c: cell.number_format = NUM
 
 
@@ -289,10 +289,11 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     for r in body:
         ws.append(_row_values(r))
     if with_data:
-        tot = ["TOTAL"] + [None] * 14 + [
+        # cols 1..16 then Initial/Realized/ProjValue/ProjGain (17-20), Type (21)
+        tot = ["TOTAL"] + [None] * 15 + [
             100.0 * len(rows), sum(r["realized_v"] for r in rows),
             sum(r["proj_value"] for r in rows), sum(r["proj_gain_dollars"] for r in rows),
-        ] + [None, None, None]
+        ] + [None]
         ws.append(tot)
         for cell in ws[ws.max_row]:
             cell.font = Font(bold=True)

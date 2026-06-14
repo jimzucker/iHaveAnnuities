@@ -18,11 +18,11 @@ import 'xlsx_reader.dart';
 const _sheetName = 'Annuity Tracker';
 
 const headers = <String>[
-  'Position', 'Index Gain %', 'Proj Gain @ Reset', 'CAP', 'Part.', 'Floor',
-  'Floor Type', 'Strike', 'Open', 'Last Reset', 'Maturity', 'Days to Maturity',
-  'Reset Freq', 'Next Reset', 'Days to Reset', 'Initial (\$000)',
-  'Realized (\$000)', 'Proj Value @ Reset (\$000)', 'Proj \$ Gain @ Reset (\$000)',
-  'Type', 'Issuer', 'Index',
+  'Issuer', 'Index Gain %', 'Proj Gain @ Reset', 'Index', 'CAP', 'Part.',
+  'Floor', 'Floor Type', 'Strike', 'Open', 'Last Reset', 'Maturity',
+  'Days to Maturity', 'Reset Freq', 'Next Reset', 'Days to Reset',
+  'Initial (\$000)', 'Realized (\$000)', 'Proj Value @ Reset (\$000)',
+  'Proj \$ Gain @ Reset (\$000)', 'Type',
 ];
 
 String? _str(List<dynamic> row, Map<String, int> h, String key) {
@@ -159,9 +159,10 @@ List<int> writeTracker(
 
   for (final x in holdings) {
     s.appendRow(<CellValue?>[
-      TextCellValue(dedupedPosition(x, holdings)),
+      TextCellValue(x.issuer),
       DoubleCellValue(x.indexGain),
       DoubleCellValue(x.projGain),
+      TextCellValue(x.index),
       x.cap == null ? TextCellValue('Uncapped') : DoubleCellValue(x.cap!),
       DoubleCellValue(x.participation),
       DoubleCellValue(x.floor),
@@ -179,8 +180,6 @@ List<int> writeTracker(
       DoubleCellValue(x.projValueK),
       DoubleCellValue(x.projGainDollarsK),
       TextCellValue(x.account.label),
-      TextCellValue(x.issuer),
-      TextCellValue(x.index),
     ]);
   }
   return excel.encode()!;
