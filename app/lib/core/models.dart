@@ -100,4 +100,79 @@ class Holding {
 
   int daysToMaturity(DateTime asOf) => maturity.difference(asOf).inDays;
   int daysToReset(DateTime asOf) => nextReset.difference(asOf).inDays;
+
+  /// Base index symbol used to price this holding (worst-of resolves to SPX
+  /// for the simple revaluation path).
+  String get baseIndex {
+    final u = index.toUpperCase();
+    if (u.contains('NDX')) return 'NDX';
+    if (u.contains('RUT') && !u.contains('WORST')) return 'RUT';
+    return 'SPX';
+  }
+
+  Holding copyWith({double? currentLevel}) => Holding(
+        position: position,
+        issuer: issuer,
+        index: index,
+        account: account,
+        cap: cap,
+        participation: participation,
+        floor: floor,
+        floorType: floorType,
+        strike: strike,
+        currentLevel: currentLevel ?? this.currentLevel,
+        openDate: openDate,
+        lastReset: lastReset,
+        maturity: maturity,
+        nextReset: nextReset,
+        resetFreq: resetFreq,
+        initial: initial,
+        realized: realized,
+        isIncomeNote: isIncomeNote,
+        couponProj: couponProj,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'position': position,
+        'issuer': issuer,
+        'index': index,
+        'account': account.name,
+        'cap': cap,
+        'participation': participation,
+        'floor': floor,
+        'floorType': floorType.name,
+        'strike': strike,
+        'currentLevel': currentLevel,
+        'openDate': openDate.toIso8601String(),
+        'lastReset': lastReset.toIso8601String(),
+        'maturity': maturity.toIso8601String(),
+        'nextReset': nextReset.toIso8601String(),
+        'resetFreq': resetFreq.name,
+        'initial': initial,
+        'realized': realized,
+        'isIncomeNote': isIncomeNote,
+        'couponProj': couponProj,
+      };
+
+  factory Holding.fromJson(Map<String, dynamic> j) => Holding(
+        position: j['position'] as String,
+        issuer: j['issuer'] as String? ?? '',
+        index: j['index'] as String? ?? 'SPX',
+        account: AccountType.values.byName(j['account'] as String? ?? 'nonQual'),
+        cap: (j['cap'] as num?)?.toDouble(),
+        participation: (j['participation'] as num?)?.toDouble() ?? 1.0,
+        floor: (j['floor'] as num?)?.toDouble() ?? 0.0,
+        floorType: FloorType.values.byName(j['floorType'] as String? ?? 'hard'),
+        strike: (j['strike'] as num?)?.toDouble() ?? 0,
+        currentLevel: (j['currentLevel'] as num?)?.toDouble() ?? 0,
+        openDate: DateTime.parse(j['openDate'] as String),
+        lastReset: DateTime.parse(j['lastReset'] as String),
+        maturity: DateTime.parse(j['maturity'] as String),
+        nextReset: DateTime.parse(j['nextReset'] as String),
+        resetFreq: ResetFreq.values.byName(j['resetFreq'] as String? ?? 'annual'),
+        initial: (j['initial'] as num?)?.toDouble() ?? 100.0,
+        realized: (j['realized'] as num?)?.toDouble() ?? 0.0,
+        isIncomeNote: j['isIncomeNote'] as bool? ?? false,
+        couponProj: (j['couponProj'] as num?)?.toDouble() ?? 0.0,
+      );
 }

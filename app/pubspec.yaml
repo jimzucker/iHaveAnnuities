@@ -37,6 +37,12 @@ dependencies:
   excel: ^4.0.6
   archive: ^3.6.1
   xml: ^6.6.1
+  provider: ^6.1.5+1
+  http: ^1.6.0
+  file_picker: ^11.0.2
+  file_saver: ^0.4.0
+  shared_preferences: ^2.5.5
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -60,10 +66,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/example-portfolio.xlsx
+    - assets/template.xlsx
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

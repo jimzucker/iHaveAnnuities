@@ -1,0 +1,78 @@
+//
+//  widget_test.dart
+//  iHaveAnnuities
+//
+//  Copyright 2026 Jim Zucker
+//  SPDX-License-Identifier: Apache-2.0
+//
+// Widget coverage for the portfolio screen (prices header, summary, list) and
+// the add/edit form validation.
+
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:ihaveannuities/data/market.dart';
+import 'package:ihaveannuities/data/portfolio_store.dart';
+import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:ihaveannuities/ui/holding_form.dart';
+import 'package:ihaveannuities/ui/portfolio_screen.dart';
+
+final _market = Market(
+    asOf: DateTime(2026, 6, 12), spx: 7431.46, ndx: 29635.95, rut: 2943.99);
+
+Widget _wrap(PortfolioStore store) => ChangeNotifierProvider.value(
+      value: store,
+      child: const MaterialApp(home: PortfolioScreen()),
+    );
+
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('prices header shows indices and updated date', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.textContaining('S&P 500'), findsOneWidget);
+    expect(find.textContaining('Nasdaq-100'), findsOneWidget);
+    expect(find.textContaining('Russell 2000'), findsOneWidget);
+    expect(find.textContaining('Updated 12-Jun-2026'), findsOneWidget);
+  });
+
+  testWidgets('empty state offers loading the sample', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.text('Load sample portfolio'), findsOneWidget);
+  });
+
+  testWidgets('seeded portfolio shows summary + rows', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.text('Contracts'), findsOneWidget);
+    expect(find.text('Principal'), findsOneWidget);
+    expect(find.text('${holdings.length}'), findsWidgets);
+    expect(find.text('Aspida 12.25%-14Nov28'), findsOneWidget);
+  });
+
+  testWidgets('form requires a Position', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
+    await tester.tap(find.text('SAVE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Required'), findsOneWidget); // Position blank
+  });
+
+  testWidgets('form rejects a positive floor', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
+    await tester.enterText(find.byType(TextFormField).first, 'Test 1');
+    // floor field default is "0.0"; set to a positive value
+    final floorField = find.widgetWithText(TextFormField, '0.0');
+    await tester.enterText(floorField.first, '5');
+    await tester.tap(find.text('SAVE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Must be ≤ 0'), findsOneWidget);
+  });
+}

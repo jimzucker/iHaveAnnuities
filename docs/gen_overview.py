@@ -331,17 +331,19 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     return path
 
 
-_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-os.makedirs(_data_dir, exist_ok=True)
-xlsx_example = write_xlsx(os.path.join(_data_dir, "example-portfolio.xlsx"),
-                          ROWS, with_data=True, with_instructions=False)
-# Template: headers + Instructions + two sample rows to copy.
-xlsx_template = write_xlsx(os.path.join(_data_dir, "template.xlsx"),
-                           ROWS[:2], with_data=True, with_instructions=True)
+_root = os.path.dirname(os.path.dirname(__file__))
+_written = []
+for _dir in (os.path.join(_root, "data"), os.path.join(_root, "app", "assets")):
+    os.makedirs(_dir, exist_ok=True)
+    _written.append(write_xlsx(os.path.join(_dir, "example-portfolio.xlsx"),
+                               ROWS, with_data=True, with_instructions=False))
+    # Template: headers + Instructions + two sample rows to copy.
+    _written.append(write_xlsx(os.path.join(_dir, "template.xlsx"),
+                               ROWS[:2], with_data=True, with_instructions=True))
 
 print("wrote", out)
-print("wrote", xlsx_example)
-print("wrote", xlsx_template)
+for _p in _written:
+    print("wrote", _p)
 for r in ROWS:
     print(f"  {r['pos']:26s} idx={pct(r['idx']):>9s} -> proj={pct(r['proj_gain']):>9s}  PV={money(r['proj_value']):>9s}")
 print(f"  TOTAL Init={money(tot_init)} Realized={money(tot_real)} PV={money(tot_pv)} Gain={money(tot_pg)}")
