@@ -22,11 +22,11 @@ class PortfolioTable extends StatelessWidget {
   const PortfolioTable({super.key});
 
   static const _headers = [
-    'Position', 'Index Gain %', 'Proj Gain @ Reset', 'CAP', 'Part.', 'Floor',
-    'Floor Type', 'Strike', 'Open', 'Last Reset', 'Maturity', 'Days to Mat.',
-    'Reset Freq', 'Next Reset', 'Days to Reset', 'Initial (\$000)',
-    'Realized (\$000)', 'Proj Value (\$000)', 'Proj \$ Gain (\$000)', 'Type',
-    'Issuer', 'Index', '',
+    'Issuer', 'Index Gain %', 'Proj Gain @ Reset', 'Index', 'CAP', 'Part.',
+    'Floor', 'Floor Type', 'Strike', 'Open', 'Last Reset', 'Maturity',
+    'Days to Maturity', 'Reset Freq', 'Next Reset', 'Days to Reset',
+    'Initial (\$000)', 'Realized (\$000)', 'Proj Value @ Reset (\$000)',
+    'Proj \$ Gain @ Reset (\$000)', 'Type', '',
   ];
 
   @override
@@ -69,9 +69,10 @@ class PortfolioTable extends StatelessWidget {
       onSelectChanged: (_) => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
       cells: [
-        t(x.position),
+        t(x.issuer),
         signed(x.indexGain),
         signed(x.projGain),
+        t(x.index),
         t(capLabel(x.cap)),
         t(pct(x.participation)),
         t(x.floor == 0 ? '0.00%' : pct(x.floor)),
@@ -92,8 +93,6 @@ class PortfolioTable extends StatelessWidget {
         DataCell(Text(money000(x.projGainDollarsK),
             style: TextStyle(color: gainColor(x.projGainDollarsK, cs)))),
         DataCell(_pill(x.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
-        t(x.issuer),
-        t(x.index),
         DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             tooltip: 'Edit',
