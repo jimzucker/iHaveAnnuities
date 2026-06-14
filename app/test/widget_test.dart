@@ -58,6 +58,37 @@ void main() {
     expect(find.text('Aspida 12.25%-14Nov28'), findsOneWidget);
   });
 
+  testWidgets('table shows tracker columns and row actions', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.text('Proj Gain @ Reset'), findsOneWidget);
+    expect(find.text('Floor Type'), findsOneWidget);
+    expect(find.text('Days to Reset'), findsOneWidget);
+    expect(find.byTooltip('Edit'), findsWidgets);
+    expect(find.byTooltip('Delete'), findsWidgets);
+  });
+
+  testWidgets('delete removes a holding after confirm', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    final before = store.holdings.length;
+
+    final del = find.byTooltip('Delete').first;
+    await tester.ensureVisible(del);
+    await tester.pumpAndSettle();
+    await tester.tap(del);
+    await tester.pumpAndSettle();
+    expect(find.text('Delete holding?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+    expect(store.holdings.length, before - 1);
+  });
+
   testWidgets('form requires a Position', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
     await tester.tap(find.text('SAVE'));

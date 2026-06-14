@@ -43,6 +43,14 @@ void main() {
     expect(note.index, contains('worst-of'));
   });
 
+  test('downloadable template.xlsx is valid + parseable', () {
+    final holdings = parseTracker(File('../data/template.xlsx').readAsBytesSync());
+    expect(holdings, isNotEmpty); // sample rows present
+    for (final h in holdings) {
+      expect(h.position, isNotEmpty);
+    }
+  });
+
   test('round-trips: write -> read preserves inputs', () {
     final original = parseTracker(File(examplePath).readAsBytesSync());
     final bytes = writeTracker(original,

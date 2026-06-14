@@ -16,8 +16,8 @@ import 'package:provider/provider.dart';
 import '../core/models.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
-import 'holding_detail.dart';
 import 'holding_form.dart';
+import 'portfolio_table.dart';
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
@@ -65,11 +65,13 @@ class PortfolioScreen extends StatelessWidget {
           if (!store.isEmpty) _Summary(store: store),
           Expanded(
             child: store.isEmpty
-                ? _Empty(onSample: () => _menu(context, store, 'sample'))
-                : ListView.separated(
-                    itemCount: store.holdings.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (_, i) => _HoldingTile(holding: store.holdings[i]),
+                ? _Empty(
+                    onSample: () => _menu(context, store, 'sample'),
+                    onAdd: () => _add(context, store),
+                  )
+                : const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: PortfolioTable(),
                   ),
           ),
         ],
@@ -184,34 +186,22 @@ class _Summary extends StatelessWidget {
       ]);
 }
 
-class _HoldingTile extends StatelessWidget {
-  const _HoldingTile({required this.holding});
-  final Holding holding;
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ListTile(
-      title: Text(holding.position),
-      subtitle: Text('${holding.issuer} · ${holding.index} · ${holding.resetFreq.label}'),
-      trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text(moneyK(holding.projValueK), style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(pctSigned(holding.projGain), style: TextStyle(color: gainColor(holding.projGain, cs), fontSize: 12)),
-      ]),
-      onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => HoldingDetail(holding: holding))),
-    );
-  }
-}
-
 class _Empty extends StatelessWidget {
-  const _Empty({required this.onSample});
+  const _Empty({required this.onSample, required this.onAdd});
   final VoidCallback onSample;
+  final VoidCallback onAdd;
   @override
   Widget build(BuildContext context) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('No holdings yet.'),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Add a holding manually')),
           const SizedBox(height: 8),
-          FilledButton(onPressed: onSample, child: const Text('Load sample portfolio')),
+          OutlinedButton(onPressed: onSample, child: const Text('Load sample portfolio')),
+          const SizedBox(height: 8),
           const Text('or use the ⋮ menu to import your .xlsx',
               style: TextStyle(color: Colors.grey)),
         ]),
