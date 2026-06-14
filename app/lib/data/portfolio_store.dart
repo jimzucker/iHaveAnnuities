@@ -12,6 +12,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models.dart';
@@ -19,10 +20,13 @@ import 'market.dart';
 import 'tracker_xlsx.dart';
 
 class PortfolioStore extends ChangeNotifier {
-  PortfolioStore({this.base = ''});
+  PortfolioStore({this.base = '', this.client});
 
   static const _key = 'portfolio.v1';
   final String base;
+
+  /// Optional injected HTTP client (tests).
+  final http.Client? client;
 
   List<Holding> _holdings = [];
   Market? _market;
@@ -61,7 +65,7 @@ class PortfolioStore extends ChangeNotifier {
 
   Future<void> refreshMarket() async {
     try {
-      _market = await Market.fetch(base: base);
+      _market = await Market.fetch(base: base, client: client);
       _revalue();
       _status = null;
     } catch (e) {

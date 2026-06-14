@@ -1,0 +1,30 @@
+# test.yml — CI gate: analyze + test with coverage threshold.
+# Copyright 2026 Jim Zucker
+# SPDX-License-Identifier: Apache-2.0
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: pub get
+        working-directory: app
+        run: flutter pub get
+      - name: analyze
+        working-directory: app
+        run: flutter analyze
+      - name: test + coverage
+        working-directory: app
+        run: flutter test --coverage
+      - name: coverage gate (core 100% / data ≥95%)
+        run: python3 scripts/check_coverage.py app/coverage/lcov.info

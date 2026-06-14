@@ -1,0 +1,55 @@
+# deploy-web.yml — build the Flutter web app and publish to GitHub Pages.
+# Copyright 2026 Jim Zucker
+# SPDX-License-Identifier: Apache-2.0
+name: deploy-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'data/market.json'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+  # Redeploy after the market job updates prices (token pushes don't fire `push`).
+  workflow_run:
+    workflows: ['market-update']
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: build web
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /iHaveAnnuities/
+      - name: bundle latest market.json
+        run: cp data/market.json app/build/web/market.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

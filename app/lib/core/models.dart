@@ -105,8 +105,9 @@ class Holding {
   /// for the simple revaluation path).
   String get baseIndex {
     final u = index.toUpperCase();
+    if (u.contains('WORST')) return 'SPX'; // worst-of basket priced off SPX
     if (u.contains('NDX')) return 'NDX';
-    if (u.contains('RUT') && !u.contains('WORST')) return 'RUT';
+    if (u.contains('RUT')) return 'RUT';
     return 'SPX';
   }
 
