@@ -23,6 +23,12 @@ class PortfolioStore extends ChangeNotifier {
   PortfolioStore({this.base = '', this.client});
 
   static const _key = 'portfolio.v1';
+  static const _sortKey = 'sortColumn.v1';
+  static const _ascKey = 'sortAsc.v1';
+
+  /// Default sort column index = "Next Reset" in PortfolioTable's column list.
+  static const defaultSortColumn = 14;
+
   final String base;
 
   /// Optional injected HTTP client (tests).
@@ -31,19 +37,38 @@ class PortfolioStore extends ChangeNotifier {
   List<Holding> _holdings = [];
   Market? _market;
   String? _status;
+  int _sortColumn = defaultSortColumn;
+  bool _sortAscending = true;
+
+  int get sortColumn => _sortColumn;
+  bool get sortAscending => _sortAscending;
 
   List<Holding> get holdings => List.unmodifiable(_holdings);
   Market? get market => _market;
   String? get status => _status;
   bool get isEmpty => _holdings.isEmpty;
 
+  /// Computed display name for [h], with `-1/-2/…` suffixes on collisions.
+  String labelFor(Holding h) => dedupedPosition(h, _holdings);
+
   double get totalInitial => _holdings.fold(0.0, (s, h) => s + h.initial);
   double get totalProjValue => _holdings.fold(0.0, (s, h) => s + h.projValueK);
   double get totalProjGain => totalProjValue - totalInitial;
 
   /// Load persisted holdings, then fetch + apply market prices.
+  Future<void> setSort(int column, bool ascending) async {
+    _sortColumn = column;
+    _sortAscending = ascending;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_sortKey, column);
+    await prefs.setBool(_ascKey, ascending);
+    notifyListeners();
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
+    _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
+    _sortAscending = prefs.getBool(_ascKey) ?? true;
     final raw = prefs.getString(_key);
     if (raw != null) {
       try {

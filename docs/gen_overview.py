@@ -93,6 +93,8 @@ def base_index(idx_name):
 
 # ---- compute derived values ----
 for r in ROWS:
+    # Position is computed (matches the app): Issuer-{|floor|%}-{maturity ddMMMyy}
+    r["pos"] = f"{r['issuer']}-{abs(r['floor']) * 100:g}%-{r['mat']:%d%b%y}"
     if r.get("note"):
         r["proj_gain"] = r["proj"]
         r["realized_v"] = r["realized"]
@@ -122,8 +124,12 @@ rows_html = []
 for r in ROWS:
     pc = "pos" if r["proj_gain"] > 0 else ("neg" if r["proj_gain"] < 0 else "")
     ic = "pos" if r["idx"] > 0 else ("neg" if r["idx"] < 0 else "")
-    prot = "soft" if r["soft"] else "hard"
-    prot_lbl = "Soft" if r["soft"] else "Hard"
+    if r["floor"] == 0:
+        prot, prot_lbl = "abs", "Absolute"
+    elif r["soft"]:
+        prot, prot_lbl = "soft", "Soft"
+    else:
+        prot, prot_lbl = "hard", "Hard"
     rows_html.append(f"""      <tr>
         <td class="l">{r['pos']}</td>
         <td class="{ic}">{pct(r['idx'])}</td><td class="{pc}">{pct(r['proj_gain'])}</td>
@@ -163,6 +169,7 @@ HTML = f"""<!--
   tbody tr:nth-child(even) {{ background: #f5f7fa; }}
   .pill {{ display:inline-block; padding:1px 7px; border-radius:9px; font-size:10.5px; font-weight:600; }}
   .hard {{ background:#eaf7ec; color:#0a7d28; }}
+  .abs {{ background:#e6efff; color:#1f3a5f; }}
   .soft {{ background:#fff3e0; color:#b26a00; }}
   .nq  {{ background:#fff8e1; color:#8a6d00; font-weight:600; }}
   .ira {{ background:#e6efff; color:#1f3a5f; font-weight:600; }}
@@ -239,7 +246,7 @@ def _row_values(r):
     return [
         r["pos"], r["idx"], r["proj_gain"],
         ("Uncapped" if r["cap"] is None else r["cap"]), r["part"], r["floor"],
-        ("Soft" if r["soft"] else "Hard"), round(r["strike"], 2),
+        ("Absolute" if r["floor"] == 0 else ("Soft" if r["soft"] else "Hard")), round(r["strike"], 2),
         r["open"], r["last"], r["mat"], days(r["mat"]),
         r["freq"], r["nxt"], days(r["nxt"]),
         100.00, r["realized_v"], r["proj_value"], r["proj_gain_dollars"],

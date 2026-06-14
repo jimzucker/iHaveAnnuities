@@ -71,10 +71,12 @@ List<Holding> parseTracker(List<int> bytes) {
   final rows =
       tables.containsKey(_sheetName) ? tables[_sheetName]! : tables.values.first;
 
-  final headerIdx = rows.indexWhere(
-      (r) => r.any((c) => c?.toString().trim() == 'Position'));
+  final headerIdx = rows.indexWhere((r) => r.any((c) {
+        final v = c?.toString().trim();
+        return v == 'Issuer' || v == 'Position';
+      }));
   if (headerIdx < 0) {
-    throw const FormatException('No "Position" header row found');
+    throw const FormatException('No "Issuer"/"Position" header row found');
   }
   final h = <String, int>{};
   final hrow = rows[headerIdx];
@@ -86,9 +88,13 @@ List<Holding> parseTracker(List<int> bytes) {
   final out = <Holding>[];
   for (var ri = headerIdx + 1; ri < rows.length; ri++) {
     final r = rows[ri];
-    final pos = _str(r, h, 'Position');
-    if (pos == null || pos.isEmpty) continue;
-    if (pos.toUpperCase().startsWith('TOTAL')) break;
+    // Row control: stop at a TOTAL row; skip blanks. Position (if present) is
+    // ignored as data — it is recomputed from issuer/floor/maturity.
+    final label =
+        _str(r, h, 'Position') ?? (r.isNotEmpty ? r.first?.toString().trim() : null);
+    if (label != null && label.toUpperCase().startsWith('TOTAL')) break;
+    final issuer = _str(r, h, 'Issuer');
+    if (issuer == null || issuer.isEmpty) continue;
 
     final capStr = _str(r, h, 'CAP');
     final double? cap = (capStr != null && capStr.toLowerCase().contains('uncap'))
@@ -104,8 +110,7 @@ List<Holding> parseTracker(List<int> bytes) {
     final open = _date(r, h, 'Open') ?? DateTime(2026);
 
     out.add(Holding(
-      position: pos,
-      issuer: _str(r, h, 'Issuer') ?? '',
+      issuer: issuer,
       index: _str(r, h, 'Index') ?? 'SPX',
       account: _account(_str(r, h, 'Type')),
       cap: cap,
@@ -154,13 +159,13 @@ List<int> writeTracker(
 
   for (final x in holdings) {
     s.appendRow(<CellValue?>[
-      TextCellValue(x.position),
+      TextCellValue(dedupedPosition(x, holdings)),
       DoubleCellValue(x.indexGain),
       DoubleCellValue(x.projGain),
       x.cap == null ? TextCellValue('Uncapped') : DoubleCellValue(x.cap!),
       DoubleCellValue(x.participation),
       DoubleCellValue(x.floor),
-      TextCellValue(x.floorType == FloorType.soft ? 'Soft' : 'Hard'),
+      TextCellValue(x.protectionType),
       DoubleCellValue(x.strike),
       _dateCell(x.openDate),
       _dateCell(x.lastReset),

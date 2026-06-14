@@ -70,6 +70,18 @@ void main() {
     expect(find.byTooltip('Delete'), findsWidgets);
   });
 
+  testWidgets('tapping a column header changes the sort', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(store.sortColumn, PortfolioStore.defaultSortColumn); // Next Reset
+
+    await tester.tap(find.text('Issuer'));
+    await tester.pumpAndSettle();
+    expect(store.sortColumn, 0); // Issuer column
+  });
+
   testWidgets('delete removes a holding after confirm', (tester) async {
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
@@ -89,11 +101,11 @@ void main() {
     expect(store.holdings.length, before - 1);
   });
 
-  testWidgets('form requires a Position', (tester) async {
+  testWidgets('form requires an Issuer', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
     await tester.tap(find.text('SAVE'));
     await tester.pumpAndSettle();
-    expect(find.text('Required'), findsOneWidget); // Position blank
+    expect(find.text('Required'), findsOneWidget); // Issuer blank
   });
 
   testWidgets('form rejects a positive floor', (tester) async {

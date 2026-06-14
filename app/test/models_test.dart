@@ -25,7 +25,6 @@ Holding _h({
 }) {
   final d = DateTime(2026, 1, 1);
   return Holding(
-    position: 'x',
     issuer: 'x',
     index: 'SPX',
     account: AccountType.nonQual,
@@ -104,6 +103,34 @@ void main() {
     final h = _h(cap: 1.0, floor: -0.20, strike: 100, currentLevel: 85);
     expect(h.projGain, 0.0);
     expect(h.projValueK, closeTo(100.0, 1e-9));
+  });
+
+  test('protectionType: Absolute / Hard / Soft', () {
+    expect(_h(cap: null, floor: 0, strike: 100, currentLevel: 100).protectionType,
+        'Absolute');
+    expect(_h(cap: null, floor: -0.10, strike: 100, currentLevel: 100).protectionType,
+        'Hard');
+    expect(
+        _h(cap: null, floor: -0.30, floorType: FloorType.soft, strike: 100, currentLevel: 100)
+            .protectionType,
+        'Soft');
+  });
+
+  test('computed position = issuer-floor-maturity', () {
+    expect(_h(cap: 0.1225, floor: 0, strike: 100, currentLevel: 118).position,
+        'x-0%-01Jan30');
+    expect(_h(cap: null, floor: -0.15, strike: 100, currentLevel: 100).position,
+        'x-15%-01Jan30');
+  });
+
+  test('dedupedPosition adds -1/-2 on collisions', () {
+    final h1 = _h(cap: 0.10, floor: 0, strike: 100, currentLevel: 110);
+    final h2 = _h(cap: 0.12, floor: 0, strike: 200, currentLevel: 220);
+    expect(h1.position, h2.position); // same issuer/floor/maturity
+    final all = [h1, h2];
+    expect(dedupedPosition(h1, all), '${h1.position}-1');
+    expect(dedupedPosition(h2, all), '${h2.position}-2');
+    expect(dedupedPosition(h1, [h1]), h1.position); // unique → unchanged
   });
 
   test('days to maturity/reset', () {

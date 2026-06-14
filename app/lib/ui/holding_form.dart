@@ -48,7 +48,6 @@ class _HoldingFormState extends State<HoldingForm> {
     _maturity = h?.maturity ?? DateTime(now.year + 6, now.month, now.day);
     _nextReset = h?.nextReset ?? DateTime(now.year + 1, now.month, now.day);
     _c = {
-      'position': TextEditingController(text: h?.position ?? ''),
       'issuer': TextEditingController(text: h?.issuer ?? ''),
       'cap': TextEditingController(text: h?.cap == null ? '' : (h!.cap! * 100).toString()),
       'participation': TextEditingController(text: ((h?.participation ?? 1.0) * 100).toString()),
@@ -84,7 +83,6 @@ class _HoldingFormState extends State<HoldingForm> {
     if (!_form.currentState!.validate()) return;
     final strike = _n('strike');
     final h = Holding(
-      position: _c['position']!.text.trim(),
       issuer: _c['issuer']!.text.trim(),
       index: _index,
       account: _account,
@@ -119,8 +117,7 @@ class _HoldingFormState extends State<HoldingForm> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _text('position', 'Position', required: true),
-            _text('issuer', 'Issuer'),
+            _text('issuer', 'Issuer', required: true),
             _dropdown<String>('Index', _index, const ['SPX', 'NDX', 'RUT', 'worst-of SPX/NDX/RUT'],
                 (v) => setState(() => _index = v!), (v) => v),
             _dropdown<AccountType>('Account / Type', _account, AccountType.values,

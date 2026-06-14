@@ -50,16 +50,16 @@ index returns/levels are illustrative (dates/days as of 14‑Jun‑2026). The
 `Floor` column is the downside-protection level — *Hard* negative = **buffer**,
 *Soft* negative = **barrier**, `0%` = **true floor**. `$` values are in $000s.
 
-| Position | Index | Cap | Part. | Floor | Type | Reset | Account | Index → Payoff | Proj Value |
+| Position (computed) | Index | Cap | Part. | Floor | Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Aspida 12.25%‑14Nov28 | SPX | 12.25% | 100% | 0% | Hard (floor) | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
-| Axa 65%‑18Aug27 | SPX | 65% | 100% | −15% | Hard (buffer) | 6‑Year | Non‑Qual | −22.00% → −7.00% | **$93.00** |
-| Citi 15%‑4Feb30 IRA | SPX | Uncapped | 102% | −15% | Hard (buffer) | 5‑Year | IRA | +30.00% → +30.60% | **$130.60** |
-| HSBC 92.25%‑20Oct30 | NDX | Uncapped | 92.25% | −15% | Hard (buffer) | 5‑Year | IRA | +40.00% → +36.90% | **$136.90** |
-| BNP 30%‑6Jan31 | SPX | Uncapped | 105% | −30% | Soft (barrier) | 5‑Year | ROTH | −35.00% → −35.00% | **$65.00** |
-| NatBank 13.25%‑16Apr29 | worst‑of SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft (barrier) | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.22** |
-| Axa 100%‑20May32 | NDX | 100% | 100% | −20% | Hard (buffer) | 6‑Year | IRA | −15.00% → 0.00% | **$100.00** |
-| Citi 15%‑1Dec29 ROTH | SPX | Uncapped | 100% | −15% | Hard (buffer) | 4‑Year | ROTH | +12.00% → +12.00% | **$112.00** |
+| Aspida-0%-14Nov28 | SPX | 12.25% | 100% | 0% | Absolute | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
+| AXA-15%-18Aug27 | SPX | 65% | 100% | −15% | Hard (buffer) | 6‑Year | Non‑Qual | −22.00% → −7.00% | **$93.00** |
+| Citi-15%-04Feb30 | SPX | Uncapped | 102% | −15% | Hard (buffer) | 5‑Year | IRA | +30.00% → +30.60% | **$130.60** |
+| HSBC-15%-20Oct30 | NDX | Uncapped | 92.25% | −15% | Hard (buffer) | 5‑Year | IRA | +40.00% → +36.90% | **$136.90** |
+| BNP-30%-06Jan31 | SPX | Uncapped | 105% | −30% | Soft (barrier) | 5‑Year | ROTH | −35.00% → −35.00% | **$65.00** |
+| Nat. Bank of Canada-30%-16Apr29 | worst‑of SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft (barrier) | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.22** |
+| AXA-20%-20May32 | NDX | 100% | 100% | −20% | Hard (buffer) | 6‑Year | IRA | −15.00% → 0.00% | **$100.00** |
+| Citi-15%-01Dec29 | SPX | Uncapped | 100% | −15% | Hard (buffer) | 4‑Year | ROTH | +12.00% → +12.00% | **$112.00** |
 | **Total** | | | | | | | | | **$851.97** |
 
 What each row demonstrates:
@@ -90,7 +90,7 @@ and export; on web it persists in the browser between visits.
 ```bash
 cd app
 flutter pub get
-flutter test            # 50 tests; core 100% / data ≥95% coverage gate
+flutter test            # 58 tests; core 100% / data ≥95% coverage gate
 flutter run -d chrome   # run the web app locally
 ```
 
@@ -111,9 +111,9 @@ Third-party license texts (when any code is vendored) live in [`licenses/`](lice
 
 Every source file carries an SPDX header:
 
-```swift
+```dart
 //
-//  <FileName>.swift
+//  <file_name>.dart
 //  iHaveAnnuities
 //
 //  Copyright 2026 Jim Zucker

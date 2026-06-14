@@ -24,7 +24,6 @@ const _marketJson =
     '{"asOf":"2026-06-12","tradingDay":true,"spx":7431.46,"ndx":29635.95,"rut":2943.99}';
 
 Holding _sample() => Holding(
-      position: 'Test 1',
       issuer: 'AIG',
       index: 'NDX',
       account: AccountType.ira,
@@ -177,6 +176,19 @@ void main() {
 
       await store.clearLocal();
       expect(store.isEmpty, isTrue);
+    });
+
+    test('sort defaults to Next Reset asc and is remembered', () async {
+      final store = PortfolioStore();
+      expect(store.sortColumn, PortfolioStore.defaultSortColumn);
+      expect(store.sortAscending, isTrue);
+      await store.setSort(1, false);
+
+      final c = MockClient((_) async => http.Response('x', 500));
+      final s2 = PortfolioStore(client: c);
+      await s2.init();
+      expect(s2.sortColumn, 1);
+      expect(s2.sortAscending, isFalse);
     });
 
     test('init ignores corrupt cache', () async {

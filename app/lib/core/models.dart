@@ -39,7 +39,6 @@ extension AccountTypeLabel on AccountType {
 /// the getters below are the black (formula) columns.
 class Holding {
   Holding({
-    required this.position,
     required this.issuer,
     required this.index,
     required this.account,
@@ -60,7 +59,6 @@ class Holding {
     this.couponProj = 0.0, // projected coupon for income notes (fraction)
   });
 
-  final String position;
   final String issuer;
   final String index; // 'SPX' | 'NDX' | 'RUT' | 'worst-of SPX/NDX/RUT'
   final AccountType account;
@@ -101,6 +99,29 @@ class Holding {
   int daysToMaturity(DateTime asOf) => maturity.difference(asOf).inDays;
   int daysToReset(DateTime asOf) => nextReset.difference(asOf).inDays;
 
+  static const _mon = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  static String _ddMMMyy(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}${_mon[d.month - 1]}'
+      '${(d.year % 100).toString().padLeft(2, '0')}';
+
+  static String _trimPct(double v) {
+    var s = v.toStringAsFixed(2);
+    if (s.contains('.')) {
+      s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    return s;
+  }
+
+  /// Computed display name: `Issuer-{floor/buffer %}-{maturity ddMMMyy}`,
+  /// e.g. `Aspida-0%-14Nov28`, `Axa-15%-18Aug27`. Not stored or imported.
+  /// Use [dedupedPosition] across a portfolio to disambiguate collisions.
+  String get position =>
+      '$issuer-${_trimPct(floor.abs() * 100)}%-${_ddMMMyy(maturity)}';
+
   /// Base index symbol used to price this holding (worst-of resolves to SPX
   /// for the simple revaluation path).
   String get baseIndex {
@@ -111,8 +132,13 @@ class Holding {
     return 'SPX';
   }
 
+  /// Display label for the downside protection: a 0% floor is "Absolute"
+  /// (no loss); a negative floor is a "Hard" buffer or "Soft" barrier.
+  String get protectionType => floor == 0
+      ? 'Absolute'
+      : (floorType == FloorType.soft ? 'Soft' : 'Hard');
+
   Holding copyWith({double? currentLevel}) => Holding(
-        position: position,
         issuer: issuer,
         index: index,
         account: account,
@@ -134,7 +160,6 @@ class Holding {
       );
 
   Map<String, dynamic> toJson() => {
-        'position': position,
         'issuer': issuer,
         'index': index,
         'account': account.name,
@@ -156,7 +181,6 @@ class Holding {
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
-        position: j['position'] as String,
         issuer: j['issuer'] as String? ?? '',
         index: j['index'] as String? ?? 'SPX',
         account: AccountType.values.byName(j['account'] as String? ?? 'nonQual'),
@@ -176,4 +200,14 @@ class Holding {
         isIncomeNote: j['isIncomeNote'] as bool? ?? false,
         couponProj: (j['couponProj'] as num?)?.toDouble() ?? 0.0,
       );
+}
+
+/// Display name for [h] within [all], appending `-1`, `-2`, … when the computed
+/// [Holding.position] collides with other holdings (e.g. two AIG contracts that
+/// share issuer, floor, and maturity). Unique names are returned unchanged.
+String dedupedPosition(Holding h, List<Holding> all) {
+  final base = h.position;
+  final group = all.where((x) => x.position == base).toList();
+  if (group.length <= 1) return base;
+  return '$base-${group.indexOf(h) + 1}';
 }

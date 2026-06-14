@@ -23,22 +23,22 @@ void main() {
     final holdings = parseTracker(File(examplePath).readAsBytesSync());
     expect(holdings.length, 8);
 
-    final aspida = holdings.firstWhere((h) => h.position.startsWith('Aspida 12'));
+    final aspida = holdings.firstWhere((h) => h.issuer == 'Aspida');
     expect(aspida.cap, closeTo(0.1225, 1e-9));
     expect(aspida.floor, 0.0);
     expect(aspida.floorType, FloorType.hard);
     expect(aspida.account, AccountType.nonQual);
+    expect(aspida.position, 'Aspida-0%-14Nov28'); // computed name
     expect(aspida.projGain, closeTo(0.1225, 1e-6)); // recomputed from strike/gain
     expect(aspida.projValueK, closeTo(112.25, 1e-3));
 
-    final bnp = holdings.firstWhere((h) => h.position.startsWith('BNP'));
+    final bnp = holdings.firstWhere((h) => h.issuer == 'BNP');
     expect(bnp.cap, isNull); // Uncapped
     expect(bnp.floorType, FloorType.soft);
     expect(bnp.participation, closeTo(1.05, 1e-9));
     expect(bnp.projValueK, closeTo(65.0, 1e-2)); // -35% breaches -30% soft
 
-    final note = holdings.firstWhere((h) => h.position.startsWith('NatBank'));
-    expect(note.isIncomeNote, isTrue); // Monthly => income note
+    final note = holdings.firstWhere((h) => h.isIncomeNote);
     expect(note.resetFreq, ResetFreq.monthly);
     expect(note.index, contains('worst-of'));
   });

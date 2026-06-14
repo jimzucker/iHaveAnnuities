@@ -5,35 +5,90 @@
 //  Copyright 2026 Jim Zucker
 //  SPDX-License-Identifier: Apache-2.0
 //
-// Spreadsheet-style view that mirrors the Zucker Annuity Tracker columns, with
-// per-row edit/delete and tap-to-open detail.
+// Spreadsheet-style view mirroring the Zucker Annuity Tracker columns. Every
+// column is sortable; the chosen sort is remembered (PortfolioStore), defaulting
+// to Next Reset ascending. Per-row edit/delete; tap a row to drill in.
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
-import '../core/payoff.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_detail.dart';
 import 'holding_form.dart';
 
+/// One sortable column: how to render it and how to sort by it.
+class _Col {
+  const _Col(this.label, this.numeric, this.key, this.cell);
+  final String label;
+  final bool numeric;
+  final Comparable Function(Holding h, DateTime asOf) key;
+  final DataCell Function(Holding h, DateTime asOf, ColorScheme cs) cell;
+}
+
 class PortfolioTable extends StatelessWidget {
   const PortfolioTable({super.key});
 
-  static const _headers = [
-    'Issuer', 'Index Gain %', 'Proj Gain @ Reset', 'Index', 'CAP', 'Part.',
-    'Floor', 'Floor Type', 'Strike', 'Open', 'Last Reset', 'Maturity',
-    'Days to Maturity', 'Reset Freq', 'Next Reset', 'Days to Reset',
-    'Initial (\$000)', 'Realized (\$000)', 'Proj Value @ Reset (\$000)',
-    'Proj \$ Gain @ Reset (\$000)', 'Type', '',
-  ];
+  static DataCell _t(String s) => DataCell(Text(s));
+  static DataCell _signed(double v, ColorScheme cs) =>
+      DataCell(Text(pctSigned(v), style: TextStyle(color: gainColor(v, cs))));
+
+  static Widget _pill(String text, Color bg, Color fg) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+        child: Text(text, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
+      );
+
+  static List<_Col> _columns(ColorScheme cs) => [
+        _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(), (h, _, _) => _t(h.issuer)),
+        _Col('Index Gain %', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
+        _Col('Proj Gain @ Reset', true, (h, _) => h.projGain, (h, _, cs) => _signed(h.projGain, cs)),
+        _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
+        _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
+        _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
+        _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor))),
+        _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, _) {
+          final p = h.protectionType;
+          final (bg, fg) = switch (p) {
+            'Soft' => (const Color(0xFFFFF3E0), const Color(0xFFB26A00)),
+            'Absolute' => (const Color(0xFFE6EFFF), const Color(0xFF1F3A5F)),
+            _ => (const Color(0xFFEAF7EC), const Color(0xFF0A7D28)),
+          };
+          return DataCell(_pill(p, bg, fg));
+        }),
+        _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike))),
+        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),
+        _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
+        _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
+        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
+        _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label)),
+        _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
+        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
+        _Col('Initial (\$000)', true, (h, _) => h.initial, (h, _, _) => _t(money000(h.initial))),
+        _Col('Realized (\$000)', true, (h, _) => h.realized, (h, _, _) => _t(money000(h.realized))),
+        _Col('Proj Value @ Reset (\$000)', true, (h, _) => h.projValueK, (h, _, _) => _t(money000(h.projValueK))),
+        _Col('Proj \$ Gain @ Reset (\$000)', true, (h, _) => h.projGainDollarsK,
+            (h, _, cs) => DataCell(Text(money000(h.projGainDollarsK),
+                style: TextStyle(color: gainColor(h.projGainDollarsK, cs))))),
+        _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
+            DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
+      ];
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
     final asOf = store.market?.asOf ?? DateTime(2026, 6, 14);
     final cs = Theme.of(context).colorScheme;
+    final cols = _columns(cs);
+
+    final sortIdx = store.sortColumn.clamp(0, cols.length - 1);
+    final items = [...store.holdings];
+    final keyer = cols[sortIdx].key;
+    items.sort((a, b) {
+      final r = keyer(a, asOf).compareTo(keyer(b, asOf));
+      return store.sortAscending ? r : -r;
+    });
 
     return Scrollbar(
       thumbVisibility: true,
@@ -42,6 +97,8 @@ class PortfolioTable extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
+            sortColumnIndex: sortIdx,
+            sortAscending: store.sortAscending,
             headingRowColor: WidgetStatePropertyAll(cs.primary),
             headingTextStyle: TextStyle(
                 color: cs.onPrimary, fontWeight: FontWeight.w600, fontSize: 12),
@@ -49,71 +106,41 @@ class PortfolioTable extends StatelessWidget {
             dataRowMaxHeight: 48,
             columnSpacing: 22,
             columns: [
-              for (final h in _headers) DataColumn(label: Text(h)),
+              for (final c in cols)
+                DataColumn(
+                  label: Text(c.label),
+                  numeric: c.numeric,
+                  onSort: (i, asc) => store.setSort(i, asc),
+                ),
+              const DataColumn(label: Text('')),
             ],
             rows: [
-              for (final x in store.holdings) _row(context, store, x, asOf, cs),
+              for (final x in items)
+                DataRow(
+                  onSelectChanged: (_) => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
+                  cells: [
+                    for (final c in cols) c.cell(x, asOf, cs),
+                    DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: 'Edit',
+                        icon: const Icon(Icons.edit, size: 18),
+                        onPressed: () => _edit(context, store, x),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete',
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        onPressed: () => _delete(context, store, x),
+                      ),
+                    ])),
+                  ],
+                ),
             ],
           ),
         ),
       ),
     );
   }
-
-  DataRow _row(BuildContext context, PortfolioStore store, Holding x,
-      DateTime asOf, ColorScheme cs) {
-    DataCell t(String s) => DataCell(Text(s));
-    DataCell signed(double v) =>
-        DataCell(Text(pctSigned(v), style: TextStyle(color: gainColor(v, cs))));
-    return DataRow(
-      onSelectChanged: (_) => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
-      cells: [
-        t(x.issuer),
-        signed(x.indexGain),
-        signed(x.projGain),
-        t(x.index),
-        t(capLabel(x.cap)),
-        t(pct(x.participation)),
-        t(x.floor == 0 ? '0.00%' : pct(x.floor)),
-        DataCell(_pill(x.floorType == FloorType.soft ? 'Soft' : 'Hard',
-            x.floorType == FloorType.soft ? const Color(0xFFFFF3E0) : const Color(0xFFEAF7EC),
-            x.floorType == FloorType.soft ? const Color(0xFFB26A00) : const Color(0xFF0A7D28))),
-        t(level(x.strike)),
-        t(date(x.openDate)),
-        t(date(x.lastReset)),
-        t(date(x.maturity)),
-        t('${x.daysToMaturity(asOf)}'),
-        t(x.resetFreq.label),
-        t(date(x.nextReset)),
-        t('${x.daysToReset(asOf)}'),
-        t(money000(x.initial)),
-        t(money000(x.realized)),
-        t(money000(x.projValueK)),
-        DataCell(Text(money000(x.projGainDollarsK),
-            style: TextStyle(color: gainColor(x.projGainDollarsK, cs)))),
-        DataCell(_pill(x.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
-        DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-          IconButton(
-            tooltip: 'Edit',
-            icon: const Icon(Icons.edit, size: 18),
-            onPressed: () => _edit(context, store, x),
-          ),
-          IconButton(
-            tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline, size: 18),
-            onPressed: () => _delete(context, store, x),
-          ),
-        ])),
-      ],
-    );
-  }
-
-  Widget _pill(String text, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-        child: Text(text, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
-      );
 
   Future<void> _edit(BuildContext context, PortfolioStore store, Holding x) async {
     final edited = await Navigator.of(context)
@@ -126,7 +153,7 @@ class PortfolioTable extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete holding?'),
-        content: Text(x.position),
+        content: Text(store.labelFor(x)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
