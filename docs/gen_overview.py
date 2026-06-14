@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+# gen_overview.py — generates docs/overview.html (source for docs/overview.png)
+# Copyright 2026 Jim Zucker
+# SPDX-License-Identifier: Apache-2.0
+#
+# Eight illustrative example contracts modeled on the Zucker Annuity Tracker,
+# every one normalized to a $100,000 principal ($ columns in $000s). Covers all
+# distinct use cases in the real data: 0% floor, negative Hard buffer, negative
+# Soft barrier; capped + uncapped; participation <100/100/>100%; Annual / Monthly
+# / 4Y / 5Y / 6Y resets; SPX / NDX / RUT / worst-of; Non-Qual / IRA / ROTH; plus
+# a monthly-coupon income note.
+#
+# Downside mechanic (see README):
+#   floor == 0   -> true floor: no period loss (and gains capped/participated up)
+#   floor < 0, Hard -> buffer: absorbs first |floor|%, lose 1:1 beyond
+#   floor < 0, Soft -> barrier: protected unless breached, then full 1:1 loss
+#   credited gain = uncapped ? part*idx : min(cap, part*idx)
+#
+# Regenerate:
+#   python3 docs/gen_overview.py
+#   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+#     --headless --disable-gpu --force-device-scale-factor=2 --hide-scrollbars \
+#     --window-size=2380,470 --screenshot=docs/overview.png docs/overview.html
+
+import datetime, os
+
+TODAY = datetime.date(2026, 6, 14)
+PRICES = {"SPX": 7400.0, "NDX": 29600.0, "RUT": 2950.0}
+
+def d(y, m, day): return datetime.date(y, m, day)
+def mdy(dt): return dt.strftime("%m/%d/%Y")
+def days(dt): return (dt - TODAY).days
+
+# Each row models a real position, normalized to $100k principal.
+# idx = illustrative index move for the shown period; cap=None means uncapped.
+ROWS = [
+    dict(pos="Aspida 12.25%-14Nov28", issuer="Aspida", index="SPX",
+         cap=0.1225, part=1.00, floor=0.00, soft=False, idx=0.18,
+         open=d(2023,11,17), last=d(2025,11,13), mat=d(2028,11,14), nxt=d(2026,11,13),
+         freq="Annual", acct="Non-Qual"),
+    dict(pos="Axa 65%-18Aug27", issuer="AXA", index="SPX",
+         cap=0.65, part=1.00, floor=-0.15, soft=False, idx=-0.22,
+         open=d(2021,8,18), last=d(2021,8,18), mat=d(2027,8,18), nxt=d(2027,8,18),
+         freq="6-Year", acct="Non-Qual"),
+    dict(pos="Citi 15%-4Feb30 IRA", issuer="Citi", index="SPX",
+         cap=None, part=1.02, floor=-0.15, soft=False, idx=0.30,
+         open=d(2025,12,31), last=d(2025,12,31), mat=d(2030,2,4), nxt=d(2030,2,4),
+         freq="5-Year", acct="IRA"),
+    dict(pos="HSBC 92.25%-20Oct30", issuer="HSBC", index="NDX",
+         cap=None, part=0.9225, floor=-0.15, soft=False, idx=0.40,
+         open=d(2025,10,8), last=d(2025,10,3), mat=d(2030,10,20), nxt=d(2030,10,20),
+         freq="5-Year", acct="IRA"),
+    dict(pos="BNP 30%-6Jan31", issuer="BNP", index="SPX",
+         cap=None, part=1.05, floor=-0.30, soft=True, idx=-0.35,
+         open=d(2025,12,31), last=d(2025,12,31), mat=d(2031,1,6), nxt=d(2031,1,6),
+         freq="5-Year", acct="ROTH"),
+    dict(pos="NatBank 13.25%-16Apr29", issuer="Nat. Bank of Canada", index="worst-of SPX/NDX/RUT",
+         cap=0.1325, part=1.00, floor=-0.30, soft=True, idx=0.0847,
+         open=d(2026,4,16), last=d(2026,5,16), mat=d(2029,4,16), nxt=d(2026,6,16),
+         freq="Monthly", acct="Non-Qual",
+         note=True, realized=1.10, proj=0.0112, strike=6583.0),  # income note: monthly coupon
+    dict(pos="Axa 100%-20May32", issuer="AXA", index="NDX",
+         cap=1.00, part=1.00, floor=-0.20, soft=False, idx=-0.15,
+         open=d(2026,5,20), last=d(2026,5,20), mat=d(2032,5,20), nxt=d(2032,5,20),
+         freq="6-Year", acct="IRA"),
+    dict(pos="Citi 15%-1Dec29 ROTH", issuer="Citi", index="SPX",
+         cap=None, part=1.00, floor=-0.15, soft=False, idx=0.12,
+         open=d(2025,11,28), last=d(2025,11,28), mat=d(2029,12,1), nxt=d(2029,12,1),
+         freq="4-Year", acct="ROTH"),
+]
+
+def credited(idx, cap, part, floor, soft):
+    if idx >= 0:
+        up = part * idx
+        return up if cap is None else min(cap, up)
+    if floor == 0:                 # true 0% floor
+        return 0.0
+    if soft:                       # barrier: protected unless breached
+        return 0.0 if idx >= floor else idx
+    return min(0.0, idx - floor)   # hard buffer: absorb first |floor|
+
+def pct(x, plus=True):
+    s = f"{x*100:,.2f}%"
+    return ("+" + s) if (plus and x > 0) else s
+
+def money(x):
+    return ("-$" if x < 0 else "$") + f"{abs(x):,.2f}"
+
+def base_index(idx_name):
+    return "SPX" if idx_name.startswith("worst") else idx_name
+
+# ---- compute derived values ----
+for r in ROWS:
+    if r.get("note"):
+        r["proj_gain"] = r["proj"]
+        r["realized_v"] = r["realized"]
+    else:
+        r["proj_gain"] = credited(r["idx"], r["cap"], r["part"], r["floor"], r["soft"])
+        r["realized_v"] = 0.0
+        r["strike"] = PRICES[base_index(r["index"])] / (1 + r["idx"])
+    r["proj_value"] = 100.0 + r["realized_v"] + r["proj_gain"] * 100.0
+    r["proj_gain_dollars"] = r["proj_gain"] * 100.0
+
+tot_init = 100.0 * len(ROWS)
+tot_real = sum(r["realized_v"] for r in ROWS)
+tot_pv   = sum(r["proj_value"] for r in ROWS)
+tot_pg   = sum(r["proj_gain_dollars"] for r in ROWS)
+
+# ---- emit HTML ----
+ACCT = {"Non-Qual": "nq", "IRA": "ira", "ROTH": "roth"}
+
+def cell_floor(r):
+    return "0.00%" if r["floor"] == 0 else pct(r["floor"], plus=False)
+
+def cell_cap(r):
+    if r.get("note"): return pct(r["cap"], plus=False) + " cpn"
+    return "Uncapped" if r["cap"] is None else pct(r["cap"], plus=False)
+
+rows_html = []
+for r in ROWS:
+    pc = "pos" if r["proj_gain"] > 0 else ("neg" if r["proj_gain"] < 0 else "")
+    ic = "pos" if r["idx"] > 0 else ("neg" if r["idx"] < 0 else "")
+    prot = "soft" if r["soft"] else "hard"
+    prot_lbl = "Soft" if r["soft"] else "Hard"
+    rows_html.append(f"""      <tr>
+        <td class="l">{r['pos']}</td>
+        <td class="{ic}">{pct(r['idx'])}</td><td class="{pc}">{pct(r['proj_gain'])}</td>
+        <td>{cell_cap(r)}</td><td>{r['part']*100:,.2f}%</td>
+        <td>{cell_floor(r)}</td><td class="c"><span class="pill {prot}">{prot_lbl}</span></td>
+        <td>{r['strike']:,.2f}</td>
+        <td class="c">{mdy(r['open'])}</td><td class="c">{mdy(r['last'])}</td><td class="c">{mdy(r['mat'])}</td><td>{days(r['mat']):,}</td>
+        <td class="c">{r['freq']}</td><td class="c">{mdy(r['nxt'])}</td><td>{days(r['nxt']):,}</td>
+        <td>$100.00</td><td>{money(r['realized_v'])}</td><td>{money(r['proj_value'])}</td><td class="{pc}">{money(r['proj_gain_dollars'])}</td>
+        <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td><td class="l">{r['issuer']}</td><td class="c">{r['index']}</td>
+      </tr>""")
+
+HTML = f"""<!--
+  overview.html — GENERATED by docs/gen_overview.py. Do not edit by hand.
+  Copyright 2026 Jim Zucker
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {{ --line:#d7dbe0; --head:#1f3a5f; --headtx:#ffffff; --pos:#0a7d28; --neg:#b00020; --mut:#5b6470; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; padding: 20px; background:#ffffff;
+         font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color:#16202b; }}
+  .title {{ font-size: 19px; font-weight: 700; margin: 0 0 2px; }}
+  .sub {{ font-size: 12px; color: var(--mut); margin: 0 0 12px; }}
+  table {{ border-collapse: collapse; width: 2320px; font-size: 11px; }}
+  thead th {{ background: var(--head); color: var(--headtx); font-weight: 600;
+             padding: 6px 7px; text-align: right; vertical-align: bottom; line-height: 1.15; }}
+  thead th.l {{ text-align: left; }}
+  thead th.c {{ text-align: center; }}
+  tbody td {{ padding: 6px 7px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }}
+  tbody td.l {{ text-align: left; }}
+  tbody td.c {{ text-align: center; color:#33404d; }}
+  tbody tr:nth-child(even) {{ background: #f5f7fa; }}
+  .pill {{ display:inline-block; padding:1px 7px; border-radius:9px; font-size:10.5px; font-weight:600; }}
+  .hard {{ background:#eaf7ec; color:#0a7d28; }}
+  .soft {{ background:#fff3e0; color:#b26a00; }}
+  .nq  {{ background:#fff8e1; color:#8a6d00; font-weight:600; }}
+  .ira {{ background:#e6efff; color:#1f3a5f; font-weight:600; }}
+  .roth{{ background:#eaf7ec; color:#0a7d28; font-weight:600; }}
+  .pos {{ color: var(--pos); font-weight:600; }}
+  .neg {{ color: var(--neg); font-weight:600; }}
+  tfoot td {{ padding: 8px 7px; font-weight: 700; border-top: 2px solid var(--head); background:#eef1f5; text-align:right; }}
+  tfoot td.l {{ text-align:left; }}
+</style>
+</head>
+<body>
+  <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
+  <div class="sub">Eight illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft). Updated 14-Jun-2026 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <table>
+    <thead>
+      <tr>
+        <th class="l">Position</th>
+        <th>Index<br>Gain %</th>
+        <th>Proj Gain<br>@ Reset</th>
+        <th>CAP</th>
+        <th>Part.</th>
+        <th>Floor</th>
+        <th class="c">Floor<br>Type</th>
+        <th>Strike</th>
+        <th class="c">Open</th>
+        <th class="c">Last<br>Reset</th>
+        <th class="c">Maturity</th>
+        <th>Days to<br>Maturity</th>
+        <th class="c">Reset<br>Freq</th>
+        <th class="c">Next<br>Reset</th>
+        <th>Days to<br>Reset</th>
+        <th>Initial<br>($000)</th>
+        <th>Realized<br>($000)</th>
+        <th>Proj Value<br>@ Reset ($000)</th>
+        <th>Proj $ Gain<br>@ Reset ($000)</th>
+        <th class="c">Type</th>
+        <th class="l">Issuer</th>
+        <th class="c">Index</th>
+      </tr>
+    </thead>
+    <tbody>
+{chr(10).join(rows_html)}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="l" colspan="15">Totals &mdash; {len(ROWS)} contracts</td>
+        <td>{money(tot_init)}</td><td>{money(tot_real)}</td><td>{money(tot_pv)}</td><td>{money(tot_pg)}</td>
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>
+"""
+
+out = os.path.join(os.path.dirname(__file__), "overview.html")
+with open(out, "w") as f:
+    f.write(HTML)
+
+print("wrote", out)
+for r in ROWS:
+    print(f"  {r['pos']:26s} idx={pct(r['idx']):>9s} -> proj={pct(r['proj_gain']):>9s}  PV={money(r['proj_value']):>9s}")
+print(f"  TOTAL Init={money(tot_init)} Realized={money(tot_real)} PV={money(tot_pv)} Gain={money(tot_pg)}")
