@@ -29,7 +29,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -40,7 +40,7 @@ jobs:
           flutter build web --release --base-href /iHaveAnnuities/
       - name: bundle latest market.json
         run: cp data/market.json app/build/web/market.json
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: app/build/web
 
@@ -52,4 +52,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
