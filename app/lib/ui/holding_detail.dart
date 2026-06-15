@@ -1,10 +1,5 @@
-//
-//  holding_detail.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Drill-down for one holding: a highlighted key-figures banner, the payoff
 // chart, and the full terms grouped into readable section cards that reflow to
 // fill the screen.

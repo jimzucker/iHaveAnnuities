@@ -1,10 +1,5 @@
-//
-//  xlsx_reader.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Minimal, robust read-only .xlsx decoder. Unlike the off-the-shelf packages it
 // handles BOTH shared strings and inline strings (which real Excel/Numbers files
 // often use) and converts Excel date serials to DateTime. Returns each sheet as

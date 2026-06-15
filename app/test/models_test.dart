@@ -1,10 +1,5 @@
-//
-//  models_test.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Holding derived-value coverage, mirroring the eight example contracts.
 
 import 'package:flutter_test/flutter_test.dart';

@@ -1,10 +1,5 @@
-//
-//  payoff.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Pure payoff engine. No Flutter imports — fully unit-testable.
 // Mirrors docs/gen_overview.py so the app, the README, and the example
 // spreadsheet all agree on the math.

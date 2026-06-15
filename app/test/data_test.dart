@@ -1,10 +1,5 @@
-//
-//  data_test.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Coverage for models serialization, Market, and PortfolioStore.
 
 import 'dart:io';

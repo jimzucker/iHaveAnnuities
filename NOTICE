@@ -3,8 +3,5 @@ Copyright 2026 Jim Zucker
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
-This product includes software developed as part of this repository:
-  - AnnuityKit (first-party, Apache-2.0)
-
 Third-party components and their licenses are documented in the
 licenses/ directory. See licenses/README.md for the current inventory.

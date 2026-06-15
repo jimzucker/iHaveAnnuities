@@ -1,10 +1,5 @@
-//
-//  widget_test.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Widget coverage for the portfolio screen (prices header, summary, list) and
 // the add/edit form validation.
 

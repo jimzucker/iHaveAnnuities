@@ -115,13 +115,8 @@ Third-party license texts (when any code is vendored) live in [`licenses/`](lice
 Every source file carries an SPDX header:
 
 ```dart
-//
-//  <file_name>.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 ```
 
 Copyright 2026 Jim Zucker.

@@ -1,10 +1,5 @@
-//
-//  portfolio_table.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Spreadsheet-style view mirroring the Zucker Annuity Tracker columns. Every
 // column is sortable; the chosen sort is remembered (PortfolioStore), defaulting
 // to Next Reset ascending. Per-row edit/delete; tap a row to drill in.

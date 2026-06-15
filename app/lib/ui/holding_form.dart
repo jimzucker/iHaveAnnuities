@@ -1,10 +1,5 @@
-//
-//  holding_form.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Add/edit a holding. One form for both modes; returns a Holding via pop.
 
 import 'package:flutter/material.dart';

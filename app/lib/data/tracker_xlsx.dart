@@ -1,10 +1,5 @@
-//
-//  tracker_xlsx.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Read/write the Zucker Annuity Tracker .xlsx schema v1.0. The same format is
 // used for import, the shipped example/template, and what the app exports — so
 // the user's real spreadsheet round-trips.

@@ -1,10 +1,5 @@
-//
-//  portfolio_store.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Holds the portfolio + market data and persists to browser storage
 // (shared_preferences → localStorage on web). Import/export use the tracker
 // .xlsx schema; revaluation marks holdings to the latest published prices.

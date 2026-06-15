@@ -1,9 +1,5 @@
-//
-//  portfolio_screen.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 
 import 'dart:typed_data';
 

@@ -1,10 +1,5 @@
-//
-//  payoff_chart.dart
-//  iHaveAnnuities
-//
-//  Copyright 2026 Jim Zucker
-//  SPDX-License-Identifier: Apache-2.0
-//
+// Copyright 2026 Jim Zucker
+// SPDX-License-Identifier: Apache-2.0
 // Lightweight CustomPainter payoff diagram: payoff return vs. index move, with
 // the unclamped index reference line and a marker at the current index gain.
 
