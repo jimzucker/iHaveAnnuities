@@ -105,9 +105,9 @@ void main() {
     expect(h.projValueK, closeTo(100.0, 1e-9));
   });
 
-  test('protectionType: Absolute / Hard / Soft', () {
+  test('protectionType: Protected / Hard / Soft (v1.0)', () {
     expect(_h(cap: null, floor: 0, strike: 100, currentLevel: 100).protectionType,
-        'Absolute');
+        'Protected');
     expect(_h(cap: null, floor: -0.10, strike: 100, currentLevel: 100).protectionType,
         'Hard');
     expect(
@@ -116,21 +116,51 @@ void main() {
         'Soft');
   });
 
-  test('computed position = issuer-floor-maturity', () {
+  test('computed position = ISSUER-floor-maturity (issuer uppercased)', () {
     expect(_h(cap: 0.1225, floor: 0, strike: 100, currentLevel: 118).position,
-        'x-0%-01Jan30');
+        'X-0%-01Jan30');
     expect(_h(cap: null, floor: -0.15, strike: 100, currentLevel: 100).position,
-        'x-15%-01Jan30');
+        'X-15%-01Jan30');
   });
 
-  test('dedupedPosition adds -1/-2 on collisions', () {
+  test('canonicalIssuer maps known short names', () {
+    expect(canonicalIssuer('Aspida'), 'ASPIDA');
+    expect(canonicalIssuer('Nat. Bank of Canada'), 'NATBANK');
+    expect(canonicalIssuer('NBC'), 'NATBANK');
+    expect(canonicalIssuer('Unknown'), 'UNKNOWN'); // fallback: upper
+  });
+
+  test('dedupedPosition uses -IRA/-ROTH on collision; numeric fallback only when type also collides', () {
+    // Same issuer/floor/maturity but different account types -> -IRA / -ROTH.
+    final ira = Holding(
+      issuer: 'CITI', index: '^GSPC', account: AccountType.ira,
+      cap: null, participation: 1.0, floor: -0.15, floorType: FloorType.hard,
+      strike: 100, currentLevel: 100,
+      openDate: DateTime(2026, 1, 1), lastReset: DateTime(2026, 1, 1),
+      maturity: DateTime(2030, 2, 4), nextReset: DateTime(2030, 2, 4),
+      resetFreq: ResetFreq.inception, initial: 100,
+    );
+    final roth = Holding(
+      issuer: 'CITI', index: '^GSPC', account: AccountType.roth,
+      cap: null, participation: 1.0, floor: -0.15, floorType: FloorType.hard,
+      strike: 100, currentLevel: 100,
+      openDate: DateTime(2026, 1, 1), lastReset: DateTime(2026, 1, 1),
+      maturity: DateTime(2030, 2, 4), nextReset: DateTime(2030, 2, 4),
+      resetFreq: ResetFreq.inception, initial: 100,
+    );
+    expect(ira.position, roth.position); // same base
+    final all = [ira, roth];
+    expect(dedupedPosition(ira, all), '${ira.position}-IRA');
+    expect(dedupedPosition(roth, all), '${roth.position}-ROTH');
+    expect(dedupedPosition(ira, [ira]), ira.position); // unique → unchanged
+
+    // Two with the SAME type still in the same base group -> numeric fallback
+    // appended after -Type to disambiguate.
     final h1 = _h(cap: 0.10, floor: 0, strike: 100, currentLevel: 110);
     final h2 = _h(cap: 0.12, floor: 0, strike: 200, currentLevel: 220);
-    expect(h1.position, h2.position); // same issuer/floor/maturity
-    final all = [h1, h2];
-    expect(dedupedPosition(h1, all), '${h1.position}-1');
-    expect(dedupedPosition(h2, all), '${h2.position}-2');
-    expect(dedupedPosition(h1, [h1]), h1.position); // unique → unchanged
+    final dup = [h1, h2];
+    expect(dedupedPosition(h1, dup), '${h1.position}-Non-Qual-1');
+    expect(dedupedPosition(h2, dup), '${h2.position}-Non-Qual-2');
   });
 
   test('days to maturity/reset', () {

@@ -6,24 +6,25 @@
 //  SPDX-License-Identifier: Apache-2.0
 //
 // Domain model for a tracked structured-product holding. Pure Dart; mirrors the
-// Zucker Annuity Tracker schema. Derived values are computed via the payoff
-// engine in payoff.dart, never stored.
+// Zucker Annuity Tracker schema v1.0. Derived values are computed via the
+// payoff engine in payoff.dart, never stored.
 
 import 'payoff.dart';
 
 /// Account / tax treatment.
 enum AccountType { nonQual, ira, roth }
 
-/// Reset cadence. Point-to-point terms are expressed as multi-year resets.
-enum ResetFreq { annual, monthly, y4, y5, y6 }
+/// Reset cadence.
+/// * [ResetFreq.inception] — point-to-point: one observation at maturity; no resets during term.
+/// * [ResetFreq.annual] — resets every year.
+/// * [ResetFreq.monthly] — resets every month (income-note coupon cadence).
+enum ResetFreq { inception, annual, monthly }
 
 extension ResetFreqLabel on ResetFreq {
   String get label => switch (this) {
+        ResetFreq.inception => 'Inception',
         ResetFreq.annual => 'Annual',
         ResetFreq.monthly => 'Monthly',
-        ResetFreq.y4 => '4-Year',
-        ResetFreq.y5 => '5-Year',
-        ResetFreq.y6 => '6-Year',
       };
 }
 
@@ -35,11 +36,36 @@ extension AccountTypeLabel on AccountType {
       };
 }
 
+/// Canonical uppercase issuer short names. Anything in the keys (case-insensitive,
+/// punctuation/space tolerant) maps to the value. Unknown issuers pass through
+/// upper-cased.
+const Map<String, String> _issuerCanon = {
+  'aspida': 'ASPIDA',
+  'athene': 'ATHENE',
+  'aig': 'AIG',
+  'axa': 'AXA',
+  'symetra': 'SYMETRA',
+  'citi': 'CITI',
+  'hsbc': 'HSBC',
+  'bnp': 'BNP',
+  'brighthouse': 'BRIGHTHOUSE',
+  'natbank': 'NATBANK',
+  'nationalbankofcanada': 'NATBANK',
+  'natbankofcanada': 'NATBANK',
+  'natbankcanada': 'NATBANK',
+  'nbc': 'NATBANK',
+};
+
+String canonicalIssuer(String raw) {
+  final key = raw.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  return _issuerCanon[key] ?? raw.toUpperCase();
+}
+
 /// One tracked contract. Inputs map 1:1 to the tracker's blue (input) columns;
 /// the getters below are the black (formula) columns.
 class Holding {
   Holding({
-    required this.issuer,
+    required String issuer,
     required this.index,
     required this.account,
     required this.cap, // null == uncapped
@@ -57,10 +83,12 @@ class Holding {
     this.realized = 0.0, // in $000
     this.isIncomeNote = false,
     this.couponProj = 0.0, // projected coupon for income notes (fraction)
-  });
+    this.ndxStrike, // worst-of only; else null
+    this.rutStrike, // worst-of only; else null
+  }) : issuer = canonicalIssuer(issuer);
 
   final String issuer;
-  final String index; // 'SPX' | 'NDX' | 'RUT' | 'worst-of SPX/NDX/RUT'
+  final String index; // '^GSPC' | '^NDX' | '^RUT' | 'SPX/NDX/RUT' (worst-of)
   final AccountType account;
   final double? cap;
   final double participation;
@@ -77,6 +105,8 @@ class Holding {
   final double realized;
   final bool isIncomeNote;
   final double couponProj;
+  final double? ndxStrike;
+  final double? rutStrike;
 
   /// Index move since [strike] (fraction).
   double get indexGain => indexReturn(currentLevel, strike);
@@ -116,26 +146,27 @@ class Holding {
     return s;
   }
 
-  /// Computed display name: `Issuer-{floor/buffer %}-{maturity ddMMMyy}`,
-  /// e.g. `Aspida-0%-14Nov28`, `Axa-15%-18Aug27`. Not stored or imported.
-  /// Use [dedupedPosition] across a portfolio to disambiguate collisions.
+  /// Computed display name: `{ISSUER}-{|floor|%}-{maturity ddMMMyy}`,
+  /// e.g. `ASPIDA-0%-14Nov28`, `AXA-15%-18Aug27`. Output-only (never read
+  /// from input). Use [dedupedPosition] across a portfolio to disambiguate
+  /// collisions with `-IRA` / `-ROTH` suffix.
   String get position =>
       '$issuer-${_trimPct(floor.abs() * 100)}%-${_ddMMMyy(maturity)}';
 
   /// Base index symbol used to price this holding (worst-of resolves to SPX
-  /// for the simple revaluation path).
+  /// for the simple revaluation path). Accepts short names or Yahoo tickers.
   String get baseIndex {
     final u = index.toUpperCase();
-    if (u.contains('WORST')) return 'SPX'; // worst-of basket priced off SPX
-    if (u.contains('NDX')) return 'NDX';
+    if (u.contains('/') || u.contains('WORST')) return 'SPX';
+    if (u.contains('NDX') || u.contains('^IXIC')) return 'NDX';
     if (u.contains('RUT')) return 'RUT';
     return 'SPX';
   }
 
-  /// Display label for the downside protection: a 0% floor is "Absolute"
-  /// (no loss); a negative floor is a "Hard" buffer or "Soft" barrier.
+  /// Display label for the downside protection (v1.0 vocab):
+  /// `Protected` (floor=0), `Hard` (buffer), `Soft` (barrier).
   String get protectionType => floor == 0
-      ? 'Absolute'
+      ? 'Protected'
       : (floorType == FloorType.soft ? 'Soft' : 'Hard');
 
   Holding copyWith({double? currentLevel}) => Holding(
@@ -157,6 +188,8 @@ class Holding {
         realized: realized,
         isIncomeNote: isIncomeNote,
         couponProj: couponProj,
+        ndxStrike: ndxStrike,
+        rutStrike: rutStrike,
       );
 
   Map<String, dynamic> toJson() => {
@@ -178,11 +211,13 @@ class Holding {
         'realized': realized,
         'isIncomeNote': isIncomeNote,
         'couponProj': couponProj,
+        if (ndxStrike != null) 'ndxStrike': ndxStrike,
+        if (rutStrike != null) 'rutStrike': rutStrike,
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
         issuer: j['issuer'] as String? ?? '',
-        index: j['index'] as String? ?? 'SPX',
+        index: j['index'] as String? ?? '^GSPC',
         account: AccountType.values.byName(j['account'] as String? ?? 'nonQual'),
         cap: (j['cap'] as num?)?.toDouble(),
         participation: (j['participation'] as num?)?.toDouble() ?? 1.0,
@@ -194,20 +229,36 @@ class Holding {
         lastReset: DateTime.parse(j['lastReset'] as String),
         maturity: DateTime.parse(j['maturity'] as String),
         nextReset: DateTime.parse(j['nextReset'] as String),
-        resetFreq: ResetFreq.values.byName(j['resetFreq'] as String? ?? 'annual'),
+        resetFreq: _resetFreqFromJson(j['resetFreq'] as String?),
         initial: (j['initial'] as num?)?.toDouble() ?? 100.0,
         realized: (j['realized'] as num?)?.toDouble() ?? 0.0,
         isIncomeNote: j['isIncomeNote'] as bool? ?? false,
         couponProj: (j['couponProj'] as num?)?.toDouble() ?? 0.0,
+        ndxStrike: (j['ndxStrike'] as num?)?.toDouble(),
+        rutStrike: (j['rutStrike'] as num?)?.toDouble(),
       );
 }
 
-/// Display name for [h] within [all], appending `-1`, `-2`, … when the computed
-/// [Holding.position] collides with other holdings (e.g. two AIG contracts that
-/// share issuer, floor, and maturity). Unique names are returned unchanged.
+ResetFreq _resetFreqFromJson(String? s) => switch (s) {
+      'inception' || 'y4' || 'y5' || 'y6' => ResetFreq.inception,
+      'monthly' => ResetFreq.monthly,
+      _ => ResetFreq.annual,
+    };
+
+/// Display name for [h] within [all], appending `-IRA` / `-ROTH` (the account
+/// type label) when the computed [Holding.position] collides with other
+/// holdings — e.g. two CITI contracts that share issuer, floor, and maturity
+/// but live in different account types. Falls back to a numeric tie-breaker
+/// only if the type-suffixed name also collides. Unique names returned
+/// unchanged.
 String dedupedPosition(Holding h, List<Holding> all) {
   final base = h.position;
-  final group = all.where((x) => x.position == base).toList();
-  if (group.length <= 1) return base;
-  return '$base-${group.indexOf(h) + 1}';
+  final sameBase = all.where((x) => x.position == base).toList();
+  if (sameBase.length <= 1) return base;
+  final byType = '$base-${h.account.label}';
+  final sameByType = all
+      .where((x) => '${x.position}-${x.account.label}' == byType)
+      .toList();
+  if (sameByType.length <= 1) return byType;
+  return '$byType-${sameByType.indexOf(h) + 1}';
 }

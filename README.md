@@ -3,11 +3,11 @@
 Track structured products (annuities) that pay an index-linked return. The
 **upside** is the index move — optionally scaled by a **participation rate** and
 limited by a **cap** (or uncapped). The **downside** uses one of three protection
-types (the tracker's *Floor* column):
+types (the tracker's *Floor Type* column):
 
-1. **Floor** (0%) — no loss in the period; principal protected each reset.
-2. **Buffer** (negative, *Hard*) — absorbs the first *X%* of losses; you lose only beyond it.
-3. **Barrier** (negative, *Soft*) — fully protected unless the index breaches it, then full loss applies.
+1. **Protected** (Floor = 0%) — no loss in the period; principal protected each reset.
+2. **Hard** (Floor < 0%) — *buffer*: absorbs the first *X%* of losses; you lose only beyond it.
+3. **Soft** (Floor < 0%) — *barrier*: fully protected unless the index breaches it, then full loss applies.
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
@@ -47,19 +47,21 @@ loses the full 28%.
 The eight illustrative contracts below match the table in the image above. They
 are **modeled on real holdings** but normalized to a **$100,000** principal;
 index returns/levels are illustrative (dates/days as of 14‑Jun‑2026). The
-`Floor` column is the downside-protection level — *Hard* negative = **buffer**,
-*Soft* negative = **barrier**, `0%` = **true floor**. `$` values are in $000s.
+`Floor Type` column is the downside-protection mechanism — **Protected** (0%
+floor), **Hard** (buffer — first |floor|% absorbed), **Soft** (barrier — full
+loss if breached). `$` values are in $000s. Reset cadences collapse to
+**Inception** (point-to-point), **Annual**, or **Monthly**.
 
-| Issuer | Index | Cap | Part. | Floor | Type | Reset | Account | Index → Payoff | Proj Value |
+| Issuer | Index | Cap | Part. | Floor | Floor Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Aspida | SPX | 12.25% | 100% | 0% | Absolute | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
-| AXA | SPX | 65% | 100% | −15% | Hard (buffer) | 6‑Year | Non‑Qual | −22.00% → −7.00% | **$93.00** |
-| Citi | SPX | Uncapped | 102% | −15% | Hard (buffer) | 5‑Year | IRA | +30.00% → +30.60% | **$130.60** |
-| HSBC | NDX | Uncapped | 92.25% | −15% | Hard (buffer) | 5‑Year | IRA | +40.00% → +36.90% | **$136.90** |
-| BNP | SPX | Uncapped | 105% | −30% | Soft (barrier) | 5‑Year | ROTH | −35.00% → −35.00% | **$65.00** |
-| Nat. Bank of Canada | worst‑of SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft (barrier) | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.22** |
-| AXA | NDX | 100% | 100% | −20% | Hard (buffer) | 6‑Year | IRA | −15.00% → 0.00% | **$100.00** |
-| Citi | SPX | Uncapped | 100% | −15% | Hard (buffer) | 4‑Year | ROTH | +12.00% → +12.00% | **$112.00** |
+| ASPIDA | ^GSPC | 12.25% | 100% | 0% | Protected | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
+| AXA | ^GSPC | 65% | 100% | −15% | Hard | Inception | Non‑Qual | −22.00% → −7.00% | **$93.00** |
+| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Inception | IRA | +30.00% → +30.60% | **$130.60** |
+| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Inception | IRA | +40.00% → +36.90% | **$136.90** |
+| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Inception | ROTH | −35.00% → −35.00% | **$65.00** |
+| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.22** |
+| AXA | ^NDX | 100% | 100% | −20% | Hard | Inception | IRA | −15.00% → 0.00% | **$100.00** |
+| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
 | **Total** | | | | | | | | | **$851.97** |
 
 What each row demonstrates:
@@ -75,11 +77,12 @@ What each row demonstrates:
 
 ### Use-case coverage
 
-These eight cover every distinct case in the real tracker: **downside** — 0% floor,
-negative Hard buffer, negative Soft barrier; **cap** — capped + uncapped; **participation**
-— <100% / 100% / >100%; **reset** — Annual / Monthly / 4‑Year / 5‑Year / 6‑Year; **index**
-— SPX / NDX / RUT / worst‑of; **account** — Non‑Qual / IRA / ROTH; plus a monthly‑coupon
-income note alongside the standard indexed annuities.
+These eight cover every distinct case in the real tracker: **downside** —
+Protected (0% floor), Hard (buffer), Soft (barrier); **cap** — capped + uncapped
+(`9.99` sentinel); **participation** — <100% / 100% / >100%; **reset** —
+Inception / Annual / Monthly; **index** — SPX / NDX / RUT / worst‑of; **account**
+— Non‑Qual / IRA / ROTH; plus a monthly‑coupon income note alongside the
+standard indexed annuities.
 
 ## App (Flutter)
 

@@ -23,7 +23,7 @@ class HoldingDetail extends StatelessWidget {
   final Holding holding;
 
   String _protection(Holding h) => h.floor == 0
-      ? 'Absolute (0% floor — no loss)'
+      ? 'Protected (0% floor — no loss)'
       : (h.protectionType == 'Soft'
           ? 'Soft barrier ${pct(h.floor)}'
           : 'Hard buffer ${pct(h.floor)}');

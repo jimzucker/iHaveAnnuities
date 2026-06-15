@@ -25,7 +25,7 @@ const _marketJson =
 
 Holding _sample() => Holding(
       issuer: 'AIG',
-      index: 'NDX',
+      index: '^NDX',
       account: AccountType.ira,
       cap: 0.11,
       participation: 1.0,
@@ -37,7 +37,7 @@ Holding _sample() => Holding(
       lastReset: DateTime(2026, 1, 2),
       maturity: DateTime(2030, 1, 2),
       nextReset: DateTime(2027, 1, 2),
-      resetFreq: ResetFreq.y6,
+      resetFreq: ResetFreq.inception,
       initial: 100,
     );
 
@@ -88,16 +88,28 @@ void main() {
       expect(bi('SPX'), 'SPX');
       expect(bi('NDX'), 'NDX');
       expect(bi('RUT'), 'RUT');
-      expect(bi('worst-of SPX/NDX/RUT'), 'SPX');
+      expect(bi('^GSPC'), 'SPX');
+      expect(bi('^NDX'), 'NDX');
+      expect(bi('^RUT'), 'RUT');
+      expect(bi('SPX/NDX/RUT'), 'SPX');         // v1.0 worst-of label
+      expect(bi('worst-of SPX/NDX/RUT'), 'SPX'); // legacy worst-of label
     });
 
-    test('enum labels', () {
-      expect(ResetFreq.monthly.label, 'Monthly');
-      expect(ResetFreq.y4.label, '4-Year');
-      expect(ResetFreq.y5.label, '5-Year');
+    test('enum labels (v1.0)', () {
+      expect(ResetFreq.inception.label, 'Inception');
       expect(ResetFreq.annual.label, 'Annual');
+      expect(ResetFreq.monthly.label, 'Monthly');
       expect(AccountType.roth.label, 'ROTH');
       expect(AccountType.ira.label, 'IRA');
+    });
+
+    test('fromJson tolerates legacy resetFreq y4/y5/y6', () {
+      final h = _sample();
+      final base = h.toJson();
+      for (final legacy in ['y4', 'y5', 'y6']) {
+        final j = Map<String, dynamic>.from(base)..['resetFreq'] = legacy;
+        expect(Holding.fromJson(j).resetFreq, ResetFreq.inception);
+      }
     });
   });
 

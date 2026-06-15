@@ -52,7 +52,7 @@ class PortfolioTable extends StatelessWidget {
           final p = h.protectionType;
           final (bg, fg) = switch (p) {
             'Soft' => (const Color(0xFFFFF3E0), const Color(0xFFB26A00)),
-            'Absolute' => (const Color(0xFFE6EFFF), const Color(0xFF1F3A5F)),
+            'Protected' => (const Color(0xFFE6EFFF), const Color(0xFF1F3A5F)),
             _ => (const Color(0xFFEAF7EC), const Color(0xFF0A7D28)),
           };
           return DataCell(_pill(p, bg, fg));

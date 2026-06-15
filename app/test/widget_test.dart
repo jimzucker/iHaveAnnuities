@@ -58,7 +58,7 @@ void main() {
     expect(find.text('Contracts'), findsOneWidget);
     expect(find.text('Principal'), findsOneWidget);
     expect(find.text('${holdings.length}'), findsWidgets);
-    expect(find.text('Aspida'), findsOneWidget); // issuer column (Position removed)
+    expect(find.text('ASPIDA'), findsOneWidget); // issuer column (canonical uppercase)
   });
 
   testWidgets('table shows tracker columns and row actions', (tester) async {
