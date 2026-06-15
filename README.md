@@ -46,7 +46,7 @@ loses the full 28%.
 
 The eight illustrative contracts below match the table in the image above. They
 are **modeled on real holdings** but normalized to a **$100,000** principal;
-index returns/levels are illustrative (dates/days as of 14‑Jun‑2026). The
+index returns/levels are illustrative (dates/days as of 14‑Jun‑26). The
 `Floor Type` column is the downside-protection mechanism — **Protected** (0%
 floor), **Hard** (buffer — first |floor|% absorbed), **Soft** (barrier — full
 loss if breached). `$` values are in $000s. Reset cadences collapse to

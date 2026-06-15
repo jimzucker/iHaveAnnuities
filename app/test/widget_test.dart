@@ -33,7 +33,7 @@ void main() {
     expect(find.textContaining('S&P 500'), findsOneWidget);
     expect(find.textContaining('Nasdaq-100'), findsOneWidget);
     expect(find.textContaining('Russell 2000'), findsOneWidget);
-    expect(find.textContaining('Updated 12-Jun-2026'), findsOneWidget);
+    expect(find.textContaining('Updated 12-Jun-26'), findsOneWidget);
   });
 
   testWidgets('empty state offers add / import / template / sample', (tester) async {

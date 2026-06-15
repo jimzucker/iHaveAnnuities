@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-final _date = DateFormat('dd-MMM-yyyy');
+final _date = DateFormat('dd-MMM-yy');
 final _level = NumberFormat('#,##0.00');
 
 /// $000 value → full-dollar currency string.

@@ -55,7 +55,7 @@ def canonical_freq(raw):
     return "Inception"
 
 def d(y, m, day): return datetime.date(y, m, day)
-def mdy(dt): return dt.strftime("%m/%d/%Y")
+def mdy(dt): return dt.strftime("%d-%b-%y")
 def days(dt): return (dt - TODAY).days
 
 # Each row models a real position, normalized to $100k principal.
@@ -217,7 +217,7 @@ HTML = f"""<!--
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Eight illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft). Updated 14-Jun-2026 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Eight illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -357,7 +357,7 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Annuity Tracker"
-    ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%B %d, %Y} "
+    ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%d-%b-%y} "
                f"(prices: SPX {PRICES['SPX']:,.2f}  NDX {PRICES['NDX']:,.0f}  RUT {PRICES['RUT']:,.2f})"])
     ws.append(["Floor Type: Protected (0% floor), Hard (buffer — absorbs first |floor|), "
                "Soft (barrier — full loss if breached) | CAP 9.99 = uncapped | $ columns in $000s"])
