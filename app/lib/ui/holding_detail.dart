@@ -18,12 +18,6 @@ class HoldingDetail extends StatelessWidget {
   const HoldingDetail({super.key, required this.holding});
   final Holding holding;
 
-  String _protection(Holding h) => h.floor == 0
-      ? 'Protected (0% floor — no loss)'
-      : (h.protectionType == 'Soft'
-          ? 'Soft barrier ${pct(h.floor)}'
-          : 'Hard buffer ${pct(h.floor)}');
-
   /// One plain-English sentence describing the contract.
   String _summary(Holding h, DateTime asOf) {
     final cap = h.cap == null ? 'uncapped' : 'capped at ${pct(h.cap!)}';
@@ -80,67 +74,101 @@ class HoldingDetail extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Text(_summary(h, asOf),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(height: 1.4)),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.4)),
           ),
           _KeyFigures(h: h, cs: cs),
+          const SizedBox(height: 10),
+          _keyStrip(context, h, asOf), // compact scannable line of key facts
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                PayoffChart(holding: h),
-                const SizedBox(height: 8),
-                Text(_chartCaption(h),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant, height: 1.35)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 12),
+          // Wide screens: chart and the fact cards side by side (everything
+          // above the fold). Narrow: stacked.
           LayoutBuilder(builder: (context, c) {
-            // Two columns that fill the width on wide screens; one on phones.
-            final w = c.maxWidth >= 680 ? (c.maxWidth - 12) / 2 : c.maxWidth;
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-              _Section(width: w, title: 'Terms', rows: [
-                ('Issuer', h.issuer, null),
-                ('Index', h.index, null),
-                ('Account', h.account.label, null),
-                ('Cap', capLabel(h.cap), null),
-                ('Participation', pct(h.participation), null),
-                ('Protection', _protection(h), null),
-                if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponProj)}', null),
-              ]),
-              _Section(width: w, title: 'Levels', rows: [
-                ('Strike', level(h.strike), null),
-                ('Current level', level(h.currentLevel), null),
-                ('Index gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
-              ]),
-              _Section(width: w, title: 'Schedule', rows: [
-                ('Open', date(h.openDate), null),
-                ('Last reset', date(h.lastReset), null),
-                ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
-                ('Reset freq', h.resetFreq.label, null),
-                ('Next reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
-              ]),
-              _Section(width: w, title: 'Values', rows: [
-                ('Initial', moneyK(h.initial), null),
-                ('Realized', moneyK(h.realized), null),
-                ('Proj value @ reset', moneyK(h.projValueK), cs.primary),
-                ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-              ]),
-            ],
-            );
+            final chart = _chartCard(context, h, cs);
+            final sections = _sections(context, h, asOf, cs);
+            if (c.maxWidth >= 960) {
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 3, child: chart),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: sections),
+              ]);
+            }
+            return Column(children: [chart, const SizedBox(height: 12), sections]);
           }),
         ],
       ),
+    );
+  }
+
+  Widget _chartCard(BuildContext context, Holding h, ColorScheme cs) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            PayoffChart(holding: h),
+            const SizedBox(height: 8),
+            Text(_chartCaption(h),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+          ]),
+        ),
+      );
+
+  Widget _sections(BuildContext context, Holding h, DateTime asOf, ColorScheme cs) =>
+      LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth >= 540 ? (c.maxWidth - 12) / 2 : c.maxWidth;
+        return Wrap(spacing: 12, runSpacing: 12, children: [
+          _Section(width: w, title: 'Schedule', rows: [
+            ('Open', date(h.openDate), null),
+            ('Last reset', date(h.lastReset), null),
+            ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
+            ('Reset freq', h.resetFreq.label, null),
+            ('Next reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
+          ]),
+          _Section(width: w, title: 'Values', rows: [
+            ('Initial', moneyK(h.initial), null),
+            ('Realized', moneyK(h.realized), null),
+            ('Proj value @ reset', moneyK(h.projValueK), cs.primary),
+            ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+            if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponProj)}', null),
+          ]),
+        ]);
+      });
+
+  /// Compact, scannable strip of the key terms/levels (mirrors the compact
+  /// table view) so the critical info is visible without scrolling.
+  Widget _keyStrip(BuildContext context, Holding h, DateTime asOf) {
+    final cs = Theme.of(context).colorScheme;
+    final prot = h.floor == 0 ? 'Protected' : '${h.protectionType} ${pct(h.floor)}';
+    Widget kv(String k, String v, {Color? color}) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(k, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            Text(v,
+                style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600, color: color)),
+          ],
+        );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10)),
+      child: Wrap(spacing: 24, runSpacing: 10, children: [
+        kv('Account', h.account.label),
+        kv('Index', h.index),
+        kv('Cap', capLabel(h.cap)),
+        kv('Participation', pct(h.participation)),
+        kv('Protection', prot),
+        kv('Strike', level(h.strike)),
+        kv('Current', level(h.currentLevel)),
+        kv('Index gain', pctSigned(h.indexGain), color: gainColor(h.indexGain, cs)),
+        kv('Next reset', '${date(h.nextReset)} · ${relDays(h.daysToReset(asOf))}'),
+      ]),
     );
   }
 }

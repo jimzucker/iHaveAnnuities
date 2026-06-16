@@ -130,7 +130,7 @@ class _PayoffPainter extends CustomPainter {
         final r = sx(xb).clamp(padL, padL + w);
         if (r - l < 6) return;
         canvas.drawRect(Rect.fromLTRB(l, padT, r, padT + ht),
-            Paint()..color = c.withValues(alpha: 0.10));
+            Paint()..color = c.withValues(alpha: 0.16));
         _label(canvas, label, Offset((l + r) / 2, padT + 1), center: true);
       }
 

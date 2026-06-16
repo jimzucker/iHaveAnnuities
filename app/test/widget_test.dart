@@ -123,7 +123,8 @@ void main() {
     expect(tester.takeException(), isNull); // chart painter didn't throw
     expect(find.text('Proj value @ reset'), findsWidgets);
     expect(find.text('Unrealized \$'), findsWidgets);
-    expect(find.text('Terms'), findsOneWidget);
+    expect(find.text('Cap'), findsOneWidget); // compact key strip
+    expect(find.text('Schedule'), findsOneWidget);
     expect(find.text('Values'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets); // payoff chart
     expect(find.text('12.25% cap reached'), findsOneWidget); // status chip
