@@ -260,14 +260,14 @@ class _IndexPeriodPainter extends CustomPainter {
       canvas.drawCircle(o, 4, Paint()..color = Colors.white);
       canvas.drawCircle(o, 4,
           Paint()..color = cs.primary..strokeWidth = 2..style = PaintingStyle.stroke);
-      // value chip: index level + move from strike
+      // value + date chips use the high-contrast tooltip pairing so the text
+      // is legible in both light and dark themes (white-on-primary washed out).
       final move = strike == 0 ? 0.0 : best.$2 / strike - 1;
       _chip(canvas, '${level(best.$2)}  (${pctSigned(move)})',
-          Offset(cx, padT + 2), cs.primary, Colors.white,
+          Offset(cx, padT + 2), cs.inverseSurface, cs.onInverseSurface,
           flip: cursorFrac! > 0.6, plotR: padL + w);
-      // date chip on the x-axis
       _chip(canvas, date(best.$1), Offset(cx, padT + ht + 4),
-          cs.onSurface, cs.surface,
+          cs.inverseSurface, cs.onInverseSurface,
           flip: cursorFrac! > 0.6, plotR: padL + w);
     }
   }
