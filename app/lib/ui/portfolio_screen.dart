@@ -256,8 +256,7 @@ class _PricesHeader extends StatelessWidget {
                   if (q.$3 != null)
                     InkWell(
                       onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => IndexChartScreen(
-                              symbol: q.$2, label: q.$1, base: store.base))),
+                          builder: (_) => IndexChartScreen(base: store.base))),
                       child: _Quote(q.$1, q.$3!),
                     ),
                 Icon(Icons.show_chart, size: 15, color: cs.onPrimaryContainer),
@@ -274,10 +273,20 @@ class _Quote extends StatelessWidget {
   final String label;
   final double value;
   @override
-  Widget build(BuildContext context) => Text.rich(TextSpan(children: [
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Underlined to read as a link (tap → combined index chart).
+    return Text.rich(
+      TextSpan(children: [
         TextSpan(text: '$label '),
         TextSpan(text: level(value), style: const TextStyle(fontWeight: FontWeight.bold)),
-      ]));
+      ]),
+      style: TextStyle(
+        decoration: TextDecoration.underline,
+        decorationColor: cs.onPrimaryContainer.withValues(alpha: 0.6),
+      ),
+    );
+  }
 }
 
 /// A thin, labeled, tappable strip that collapses/expands the prices + hero.

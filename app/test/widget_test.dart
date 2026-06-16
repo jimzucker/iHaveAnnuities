@@ -126,19 +126,30 @@ void main() {
     expect(find.textContaining('cap reached'), findsOneWidget); // status chip
   });
 
-  testWidgets('index chart screen shows ranges + a chart', (tester) async {
+  testWidgets('combined index chart: ranges, legend toggle, remembered',
+      (tester) async {
     const historyJson = '{"asOf":"2026-06-15","daily":{"SPX":'
-        '[[1700000000,100.0],[1710000000,120.0],[1718000000,150.0]]},'
+        '[[1700000000,100.0],[1710000000,120.0],[1718000000,150.0]],'
+        '"DJI":[[1700000000,40000.0],[1718000000,44000.0]]},'
         '"intraday":{"SPX":[[1717900000,148.0],[1718000000,150.0]]}}';
     final client = MockClient((_) async => http.Response(historyJson, 200));
-    await tester.pumpWidget(MaterialApp(
-        home: IndexChartScreen(symbol: 'SPX', label: 'S&P 500', client: client)));
+    final store = PortfolioStore();
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: store,
+      child: MaterialApp(home: IndexChartScreen(client: client)),
+    ));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'S&P 500'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Indexes'), findsOneWidget);
     expect(find.text('Max'), findsOneWidget); // range selector
+    expect(find.text('S&P 500'), findsOneWidget); // legend chip
     await tester.tap(find.text('Max'));
     await tester.pumpAndSettle();
     expect(find.byType(CustomPaint), findsWidgets); // chart painted
+
+    // Tapping a legend chip hides that index and remembers it.
+    await tester.tap(find.text('Russell 2000'));
+    await tester.pumpAndSettle();
+    expect(store.hiddenIndexes.contains('RUT'), isTrue);
   });
 
   testWidgets('info button opens the disclosures page', (tester) async {

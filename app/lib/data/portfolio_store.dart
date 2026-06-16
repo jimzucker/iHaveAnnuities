@@ -23,6 +23,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _ascKey = 'sortAsc.v1';
   static const _fullColKey = 'fullColumns.v1';
   static const _hideSummaryKey = 'hideSummary.v1';
+  static const _hiddenIdxKey = 'hiddenIndexes.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
@@ -57,6 +58,7 @@ class PortfolioStore extends ChangeNotifier {
   bool _sortAscending = true;
   bool _fullColumns = true;
   bool _hideSummary = false;
+  Set<String> _hiddenIndexes = {};
 
   int get sortColumn => _sortColumn;
   bool get sortAscending => _sortAscending;
@@ -66,6 +68,9 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Whether the prices banner + hero are hidden to maximize the list (phones).
   bool get hideSummary => _hideSummary;
+
+  /// Index symbols the user has hidden on the combined chart (remembered).
+  Set<String> get hiddenIndexes => _hiddenIndexes;
 
   /// True while a market refresh is in flight (drives the app-bar spinner).
   bool get refreshing => _refreshing;
@@ -109,12 +114,24 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle an index's visibility on the combined chart; persisted.
+  Future<void> toggleIndex(String symbol) async {
+    _hiddenIndexes = {..._hiddenIndexes};
+    _hiddenIndexes.contains(symbol)
+        ? _hiddenIndexes.remove(symbol)
+        : _hiddenIndexes.add(symbol);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_hiddenIdxKey, _hiddenIndexes.toList());
+    notifyListeners();
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
     _sortAscending = prefs.getBool(_ascKey) ?? true;
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
+    _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
     final raw = prefs.getString(_key);
     if (raw != null) {
       try {
