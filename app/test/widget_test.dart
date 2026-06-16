@@ -190,7 +190,7 @@ void main() {
     expect(store.hiddenIndexes.contains('RUT'), isTrue);
   });
 
-  testWidgets('combined index chart in portrait is a tall, scrollable chart',
+  testWidgets('combined index chart in portrait fills a screen and scrolls',
       (tester) async {
     final overflows = <String>[];
     final prev = FlutterError.onError;
@@ -218,14 +218,17 @@ void main() {
 
     expect(overflows, isEmpty); // scrolls instead of overflowing
     expect(find.byType(Scrollable), findsWidgets); // page can scroll
-    // The chart is taller than the viewport (~1.5× screen height) so the line
-    // is readable; the user scrolls to see all of it.
+    // The chart is sized to ~one full screen (viewport minus app bar/padding),
+    // so once the header scrolls off the top the chart uses the whole screen.
     final heights = find.byType(CustomPaint).evaluate().map((e) {
       final ro = e.renderObject;
       return ro is RenderBox && ro.hasSize ? ro.size.height : 0.0;
     });
-    // ~1.5× the 844px viewport — taller than the screen, so it scrolls.
-    expect(heights.any((h) => h > 1000), isTrue);
+    expect(heights.any((h) => h > 650), isTrue); // ~full-screen chart
+    // Header + chart together exceed the viewport, so the header can scroll off.
+    await tester.drag(find.byType(CustomPaint).last, const Offset(0, -200));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('info button opens the disclosures page', (tester) async {

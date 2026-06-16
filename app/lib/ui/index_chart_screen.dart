@@ -154,32 +154,35 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
           );
         });
 
-    // The chart region: a tall fixed height when we scroll, else fill the rest.
-    Widget chartRegion() {
-      final Widget content = _error != null
-          ? Center(child: Text(_error!, style: TextStyle(color: cs.error)))
-          : _hist == null
-              ? const Center(child: CircularProgressIndicator())
-              : series.isEmpty
-                  ? const Center(child: Text('No indexes selected'))
-                  : chart();
-      if (portrait) return SizedBox(height: size.height * 1.5, child: content);
-      return Expanded(child: content);
-    }
+    Widget content() => _error != null
+        ? Center(child: Text(_error!, style: TextStyle(color: cs.error)))
+        : _hist == null
+            ? const Center(child: CircularProgressIndicator())
+            : series.isEmpty
+                ? const Center(child: Text('No indexes selected'))
+                : chart();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Indexes')),
       body: Padding(
         padding: const EdgeInsets.all(16),
+        // Portrait: the chart is sized to one full screen and the header sits
+        // above it, so scrolling up pushes the range/legend off the top and the
+        // chart uses the whole viewport. Wide/landscape just fills the height.
         child: portrait
-            ? SingleChildScrollView(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [...controls, chartRegion()]),
-              )
+            ? LayoutBuilder(builder: (context, c) {
+                return SingleChildScrollView(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...controls,
+                        SizedBox(height: c.maxHeight, child: content()),
+                      ]),
+                );
+              })
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [...controls, chartRegion()]),
+                children: [...controls, Expanded(child: content())]),
       ),
     );
   }
