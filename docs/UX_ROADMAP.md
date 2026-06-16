@@ -115,10 +115,10 @@ instead of the 20-column horizontal scroll.
 ---
 
 ### Status
-- [x] Part 1 — reorder (screen + schema v1.1 + generator) — shipped
+- [x] Part 1 — reorder (screen + schema → v1.2 + generator) — shipped
 - [x] Part 2 — additional reference indices (Dow, Nasdaq Composite) — shipped
-- [ ] Part 3 — table readability
-- [ ] Part 4 — portfolio hero
-- [ ] Part 5 — accessibility & theming
-- [ ] Part 6 — mobile responsive
-- [ ] Part 7 — motion & brand polish
+- [x] Part 3 — table readability (zebra + compact/full toggle) — shipped
+- [x] Part 4 — portfolio hero (donut, gain bar, next resets) — shipped
+- [x] Part 5 — accessibility & dark mode — shipped
+- [x] Part 6 — mobile responsive cards — shipped
+- [x] Part 7 — motion & brand polish — shipped

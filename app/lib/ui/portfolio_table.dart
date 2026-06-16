@@ -13,6 +13,25 @@ import 'format.dart';
 import 'holding_detail.dart';
 import 'holding_form.dart';
 
+/// A shared-axis-style transition into a holding's detail view (fade + a small
+/// upward slide), nicer than the default platform push.
+Route<void> detailRoute(Holding h) => PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 280),
+      reverseTransitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (_, _, _) => HoldingDetail(holding: h),
+      transitionsBuilder: (_, anim, _, child) {
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(0, 0.04), end: Offset.zero)
+                .animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+
 /// One sortable column: how to render it and how to sort by it.
 class _Col {
   const _Col(this.label, this.numeric, this.key, this.cell);
@@ -136,8 +155,7 @@ class PortfolioTable extends StatelessWidget {
                 DataRow(
                   color: WidgetStateProperty.resolveWith(
                       (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
-                  onSelectChanged: (_) => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
+                  onSelectChanged: (_) => Navigator.of(context).push(detailRoute(x)),
                   cells: [
                     for (final c in shown) c.cell(x, asOf, cs),
                     DataCell(Row(mainAxisSize: MainAxisSize.min, children: [

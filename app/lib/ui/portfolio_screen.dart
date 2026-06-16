@@ -27,7 +27,7 @@ class PortfolioScreen extends StatelessWidget {
       appBar: AppBar(
         leading: const Padding(
           padding: EdgeInsets.only(left: 12),
-          child: Icon(Icons.shield_moon_outlined),
+          child: Icon(Icons.trending_up),
         ),
         title: const Text('iHaveAnnuities'),
         actions: [

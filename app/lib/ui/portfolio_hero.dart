@@ -143,8 +143,13 @@ class _ProjectedBlock extends StatelessWidget {
         Text('${store.holdings.length} contracts · ${moneyK(store.totalInitial)} principal',
             style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         const SizedBox(height: 2),
-        Text(moneyK(store.totalProjValue),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: store.totalProjValue),
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeOutCubic,
+          builder: (_, v, _) => Text(moneyK(v),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        ),
         Text('Proj value @ reset', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
         const SizedBox(height: 6),
         SizedBox(
