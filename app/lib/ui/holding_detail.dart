@@ -52,11 +52,14 @@ class HoldingDetail extends StatelessWidget {
           const SizedBox(height: 12),
           Card(child: Padding(padding: const EdgeInsets.all(16), child: PayoffChart(holding: h))),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _Section(title: 'Terms', rows: [
+          LayoutBuilder(builder: (context, c) {
+            // Two columns that fill the width on wide screens; one on phones.
+            final w = c.maxWidth >= 680 ? (c.maxWidth - 12) / 2 : c.maxWidth;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+              _Section(width: w, title: 'Terms', rows: [
                 ('Issuer', h.issuer, null),
                 ('Index', h.index, null),
                 ('Account', h.account.label, null),
@@ -65,26 +68,27 @@ class HoldingDetail extends StatelessWidget {
                 ('Protection', _protection(h), null),
                 if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponProj)}', null),
               ]),
-              _Section(title: 'Levels', rows: [
+              _Section(width: w, title: 'Levels', rows: [
                 ('Strike', level(h.strike), null),
                 ('Current level', level(h.currentLevel), null),
                 ('Index gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
               ]),
-              _Section(title: 'Schedule', rows: [
+              _Section(width: w, title: 'Schedule', rows: [
                 ('Open', date(h.openDate), null),
                 ('Last reset', date(h.lastReset), null),
-                ('Maturity', '${date(h.maturity)}  ·  ${h.daysToMaturity(asOf)}d', null),
+                ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
                 ('Reset freq', h.resetFreq.label, null),
-                ('Next reset', '${date(h.nextReset)}  ·  ${h.daysToReset(asOf)}d', null),
+                ('Next reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
               ]),
-              _Section(title: 'Values (\$000)', rows: [
-                ('Initial', money000(h.initial), null),
-                ('Realized', money000(h.realized), null),
-                ('Proj value @ reset', money000(h.projValueK), cs.primary),
-                ('Proj \$ gain @ reset', money000(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+              _Section(width: w, title: 'Values', rows: [
+                ('Initial', moneyK(h.initial), null),
+                ('Realized', moneyK(h.realized), null),
+                ('Proj value @ reset', moneyK(h.projValueK), cs.primary),
+                ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
               ]),
             ],
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -107,15 +111,33 @@ class _KeyFigures extends StatelessWidget {
             Text(value, style: tt.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.bold)),
           ],
         );
+    Widget chip(String text, Color bg, Color fg) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+          child: Text(text,
+              style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+        );
+    final prot = protectionPalette(h.protectionType, cs);
     return Card(
       color: cs.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Wrap(spacing: 32, runSpacing: 12, children: [
-          fig('Proj value @ reset', moneyK(h.projValueK), cs.onPrimaryContainer),
-          fig('Proj \$ gain', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-          fig('Payoff return', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-          fig('Index gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            chip(h.protectionType, prot.bg, prot.fg),
+            if (h.gainStatus == GainStatus.capped)
+              chip('${capLabel(h.cap)} cap reached',
+                  const Color(0xFFFFF3E0), capAmber),
+            if (h.gainStatus == GainStatus.gain && h.hasCap)
+              chip('Below the ${capLabel(h.cap)} cap',
+                  const Color(0xFFEAF7EC), gainGreen),
+          ]),
+          const SizedBox(height: 12),
+          Wrap(spacing: 32, runSpacing: 12, children: [
+            fig('Proj value @ reset', moneyK(h.projValueK), cs.onPrimaryContainer),
+            fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+            fig('Payoff return', pctSigned(h.projGain), gainColor(h.projGain, cs)),
+          ]),
         ]),
       ),
     );
@@ -125,15 +147,16 @@ class _KeyFigures extends StatelessWidget {
 /// A titled card holding aligned label/value rows; an optional color highlights
 /// the value.
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.rows});
+  const _Section({required this.title, required this.rows, this.width = 320});
   final String title;
   final List<(String, String, Color?)> rows;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     return SizedBox(
-      width: 320,
+      width: width,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -20,6 +20,10 @@ String pctSigned(double v) =>
     '${v > 0 ? '+' : ''}${(v * 100).toStringAsFixed(2)}%';
 String level(double v) => _level.format(v);
 String date(DateTime d) => _date.format(d);
+
+/// Relative day count: "in 325 days" / "12 days ago" / "today".
+String relDays(int d) =>
+    d == 0 ? 'today' : (d > 0 ? 'in $d days' : '${-d} days ago');
 String capLabel(double? cap) => cap == null ? 'Uncapped' : pct(cap);
 
 // Semantic gain/loss colors — reference these everywhere instead of ad-hoc hex.

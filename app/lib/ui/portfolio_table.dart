@@ -96,8 +96,8 @@ class PortfolioTable extends StatelessWidget {
               ? Icons.lock
               : (roomLeft ? Icons.lock_open : null);
           final tip = capped
-              ? 'Cap reached — upside ceilinged at ${capLabel(h.cap)}'
-              : (roomLeft ? 'Below the ${capLabel(h.cap)} cap — room left' : null);
+              ? '${capLabel(h.cap)} cap reached'
+              : (roomLeft ? 'Below the ${capLabel(h.cap)} cap' : null);
           // Text.rich (not a Row) so it clips rather than overflowing the
           // fixed-width column.
           final text = Text.rich(

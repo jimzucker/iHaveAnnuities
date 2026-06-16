@@ -19,6 +19,10 @@ independent so we can pick and choose. Nothing here changes the calc.
    (reuse `gainStatus` + `protectionPalette`). (`holding_detail.dart`)
 3. **Terminology.** Rename the banner/Values "Proj $ gain" → **Unrealized $**
    to match the table + hero.
+3b. **Tooltip wording (industry standard).** Reword the cap tooltips: the
+   current "Cap reached — upside ceilinged at 10.00%" → **"10.00% cap
+   reached"**, and the room-left tooltip → **"Below the 10.00% cap"** /
+   "room to the 10.00% cap". Sweep all tooltips for plain, standard phrasing.
 4. **Payoff chart upgrade** (`payoff_chart.dart`) — the biggest win:
    - Axis **tick labels** (index move % on x, payoff % on y) and faint
      gridlines.
