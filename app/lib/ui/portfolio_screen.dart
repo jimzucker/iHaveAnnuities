@@ -14,6 +14,7 @@ import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
 import 'info_page.dart';
+import 'portfolio_hero.dart';
 import 'portfolio_table.dart';
 
 class PortfolioScreen extends StatelessWidget {
@@ -78,7 +79,7 @@ class PortfolioScreen extends StatelessWidget {
               child: Text(store.status!,
                   style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
             ),
-          if (!store.isEmpty) _Summary(store: store),
+          if (!store.isEmpty) const PortfolioHero(),
           Expanded(
             child: store.isEmpty
                 ? _Empty(
@@ -192,30 +193,6 @@ class _Quote extends StatelessWidget {
         TextSpan(text: '$label '),
         TextSpan(text: level(value), style: const TextStyle(fontWeight: FontWeight.bold)),
       ]));
-}
-
-class _Summary extends StatelessWidget {
-  const _Summary({required this.store});
-  final PortfolioStore store;
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: cs.surfaceContainerHighest,
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        _stat('Contracts', '${store.holdings.length}', cs.onSurface, cs),
-        _stat('Principal', moneyK(store.totalInitial), cs.onSurface, cs),
-        _stat('Proj value', moneyK(store.totalProjValue), cs.onSurface, cs),
-        _stat('Proj gain', moneyK(store.totalProjGain), gainColor(store.totalProjGain, cs), cs),
-      ]),
-    );
-  }
-
-  Widget _stat(String k, String v, Color c, ColorScheme cs) => Column(children: [
-        Text(k, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-        Text(v, style: TextStyle(fontWeight: FontWeight.bold, color: c)),
-      ]);
 }
 
 class _Empty extends StatelessWidget {

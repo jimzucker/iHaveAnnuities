@@ -98,9 +98,9 @@ void main() {
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
     await tester.pumpWidget(_wrap(store));
-    expect(find.text('Contracts'), findsOneWidget);
-    expect(find.text('Principal'), findsOneWidget);
-    expect(find.text('${holdings.length}'), findsWidgets);
+    expect(find.text('Protection'), findsOneWidget); // hero donut legend
+    expect(find.text('Next resets'), findsOneWidget); // hero upcoming resets
+    expect(find.textContaining('contracts'), findsWidgets); // hero summary line
     expect(find.text('ASPIDA'), findsOneWidget); // issuer column (canonical uppercase)
   });
 
