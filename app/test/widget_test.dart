@@ -108,6 +108,9 @@ void main() {
 
   testWidgets('holding detail renders banner, chart, and section cards',
       (tester) async {
+    tester.view.physicalSize = const Size(1000, 1600); // tall enough to build all
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final aspida = holdings.firstWhere((h) => h.issuer == 'ASPIDA'); // capped
@@ -123,7 +126,9 @@ void main() {
     expect(find.text('Terms'), findsOneWidget);
     expect(find.text('Values'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets); // payoff chart
-    expect(find.textContaining('cap reached'), findsOneWidget); // status chip
+    expect(find.text('12.25% cap reached'), findsOneWidget); // status chip
+    expect(find.textContaining('Payoff at reset vs. the index move'),
+        findsOneWidget); // plain-English chart caption
   });
 
   testWidgets('combined index chart: ranges, legend toggle, remembered',

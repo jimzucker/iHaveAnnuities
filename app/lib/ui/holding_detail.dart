@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../core/payoff.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
@@ -22,6 +23,36 @@ class HoldingDetail extends StatelessWidget {
       : (h.protectionType == 'Soft'
           ? 'Soft barrier ${pct(h.floor)}'
           : 'Hard buffer ${pct(h.floor)}');
+
+  /// One plain-English sentence describing the contract.
+  String _summary(Holding h, DateTime asOf) {
+    final cap = h.cap == null ? 'uncapped' : 'capped at ${pct(h.cap!)}';
+    final part = h.participation == 1.0 ? '' : ' at ${pct(h.participation)} participation';
+    final down = h.floor == 0
+        ? 'no loss if it falls'
+        : (h.floorType == FloorType.soft
+            ? 'protected unless it falls past ${pct(h.floor.abs())} (then full loss)'
+            : 'a ${pct(h.floor.abs())} buffer absorbs the first losses');
+    final upside = h.isIncomeNote
+        ? '${pct(h.couponProj)} monthly coupon'
+        : 'gains $cap$part';
+    return '${h.index}-linked — $upside, with $down. Resets '
+        '${h.resetFreq.label.toLowerCase()}; next reset ${date(h.nextReset)} '
+        '(${relDays(h.daysToReset(asOf))}).';
+  }
+
+  /// Plain-English read of where it stands today.
+  String _chartCaption(Holding h) {
+    final state = switch (h.gainStatus) {
+      GainStatus.capped => 'cap reached',
+      GainStatus.loss => 'in loss',
+      GainStatus.flat => 'flat',
+      GainStatus.gain => 'gaining',
+    };
+    return 'Payoff at reset vs. the index move. Today the index is '
+        '${pctSigned(h.indexGain)} → you would receive ${pctSigned(h.projGain)} '
+        '($state).';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +79,28 @@ class HoldingDetail extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(_summary(h, asOf),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(height: 1.4)),
+          ),
           _KeyFigures(h: h, cs: cs),
           const SizedBox(height: 12),
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: PayoffChart(holding: h))),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                PayoffChart(holding: h),
+                const SizedBox(height: 8),
+                Text(_chartCaption(h),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant, height: 1.35)),
+              ]),
+            ),
+          ),
           const SizedBox(height: 12),
           LayoutBuilder(builder: (context, c) {
             // Two columns that fill the width on wide screens; one on phones.

@@ -122,6 +122,29 @@ class _PayoffPainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(padL, padT, w, ht));
 
+    // Shaded zones with labels — the chart's "message" at a glance:
+    // green = no loss, red = loss/barrier, amber = capped.
+    if (!h.isIncomeNote) {
+      void band(double xa, double xb, Color c, String label) {
+        final l = sx(xa).clamp(padL, padL + w);
+        final r = sx(xb).clamp(padL, padL + w);
+        if (r - l < 6) return;
+        canvas.drawRect(Rect.fromLTRB(l, padT, r, padT + ht),
+            Paint()..color = c.withValues(alpha: 0.10));
+        _label(canvas, label, Offset((l + r) / 2, padT + 1), center: true);
+      }
+
+      band(h.floor < 0 ? h.floor : idxLo, 0, gainGreen, 'no loss');
+      if (h.floor < 0) {
+        band(idxLo, h.floor, lossRed,
+            h.floorType == FloorType.soft ? 'barrier' : 'buffer');
+      }
+      if (h.cap != null) {
+        band((h.cap! / h.participation).clamp(0.0, idxHi).toDouble(), idxHi,
+            capAmber, 'capped');
+      }
+    }
+
     // 1:1 index reference
     canvas.drawLine(Offset(sx(idxLo), sy(idxLo)), Offset(sx(idxHi), sy(idxHi)),
         Paint()..color = cs.outline.withValues(alpha: 0.5)..strokeWidth = 1.2);
