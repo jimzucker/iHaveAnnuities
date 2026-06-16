@@ -15,6 +15,7 @@ import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:ihaveannuities/ui/holding_detail.dart';
 import 'package:ihaveannuities/ui/holding_form.dart';
 import 'package:ihaveannuities/ui/index_chart_screen.dart';
 import 'package:ihaveannuities/ui/info_page.dart';
@@ -103,6 +104,26 @@ void main() {
     final item = tester.widget<PopupMenuItem<String>>(
         find.widgetWithText(PopupMenuItem<String>, 'Load sample'));
     expect(item.enabled, isFalse);
+  });
+
+  testWidgets('holding detail renders banner, chart, and section cards',
+      (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final aspida = holdings.firstWhere((h) => h.issuer == 'ASPIDA'); // capped
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: store,
+      child: MaterialApp(home: HoldingDetail(holding: aspida)),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull); // chart painter didn't throw
+    expect(find.text('Proj value @ reset'), findsWidgets);
+    expect(find.text('Unrealized \$'), findsWidgets);
+    expect(find.text('Terms'), findsOneWidget);
+    expect(find.text('Values'), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets); // payoff chart
+    expect(find.textContaining('cap reached'), findsOneWidget); // status chip
   });
 
   testWidgets('index chart screen shows ranges + a chart', (tester) async {
