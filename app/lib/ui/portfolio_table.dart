@@ -60,10 +60,14 @@ class PortfolioTable extends StatelessWidget {
   // money is shown in full dollars on screen ($ in $000s only in the .xlsx).
   static List<_Col> _columns(ColorScheme cs) => [
         // Identity
-        // Issuer is styled as a link to signal the row drills into the detail.
+        // Issuer is styled as a link (underlined) to signal the row drills in.
         _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(),
             (h, _, cs) => DataCell(Text(h.issuer,
-                style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)))),
+                style: TextStyle(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                    decorationColor: cs.primary)))),
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
             DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
         _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
@@ -293,7 +297,11 @@ class PortfolioTable extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: Text(store.labelFor(x),
-                          style: const TextStyle(fontWeight: FontWeight.bold))),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: cs.primary,
+                              decoration: TextDecoration.underline,
+                              decorationColor: cs.primary))),
                   _pill(x.account.label, cs.secondaryContainer, cs.onSecondaryContainer),
                   const SizedBox(width: 6),
                   _pill(x.protectionType, prot.bg, prot.fg),
