@@ -91,7 +91,10 @@ void main() {
         isIncomeNote: true,
         couponProj: 0.0112);
     expect(h.projGain, closeTo(0.0112, 1e-12));
-    expect(h.projValueK, closeTo(102.22, 1e-9));
+    // Tracker formula: (initial + realized) * (1 + projGain) = 101.10 * 1.0112.
+    expect(h.projValueK, closeTo(102.2323, 1e-3));
+    expect(h.initial + h.realized + h.projGainDollarsK,
+        closeTo(h.projValueK, 1e-6));
   });
 
   test('Axa 100%: -15% within -20% buffer -> 0% -> \$100k', () {

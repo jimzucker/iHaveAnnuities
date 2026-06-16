@@ -168,11 +168,18 @@ class PortfolioScreen extends StatelessWidget {
       case 'clear':
         if (!await _confirmTyped(context,
             title: 'Clear all data?',
-            message: 'This permanently removes your locally stored portfolio. '
-                'Export an .xlsx first if you want a backup.',
+            message: '⚠️ This permanently deletes your locally stored portfolio '
+                'and cannot be undone. Export a backup first if you want to keep '
+                'a copy.',
             phrase: 'clear all data',
             confirmLabel: 'Clear all data',
-            destructive: true)) {
+            destructive: true,
+            onBackup: () async {
+              await _save(
+                  'iHaveAnnuities-backup.xlsx', Uint8List.fromList(store.exportXlsx()));
+              messenger.showSnackBar(
+                  const SnackBar(content: Text('Backup exported')));
+            })) {
           return;
         }
         await store.clearLocal();
@@ -192,6 +199,7 @@ class PortfolioScreen extends StatelessWidget {
     required String phrase,
     required String confirmLabel,
     bool destructive = false,
+    Future<void> Function()? onBackup,
   }) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -201,6 +209,7 @@ class PortfolioScreen extends StatelessWidget {
         phrase: phrase,
         confirmLabel: confirmLabel,
         destructive: destructive,
+        onBackup: onBackup,
       ),
     );
     return ok ?? false;
@@ -263,12 +272,14 @@ class _TypedConfirmDialog extends StatefulWidget {
     required this.phrase,
     required this.confirmLabel,
     this.destructive = false,
+    this.onBackup,
   });
   final String title;
   final String message;
   final String phrase;
   final String confirmLabel;
   final bool destructive;
+  final Future<void> Function()? onBackup;
 
   @override
   State<_TypedConfirmDialog> createState() => _TypedConfirmDialogState();
@@ -311,6 +322,12 @@ class _TypedConfirmDialogState extends State<_TypedConfirmDialog> {
         ],
       ),
       actions: [
+        if (widget.onBackup != null)
+          TextButton.icon(
+            onPressed: () => widget.onBackup!(),
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text('Export backup'),
+          ),
         TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel')),

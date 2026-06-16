@@ -58,6 +58,8 @@ double indexReturn(double currentLevel, double strike) {
   return currentLevel / strike - 1.0;
 }
 
-/// Projected value at reset: `initial * (1 + payoff) + realized`.
+/// Projected value at reset, matching the Zucker tracker: realized income is
+/// reinvested into the base, so the payoff applies to `(initial + realized)`:
+/// `(initial + realized) * (1 + payoff)`.
 double projValue(double initial, double payoff, {double realized = 0.0}) =>
-    initial * (1 + payoff) + realized;
+    (initial + realized) * (1 + payoff);

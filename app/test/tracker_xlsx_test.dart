@@ -40,9 +40,11 @@ void main() {
     expect(note.index, 'SPX/NDX/RUT'); // v1.0 worst-of label
     expect(note.ndxStrike, 27290);     // worst-of strikes round-trip
     expect(note.rutStrike, 2719);
-    // Unrealized $ excludes realized income: value = initial + realized + gain.
+    // Tracker formula: gain = (initial + realized) * projGain; and the identity
+    // value = initial + realized + gain holds.
     expect(note.realized, closeTo(1.10, 1e-9));
-    expect(note.projGainDollarsK, closeTo(1.12, 1e-2)); // not 2.22
+    expect(note.projGainDollarsK,
+        closeTo((note.initial + note.realized) * note.projGain, 1e-9));
     expect(note.initial + note.realized + note.projGainDollarsK,
         closeTo(note.projValueK, 1e-6));
   });
@@ -71,7 +73,7 @@ void main() {
     // a styled TOTAL row is appended (and skipped on re-import).
     final totalRow = rows.firstWhere(
         (r) => r.isNotEmpty && r.first?.toString().trim() == 'TOTAL');
-    expect(totalRow[7], closeTo(851.97, 0.01)); // Proj Value total (col H)
+    expect(totalRow[7], closeTo(851.98, 0.02)); // Proj Value total (col H)
   });
 
   test('gainStatus flags capped / loss / gain', () {

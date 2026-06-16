@@ -136,8 +136,11 @@ for r in ROWS:
         r["proj_gain"] = credited(r["idx"], r["cap"], r["part"], r["floor"], r["soft"])
         r["realized_v"] = 0.0
         r["strike"] = PRICES[base_index(r["index"])] / (1 + r["idx"])
-    r["proj_value"] = 100.0 + r["realized_v"] + r["proj_gain"] * 100.0
-    r["proj_gain_dollars"] = r["proj_gain"] * 100.0
+    # Matches the tracker: realized is reinvested into the base, so the payoff
+    # applies to (initial + realized).
+    base = 100.0 + r["realized_v"]
+    r["proj_value"] = base * (1 + r["proj_gain"])
+    r["proj_gain_dollars"] = base * r["proj_gain"]
 
 tot_init = 100.0 * len(ROWS)
 tot_real = sum(r["realized_v"] for r in ROWS)

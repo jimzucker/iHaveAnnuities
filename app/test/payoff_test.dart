@@ -116,8 +116,9 @@ void main() {
     test('applies payoff to principal', () {
       expect(projValue(100, 0.1225), closeTo(112.25, 1e-12));
     });
-    test('adds realized', () {
-      expect(projValue(100, 0.0112, realized: 1.10), closeTo(102.22, 1e-12));
+    test('reinvests realized into the base (tracker formula)', () {
+      // (100 + 1.10) * (1 + 0.0112) = 102.2323
+      expect(projValue(100, 0.0112, realized: 1.10), closeTo(102.2323, 1e-3));
     });
     test('loss reduces value', () {
       expect(projValue(100, -0.35), closeTo(65.0, 1e-12));

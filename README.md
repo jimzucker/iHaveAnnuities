@@ -62,10 +62,10 @@ loss if breached). `$` values are in $000s. Reset cadences collapse to
 | CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Inception | IRA | +30.00% → +30.60% | **$130.60** |
 | HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Inception | IRA | +40.00% → +36.90% | **$136.90** |
 | BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Inception | ROTH | −35.00% → −35.00% | **$65.00** |
-| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.22** |
+| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.23** |
 | AXA | ^NDX | 100% | 100% | −20% | Hard | Inception | IRA | −15.00% → 0.00% | **$100.00** |
 | CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
-| **Total** | | | | | | | | | **$851.97** |
+| **Total** | | | | | | | | | **$851.98** |
 
 What each row demonstrates:
 
@@ -96,7 +96,7 @@ and export; on web it persists in the browser between visits.
 ```bash
 cd app
 flutter pub get
-flutter test            # 70 tests; core 100% / data ≥95% coverage gate
+flutter test            # 75 tests; core 100% / data ≥95% coverage gate
 flutter run -d chrome   # run the web app locally
 ```
 
