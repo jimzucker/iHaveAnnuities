@@ -11,19 +11,27 @@ converts it to the new order (the importer maps by header name). Later parts are
 the remaining review recommendations. Quick-wins (semantic palette, token colors,
 units consistency, refresh spinner, web-shell branding) are already shipped.
 
-## Guiding column order — "identity → outcome → terms → schedule → inputs"
+## Guiding column order (v1.2) — "identity → inputs → outcome → timing → terms"
 
 ```
-Identity   Issuer · Type · Index · Floor Type
-Outcome    Proj Value $ · Proj $ Gain $ · Proj Gain % · Index Gain %
-Terms      CAP · Part. · Floor · Strike
-Schedule   Next Reset · Days to Reset · Maturity · Days to Maturity · Reset Freq · Open · Last Reset
+Identity   Position · Issuer · Type · Index · Floor Type
 Inputs     Initial $ · Realized $
+Outcome    Proj Value $ · Proj $ Gain $ · Proj Gain % · Index Gain %
+Timing     Next Reset · Days to Reset · Maturity · Days to Maturity        ← monitor
+Terms      CAP · Part. · Floor · Strike · Reset Freq · Open · Last Reset    ← static
+Worst-of   NDX_Strike · RUT_Strike
 ```
 
-Rationale: the leftmost columns answer "what is it / what's it worth"; fine
-print scrolls right. `Type` (account) moves up from dead-last to identity;
-`Index` sits beside `Issuer`; the $ and % of each outcome are adjacent.
+Rationale: identity first; then **Initial sits next to Proj Value** so "what I
+put in → what it's worth" reads left-to-right; the **monitor** columns (the
+reset/maturity countdowns you actively scan) come before the **static** terms
+(set-once contract params + inception dates) you rarely re-read. `Reset Freq`
+stays in Terms (it's fixed at inception). The on-screen table uses this order
+minus `Position` and the worst-of strikes.
+
+> v1.1 (identity → outcome → terms → schedule → inputs) shipped first; v1.2
+> refines it by lifting Inputs next to Outcome and splitting monitor-vs-static
+> dates. Same 24/21 columns, same name-mapped import.
 
 ---
 

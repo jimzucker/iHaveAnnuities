@@ -169,15 +169,15 @@ for r in ROWS:
         <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td>
         <td class="c">{r['index']}</td>
         <td class="c"><span class="pill {prot}">{prot_lbl}</span></td>
+        <td>$100.00</td><td>{money(r['realized_v'])}</td>
         <td>{money(r['proj_value'])}</td><td class="{pc}">{money(r['proj_gain_dollars'])}</td>
         <td class="{pc}">{pct(r['proj_gain'])}</td><td class="{ic}">{pct(r['idx'])}</td>
-        <td>{cell_cap(r)}</td><td>{r['part']*100:,.2f}%</td><td>{cell_floor(r)}</td>
-        <td>{r['strike']:,.2f}</td>
         <td class="c">{mdy(r['nxt'])}</td><td>{days(r['nxt']):,}</td>
         <td class="c">{mdy(r['mat'])}</td><td>{days(r['mat']):,}</td>
+        <td>{cell_cap(r)}</td><td>{r['part']*100:,.2f}%</td><td>{cell_floor(r)}</td>
+        <td>{r['strike']:,.2f}</td>
         <td class="c">{r['freq']}</td>
         <td class="c">{mdy(r['open'])}</td><td class="c">{mdy(r['last'])}</td>
-        <td>$100.00</td><td>{money(r['realized_v'])}</td>
       </tr>""")
 
 HTML = f"""<!--
@@ -228,23 +228,23 @@ HTML = f"""<!--
         <th class="c">Type</th>
         <th class="c">Index</th>
         <th class="c">Floor<br>Type</th>
+        <th>Initial<br>($000)</th>
+        <th>Realized<br>($000)</th>
         <th>Proj Value<br>@ Reset ($000)</th>
         <th>Proj $ Gain<br>@ Reset ($000)</th>
         <th>Proj Gain<br>@ Reset</th>
         <th>Index<br>Gain %</th>
-        <th>CAP</th>
-        <th>Part.</th>
-        <th>Floor</th>
-        <th>Strike</th>
         <th class="c">Next<br>Reset</th>
         <th>Days to<br>Reset</th>
         <th class="c">Maturity</th>
         <th>Days to<br>Maturity</th>
+        <th>CAP</th>
+        <th>Part.</th>
+        <th>Floor</th>
+        <th>Strike</th>
         <th class="c">Reset<br>Freq</th>
         <th class="c">Open</th>
         <th class="c">Last<br>Reset</th>
-        <th>Initial<br>($000)</th>
-        <th>Realized<br>($000)</th>
       </tr>
     </thead>
     <tbody>
@@ -253,9 +253,8 @@ HTML = f"""<!--
     <tfoot>
       <tr>
         <td class="l" colspan="4">Totals &mdash; {len(ROWS)} contracts</td>
-        <td>{money(tot_pv)}</td><td>{money(tot_pg)}</td>
+        <td>{money(tot_init)}</td><td>{money(tot_real)}</td><td>{money(tot_pv)}</td><td>{money(tot_pg)}</td>
         <td colspan="13"></td>
-        <td>{money(tot_init)}</td><td>{money(tot_real)}</td>
       </tr>
     </tfoot>
   </table>
@@ -268,34 +267,35 @@ with open(out, "w") as f:
     f.write(HTML)
 
 
-# ---- emit the canonical .xlsx (Annuity Tracker schema v1.1) ----
-# 24 columns (A-X), grouped Identity -> Outcome -> Terms -> Schedule -> Inputs.
+# ---- emit the canonical .xlsx (Annuity Tracker schema v1.2) ----
+# 24 columns (A-X), grouped Identity -> Inputs -> Outcome -> Timing -> Terms.
 # Position (A) is derived. NDX_Strike / RUT_Strike (W/X) populated only for
-# worst-of notes. (v1.1 reorders the v1.0 middle columns for readability; the
-# importer maps by header name, so v1.0 files still load.)
+# worst-of notes. (v1.2 lifts Inputs next to Outcome and splits the monitored
+# reset/maturity dates from the static terms; the importer maps by header name,
+# so v1.0/v1.1 files still load.)
 HEADERS = [
     "Position",                    # A — derived, output-only
     "Issuer",                      # B — identity
     "Type",                        # C
     "Index",                       # D
     "Floor Type",                  # E — Protected | Hard | Soft
-    "Proj Value @ Reset ($000)",   # F — outcome
-    "Proj $ Gain @ Reset ($000)",  # G
-    "Proj Gain @ Reset",           # H
-    "Index Gain %",                # I
-    "CAP",                         # J — terms; 9.99 = uncapped sentinel
-    "Part.",                       # K
-    "Floor",                       # L
-    "Strike",                      # M
-    "Next Reset",                  # N — schedule
-    "Days to Reset",               # O
-    "Maturity",                    # P
-    "Days to Maturity",            # Q
-    "Reset Freq",                  # R — Inception | Annual | Monthly
-    "Open",                        # S
-    "Last Reset",                  # T
-    "Initial ($000)",              # U — inputs
-    "Realized ($000)",             # V
+    "Initial ($000)",              # F — inputs
+    "Realized ($000)",             # G
+    "Proj Value @ Reset ($000)",   # H — outcome
+    "Proj $ Gain @ Reset ($000)",  # I
+    "Proj Gain @ Reset",           # J
+    "Index Gain %",                # K
+    "Next Reset",                  # L — timing (monitor)
+    "Days to Reset",               # M
+    "Maturity",                    # N
+    "Days to Maturity",            # O
+    "CAP",                         # P — terms (static); 9.99 = uncapped sentinel
+    "Part.",                       # Q
+    "Floor",                       # R
+    "Strike",                      # S
+    "Reset Freq",                  # T — Inception | Annual | Monthly
+    "Open",                        # U
+    "Last Reset",                  # V
     "NDX_Strike",                  # W — worst-of only
     "RUT_Strike",                  # X — worst-of only
 ]
@@ -316,44 +316,44 @@ def _row_values(r):
         r["acct"],                                         # C Type
         r["index"],                                        # D Index
         _floor_type_label(r),                              # E Floor Type
-        r["proj_value"],                                   # F Proj Value
-        r["proj_gain_dollars"],                            # G Proj $ Gain
-        r["proj_gain"],                                    # H Proj Gain @ Reset
-        r["idx"],                                          # I Index Gain %
-        UNCAPPED_SENTINEL if r["cap"] is None else r["cap"],  # J CAP
-        r["part"],                                         # K Part.
-        r["floor"],                                        # L Floor
-        round(r["strike"], 2),                             # M Strike
-        r["nxt"],                                          # N Next Reset
-        days(r["nxt"]),                                    # O Days to Reset
-        r["mat"],                                          # P Maturity
-        days(r["mat"]),                                    # Q Days to Maturity
-        r["freq"],                                         # R Reset Freq
-        r["open"],                                         # S Open
-        r["last"],                                         # T Last Reset
-        100.00,                                            # U Initial ($000)
-        r["realized_v"],                                   # V Realized ($000)
+        100.00,                                            # F Initial ($000)
+        r["realized_v"],                                   # G Realized ($000)
+        r["proj_value"],                                   # H Proj Value
+        r["proj_gain_dollars"],                            # I Proj $ Gain
+        r["proj_gain"],                                    # J Proj Gain @ Reset
+        r["idx"],                                          # K Index Gain %
+        r["nxt"],                                          # L Next Reset
+        days(r["nxt"]),                                    # M Days to Reset
+        r["mat"],                                          # N Maturity
+        days(r["mat"]),                                    # O Days to Maturity
+        UNCAPPED_SENTINEL if r["cap"] is None else r["cap"],  # P CAP
+        r["part"],                                         # Q Part.
+        r["floor"],                                        # R Floor
+        round(r["strike"], 2),                             # S Strike
+        r["freq"],                                         # T Reset Freq
+        r["open"],                                         # U Open
+        r["last"],                                         # V Last Reset
         r.get("ndx_strike"),                               # W NDX_Strike (worst-of only)
         r.get("rut_strike"),                               # X RUT_Strike (worst-of only)
     ]
 
 
 def _style_sheet(ws, header_row):
-    # 1-indexed v1.1 columns:
-    #   H,I,J,K,L = pct (Proj Gain @ Reset, Index Gain %, CAP, Part., Floor)
-    #   M,W,X = num (Strike, NDX/RUT strikes)
-    #   N,P,S,T = date (Next Reset, Maturity, Open, Last Reset)
-    #   F,G,U,V = money (Proj Value, Proj $ Gain, Initial, Realized)
-    for col in (8, 9, 10, 11, 12):
+    # 1-indexed v1.2 columns:
+    #   J,K,P,Q,R = pct (Proj Gain @ Reset, Index Gain %, CAP, Part., Floor)
+    #   S,W,X = num (Strike, NDX/RUT strikes)
+    #   L,N,U,V = date (Next Reset, Maturity, Open, Last Reset)
+    #   F,G,H,I = money (Initial, Realized, Proj Value, Proj $ Gain)
+    for col in (10, 11, 16, 17, 18):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = PCT
-    for col in (14, 16, 19, 20):
+    for col in (12, 14, 21, 22):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = DATE
-    for col in (6, 7, 21, 22):
+    for col in (6, 7, 8, 9):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = MONEY
-    for col in (13, 23, 24):
+    for col in (19, 23, 24):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = NUM
 
@@ -373,14 +373,14 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     for r in body:
         ws.append(_row_values(r))
     if with_data:
-        # v1.1 money totals: F=Proj Value, G=Proj $ Gain, U=Initial, V=Realized
-        # (1-indexed 6, 7, 21, 22). All other columns blank.
+        # v1.2 money totals are contiguous: F=Initial, G=Realized, H=Proj Value,
+        # I=Proj $ Gain (1-indexed 6-9). All other columns blank.
         tot = [None] * len(HEADERS)
         tot[0] = "TOTAL"
-        tot[5] = sum(r["proj_value"] for r in rows)        # F
-        tot[6] = sum(r["proj_gain_dollars"] for r in rows)  # G
-        tot[20] = 100.0 * len(rows)                          # U
-        tot[21] = sum(r["realized_v"] for r in rows)        # V
+        tot[5] = 100.0 * len(rows)                          # F Initial
+        tot[6] = sum(r["realized_v"] for r in rows)         # G Realized
+        tot[7] = sum(r["proj_value"] for r in rows)         # H Proj Value
+        tot[8] = sum(r["proj_gain_dollars"] for r in rows)  # I Proj $ Gain
         ws.append(tot)
         for cell in ws[ws.max_row]:
             cell.font = Font(bold=True)
@@ -390,7 +390,7 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     if with_instructions:
         ins = wb.create_sheet("Instructions")
         guide = [
-            ["iHaveAnnuities — Tracker template (schema v1.1)"],
+            ["iHaveAnnuities — Tracker template (schema v1.2)"],
             [""],
             ["Fill one row per contract on the 'Annuity Tracker' sheet. INPUT columns"],
             ["are read by the app; DERIVED columns are recomputed on import."],

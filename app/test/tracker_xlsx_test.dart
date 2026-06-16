@@ -42,7 +42,7 @@ void main() {
     expect(note.rutStrike, 2719);
   });
 
-  test('exports the v1.1 column order (identity → outcome → … )', () {
+  test('exports the v1.2 column order (identity → inputs → outcome → …)', () {
     final original = parseTracker(File(examplePath).readAsBytesSync());
     final bytes = writeTracker(original,
         asOf: DateTime(2026, 6, 14),
@@ -54,12 +54,15 @@ void main() {
         .map((c) => c?.toString().trim())
         .where((s) => s != null && s.isNotEmpty)
         .toList();
-    expect(names, headers); // full v1.1 order
-    // identity leads, outcome ($ value) is left of the terms, Type near Issuer.
-    expect(names.take(7).toList(), [
+    expect(names, headers); // full v1.2 order
+    // identity leads; Initial sits next to Proj Value; timing before terms.
+    expect(names.take(9).toList(), [
       'Position', 'Issuer', 'Type', 'Index', 'Floor Type',
+      'Initial (\$000)', 'Realized (\$000)',
       'Proj Value @ Reset (\$000)', 'Proj \$ Gain @ Reset (\$000)',
     ]);
+    // monitor dates precede the static terms.
+    expect(names.indexOf('Next Reset'), lessThan(names.indexOf('CAP')));
   });
 
   test('downloadable template.xlsx is valid + parseable', () {

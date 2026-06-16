@@ -21,8 +21,8 @@ class PortfolioStore extends ChangeNotifier {
   static const _sortKey = 'sortColumn.v1';
   static const _ascKey = 'sortAsc.v1';
 
-  /// Default sort column index = "Next Reset" in PortfolioTable's v1.1 column list.
-  static const defaultSortColumn = 12;
+  /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
+  static const defaultSortColumn = 10;
 
   final String base;
 
