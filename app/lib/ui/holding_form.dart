@@ -156,14 +156,14 @@ class _HoldingFormState extends State<HoldingForm> {
               Expanded(child: _num('strike', 'Strike', positive: true)),
               const SizedBox(width: 12),
               Expanded(
-                child: _dropdown<ResetFreq>('Reset freq', _reset, ResetFreq.values,
+                child: _dropdown<ResetFreq>('Reset Freq', _reset, ResetFreq.values,
                     (v) => setState(() => _reset = v!), (v) => v.label),
               ),
             ]),
             _dateTile('Open', _open, (d) => setState(() => _open = d)),
-            _dateTile('Last reset', _lastReset, (d) => setState(() => _lastReset = d)),
+            _dateTile('Last Reset', _lastReset, (d) => setState(() => _lastReset = d)),
             _dateTile('Maturity', _maturity, (d) => setState(() => _maturity = d)),
-            _dateTile('Next reset', _nextReset, (d) => setState(() => _nextReset = d)),
+            _dateTile('Next Reset', _nextReset, (d) => setState(() => _nextReset = d)),
             Row(children: [
               Expanded(child: _num('initial', 'Initial (\$000)', positive: true)),
               const SizedBox(width: 12),

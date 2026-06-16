@@ -150,7 +150,7 @@ class _ProjectedBlock extends StatelessWidget {
           builder: (_, v, _) => Text(moneyK(v),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         ),
-        Text('Projected value @ reset',
+        Text('Projected Value',
             style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
         const SizedBox(height: 8),
         Wrap(spacing: 20, runSpacing: 6, children: [

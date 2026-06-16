@@ -23,8 +23,8 @@ class PayoffChart extends StatelessWidget {
     final h = holding;
     final cs = Theme.of(context).colorScheme;
     return Semantics(
-      label: 'Payoff chart. Index move ${pctSigned(h.indexGain)} maps to a '
-          'projected payoff of ${pctSigned(h.projGain)}. Protection: '
+      label: 'Return chart. Index move ${pctSigned(h.indexGain)} maps to a '
+          'projected return of ${pctSigned(h.projGain)}. Protection: '
           '${h.protectionType}, cap ${capLabel(h.cap)}.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(

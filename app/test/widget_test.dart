@@ -121,14 +121,14 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull); // chart painter didn't throw
-    expect(find.text('Proj value @ reset'), findsWidgets);
+    expect(find.text('Projected Value'), findsWidgets);
     expect(find.text('Unrealized \$'), findsWidgets);
     expect(find.text('Cap'), findsOneWidget); // compact key strip
     expect(find.text('Schedule'), findsOneWidget);
     expect(find.text('Values'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets); // payoff chart
     expect(find.text('12.25% cap reached'), findsOneWidget); // status chip
-    expect(find.textContaining('Payoff at reset vs. the index move'),
+    expect(find.textContaining('Return at reset vs. the index move'),
         findsOneWidget); // plain-English chart caption
   });
 
@@ -219,7 +219,7 @@ void main() {
     expect(store.fullColumns, isFalse);
     expect(find.text('Strike'), findsNothing);   // hidden in compact view
     expect(find.text('Issuer'), findsOneWidget);  // identity stays
-    expect(find.text('Projected Value'), findsOneWidget);
+    expect(find.text('Projected Value'), findsWidgets);
     expect(find.text('Index Gain'), findsOneWidget); // kept in compact
   });
 
@@ -263,7 +263,7 @@ void main() {
     await tester.pumpWidget(_wrap(store));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Projected Value'), findsOneWidget); // table (not cards)
+    expect(find.text('Projected Value'), findsWidgets); // table (not cards)
     expect(find.text('Strike'), findsNothing); // compact hides it
   });
 

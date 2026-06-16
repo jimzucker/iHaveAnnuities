@@ -43,7 +43,7 @@ class HoldingDetail extends StatelessWidget {
       GainStatus.flat => 'flat',
       GainStatus.gain => 'gaining',
     };
-    return 'Payoff at reset vs. the index move. Today the index is '
+    return 'Return at reset vs. the index move. Today the index is '
         '${pctSigned(h.indexGain)} → you would receive ${pctSigned(h.projGain)} '
         '($state).';
   }
@@ -122,16 +122,17 @@ class HoldingDetail extends StatelessWidget {
         return Wrap(spacing: 12, runSpacing: 12, children: [
           _Section(width: w, title: 'Schedule', rows: [
             ('Open', date(h.openDate), null),
-            ('Last reset', date(h.lastReset), null),
+            ('Last Reset', date(h.lastReset), null),
             ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
-            ('Reset freq', h.resetFreq.label, null),
-            ('Next reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
+            ('Reset Freq', h.resetFreq.label, null),
+            ('Next Reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
           ]),
           _Section(width: w, title: 'Values', rows: [
             ('Initial', moneyK(h.initial), null),
             ('Realized', moneyK(h.realized), null),
-            ('Proj value @ reset', moneyK(h.projValueK), cs.primary),
+            ('Projected Value', moneyK(h.projValueK), cs.primary),
             ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+            ('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
             if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponProj)}', null),
           ]),
         ]);
@@ -166,8 +167,8 @@ class HoldingDetail extends StatelessWidget {
         kv('Protection', prot),
         kv('Strike', level(h.strike)),
         kv('Current', level(h.currentLevel)),
-        kv('Index gain', pctSigned(h.indexGain), color: gainColor(h.indexGain, cs)),
-        kv('Next reset', '${date(h.nextReset)} · ${relDays(h.daysToReset(asOf))}'),
+        kv('Index Gain', pctSigned(h.indexGain), color: gainColor(h.indexGain, cs)),
+        kv('Next Reset', '${date(h.nextReset)} · ${relDays(h.daysToReset(asOf))}'),
       ]),
     );
   }
@@ -181,12 +182,15 @@ class _KeyFigures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
+    final onC = cs.onPrimaryContainer;
     Widget fig(String label, String value, Color color) => Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: tt.labelMedium?.copyWith(color: cs.onPrimaryContainer)),
-            Text(value, style: tt.headlineSmall?.copyWith(color: color, fontWeight: FontWeight.bold)),
+            Text(label,
+                style: TextStyle(fontSize: 12, color: onC.withValues(alpha: 0.85))),
+            Text(value,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
           ],
         );
     Widget chip(String text, Color bg, Color fg) => Container(
@@ -196,6 +200,16 @@ class _KeyFigures extends StatelessWidget {
               style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
         );
     final prot = protectionPalette(h.protectionType, cs);
+    // Consistent grid labels (no ad-hoc "Payoff return"); spread across the
+    // width so the banner reads like a stat row in the main grid.
+    final figs = <Widget>[
+      fig('Projected Value', moneyK(h.projValueK), onC),
+      fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+      fig('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
+      fig('Index Gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
+      fig('Initial', moneyK(h.initial), onC),
+      fig('Realized', moneyK(h.realized), onC),
+    ];
     return Card(
       color: cs.primaryContainer,
       child: Padding(
@@ -210,12 +224,12 @@ class _KeyFigures extends StatelessWidget {
               chip('Below the ${capLabel(h.cap)} cap',
                   const Color(0xFFEAF7EC), gainGreen),
           ]),
-          const SizedBox(height: 12),
-          Wrap(spacing: 32, runSpacing: 12, children: [
-            fig('Proj value @ reset', moneyK(h.projValueK), cs.onPrimaryContainer),
-            fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-            fig('Payoff return', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-          ]),
+          const SizedBox(height: 14),
+          LayoutBuilder(builder: (context, c) {
+            return c.maxWidth >= 700
+                ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: figs)
+                : Wrap(spacing: 28, runSpacing: 12, children: figs);
+          }),
         ]),
       ),
     );

@@ -313,7 +313,7 @@ class PortfolioTable extends StatelessWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(moneyK(x.projValueK),
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text('Proj value @ reset',
+                      Text('Projected Value',
                           style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
                     ]),
                   ),
@@ -327,8 +327,8 @@ class PortfolioTable extends StatelessWidget {
                 const Divider(height: 18),
                 Row(children: [
                   _meta('Index', x.index, cs),
-                  _meta('Index gain', pctSigned(x.indexGain), cs),
-                  _meta('Next reset', '${x.daysToReset(asOf)}d · ${date(x.nextReset)}', cs),
+                  _meta('Index Gain', pctSigned(x.indexGain), cs),
+                  _meta('Next Reset', '${x.daysToReset(asOf)}d · ${date(x.nextReset)}', cs),
                 ]),
                 Align(
                   alignment: Alignment.centerRight,
