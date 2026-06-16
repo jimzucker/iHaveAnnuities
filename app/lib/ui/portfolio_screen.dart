@@ -31,12 +31,6 @@ class PortfolioScreen extends StatelessWidget {
             icon: const Icon(Icons.refresh),
             onPressed: store.refreshMarket,
           ),
-          IconButton(
-            tooltip: 'About & disclosures',
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const InfoPage())),
-          ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
             itemBuilder: (_) => const [
@@ -45,6 +39,8 @@ class PortfolioScreen extends StatelessWidget {
               PopupMenuItem(value: 'template', child: Text('Download template')),
               PopupMenuItem(value: 'sample', child: Text('Load sample')),
               PopupMenuItem(value: 'clear', child: Text('Clear local data')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'about', child: Text('About & disclosures')),
             ],
           ),
         ],
@@ -73,6 +69,7 @@ class PortfolioScreen extends StatelessWidget {
                     onImport: () => _menu(context, store, 'import'),
                     onTemplate: () => _menu(context, store, 'template'),
                     onSample: () => _menu(context, store, 'sample'),
+                    onAbout: () => _menu(context, store, 'about'),
                   )
                 : const Padding(
                     padding: EdgeInsets.all(8),
@@ -119,6 +116,9 @@ class PortfolioScreen extends StatelessWidget {
       case 'clear':
         await store.clearLocal();
         messenger.showSnackBar(const SnackBar(content: Text('Local data cleared')));
+      case 'about':
+        await Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const InfoPage()));
     }
   }
 
@@ -197,11 +197,13 @@ class _Empty extends StatelessWidget {
     required this.onImport,
     required this.onTemplate,
     required this.onSample,
+    required this.onAbout,
   });
   final VoidCallback onAdd;
   final VoidCallback onImport;
   final VoidCallback onTemplate;
   final VoidCallback onSample;
+  final VoidCallback onAbout;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -229,7 +231,15 @@ class _Empty extends StatelessWidget {
                 icon: const Icon(Icons.download),
                 label: const Text('Download template')),
             const SizedBox(height: 8),
-            TextButton(onPressed: onSample, child: const Text('Load sample portfolio')),
+            OutlinedButton.icon(
+                onPressed: onSample,
+                icon: const Icon(Icons.dataset),
+                label: const Text('Load sample portfolio')),
+            const SizedBox(height: 16),
+            TextButton.icon(
+                onPressed: onAbout,
+                icon: const Icon(Icons.info_outline, size: 18),
+                label: const Text('About & disclosures')),
           ]),
         ),
       );

@@ -44,12 +44,23 @@ void main() {
     expect(find.text('Import .xlsx…'), findsOneWidget);
     expect(find.text('Download template'), findsOneWidget);
     expect(find.text('Load sample portfolio'), findsOneWidget);
+    expect(find.text('About & disclosures'), findsOneWidget);
+  });
+
+  testWidgets('empty-state About opens the disclosures page', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.text('About & disclosures'));
+    await tester.pumpAndSettle();
+    expect(find.text('About & Disclosures'), findsOneWidget);
   });
 
   testWidgets('info button opens the disclosures page', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));
-    await tester.tap(find.byTooltip('About & disclosures'));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About & disclosures').last);
     await tester.pumpAndSettle();
     expect(find.text('About & Disclosures'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Important disclosures'), 300);
