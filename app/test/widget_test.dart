@@ -14,6 +14,7 @@ import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
 import 'package:ihaveannuities/ui/holding_form.dart';
+import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
 
 final _market = Market(
@@ -43,6 +44,28 @@ void main() {
     expect(find.text('Import .xlsx…'), findsOneWidget);
     expect(find.text('Download template'), findsOneWidget);
     expect(find.text('Load sample portfolio'), findsOneWidget);
+  });
+
+  testWidgets('info button opens the disclosures page', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('About & disclosures'));
+    await tester.pumpAndSettle();
+    expect(find.text('About & Disclosures'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Important disclosures'), 300);
+    expect(find.text('Important disclosures'), findsOneWidget);
+    expect(find.textContaining('Not financial, investment, tax, or legal advice'),
+        findsOneWidget);
+  });
+
+  testWidgets('info page renders the protection types', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: InfoPage()));
+    expect(find.textContaining('What it does'), findsOneWidget);
+    expect(find.textContaining('Protected (0% floor)', findRichText: true),
+        findsOneWidget);
+    await tester.scrollUntilVisible(
+        find.textContaining('claims-paying ability'), 300);
+    expect(find.textContaining('claims-paying ability'), findsOneWidget);
   });
 
   testWidgets('seeded portfolio shows summary + rows', (tester) async {

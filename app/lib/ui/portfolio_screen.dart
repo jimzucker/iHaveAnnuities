@@ -13,6 +13,7 @@ import '../core/models.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
+import 'info_page.dart';
 import 'portfolio_table.dart';
 
 class PortfolioScreen extends StatelessWidget {
@@ -29,6 +30,12 @@ class PortfolioScreen extends StatelessWidget {
             tooltip: 'Refresh prices',
             icon: const Icon(Icons.refresh),
             onPressed: store.refreshMarket,
+          ),
+          IconButton(
+            tooltip: 'About & disclosures',
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const InfoPage())),
           ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
