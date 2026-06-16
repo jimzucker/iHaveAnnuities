@@ -165,6 +165,8 @@ class _PricesHeader extends StatelessWidget {
                 _Quote('S&P 500', m.spx),
                 _Quote('Nasdaq-100', m.ndx),
                 _Quote('Russell 2000', m.rut),
+                if (m.dow != null) _Quote('Dow', m.dow!),
+                if (m.comp != null) _Quote('Nasdaq Comp', m.comp!),
                 Text('Updated ${date(m.asOf)}',
                     style: const TextStyle(fontStyle: FontStyle.italic)),
               ]),

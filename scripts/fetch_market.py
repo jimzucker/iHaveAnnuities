@@ -15,7 +15,8 @@ import urllib.request
 from zoneinfo import ZoneInfo
 
 ET = ZoneInfo("America/New_York")
-SYMBOLS = {"spx": "%5EGSPC", "ndx": "%5ENDX", "rut": "%5ERUT"}
+SYMBOLS = {"spx": "%5EGSPC", "ndx": "%5ENDX", "rut": "%5ERUT",
+           "dow": "%5EDJI", "comp": "%5EIXIC"}
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 OUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "market.json")
 
@@ -65,6 +66,8 @@ def main() -> int:
         "spx": round(quotes["spx"][0], 2),
         "ndx": round(quotes["ndx"][0], 2),
         "rut": round(quotes["rut"][0], 2),
+        "dow": round(quotes["dow"][0], 2),
+        "comp": round(quotes["comp"][0], 2),
     }
     with open(OUT, "w") as f:
         json.dump(data, f, indent=2)

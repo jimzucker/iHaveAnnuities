@@ -88,6 +88,11 @@ void main() {
       expect(bi('^RUT'), 'RUT');
       expect(bi('SPX/NDX/RUT'), 'SPX');         // v1.0 worst-of label
       expect(bi('worst-of SPX/NDX/RUT'), 'SPX'); // legacy worst-of label
+      expect(bi('DOW'), 'DJI');
+      expect(bi('^DJI'), 'DJI');
+      expect(bi('COMP'), 'COMP');                // Nasdaq Composite, not the 100
+      expect(bi('^IXIC'), 'COMP');
+      expect(bi('Nasdaq Composite'), 'COMP');
     });
 
     test('enum labels (v1.0)', () {
@@ -117,6 +122,26 @@ void main() {
       expect(m.priceFor('SPX'), 7431.46);
       expect(m.bySymbol['SPX'], 7431.46);
       expect(m.tradingDay, isTrue);
+    });
+
+    test('parses dow + comp and prices them', () {
+      final m = Market.parse('{"asOf":"2026-06-12","spx":7431.46,'
+          '"ndx":29635.95,"rut":2943.99,"dow":44012.10,"comp":23501.75}');
+      expect(m.dow, 44012.10);
+      expect(m.comp, 23501.75);
+      expect(m.priceFor('DJI'), 44012.10);
+      expect(m.priceFor('COMP'), 23501.75);
+      expect(m.bySymbol['DJI'], 44012.10);
+      expect(m.bySymbol['COMP'], 23501.75);
+    });
+
+    test('older payload without dow/comp is null-safe', () {
+      final m = Market.parse(_marketJson); // no dow/comp keys
+      expect(m.dow, isNull);
+      expect(m.comp, isNull);
+      expect(m.priceFor('DJI'), m.spx); // falls back to SPX
+      expect(m.priceFor('COMP'), m.spx);
+      expect(m.bySymbol.containsKey('DJI'), isFalse);
     });
 
     test('fetch success', () async {

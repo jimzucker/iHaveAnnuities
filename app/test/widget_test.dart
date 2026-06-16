@@ -18,7 +18,12 @@ import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
 
 final _market = Market(
-    asOf: DateTime(2026, 6, 12), spx: 7431.46, ndx: 29635.95, rut: 2943.99);
+    asOf: DateTime(2026, 6, 12),
+    spx: 7431.46,
+    ndx: 29635.95,
+    rut: 2943.99,
+    dow: 44012.10,
+    comp: 23501.75);
 
 Widget _wrap(PortfolioStore store) => ChangeNotifierProvider.value(
       value: store,
@@ -34,6 +39,8 @@ void main() {
     expect(find.textContaining('S&P 500'), findsOneWidget);
     expect(find.textContaining('Nasdaq-100'), findsOneWidget);
     expect(find.textContaining('Russell 2000'), findsOneWidget);
+    expect(find.textContaining('Dow 44,012'), findsOneWidget); // quote, not "Download"
+    expect(find.textContaining('Nasdaq Comp'), findsOneWidget);
     expect(find.textContaining('Updated 12-Jun-26'), findsOneWidget);
   });
 

@@ -153,7 +153,9 @@ class Holding {
   String get baseIndex {
     final u = index.toUpperCase();
     if (u.contains('/') || u.contains('WORST')) return 'SPX';
-    if (u.contains('NDX') || u.contains('^IXIC')) return 'NDX';
+    if (u.contains('DJI') || u.contains('DOW')) return 'DJI';
+    if (u.contains('IXIC') || u.contains('COMP')) return 'COMP'; // Nasdaq Composite
+    if (u.contains('NDX')) return 'NDX'; // Nasdaq-100
     if (u.contains('RUT')) return 'RUT';
     return 'SPX';
   }

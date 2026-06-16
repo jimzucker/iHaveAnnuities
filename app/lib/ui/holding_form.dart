@@ -113,7 +113,8 @@ class _HoldingFormState extends State<HoldingForm> {
           padding: const EdgeInsets.all(16),
           children: [
             _text('issuer', 'Issuer', required: true),
-            _dropdown<String>('Index', _index, const ['SPX', 'NDX', 'RUT', 'worst-of SPX/NDX/RUT'],
+            _dropdown<String>('Index', _index,
+                const ['SPX', 'NDX', 'RUT', 'DOW', 'COMP', 'worst-of SPX/NDX/RUT'],
                 (v) => setState(() => _index = v!), (v) => v),
             _dropdown<AccountType>('Account / Type', _account, AccountType.values,
                 (v) => setState(() => _account = v!), (v) => v.label),
