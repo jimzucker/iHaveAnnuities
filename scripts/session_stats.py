@@ -25,15 +25,17 @@ import sys
 # Gaps longer than this (minutes) count as idle, not active work.
 DEFAULT_IDLE_MIN = 5
 
-# Claude Opus 4.8 standard API rates, USD per million tokens (Anthropic
-# published pricing, current as of 2026-06; Opus dropped 3x from the old
-# 4.x $15/$75 starting with 4.5). The total is dominated by the cache-read
-# rate, so that one matters most. Override with --rate-* for other models.
+# Claude Opus 4.8 standard API rates, USD per million tokens. Source:
+# Anthropic's official pricing docs, platform.claude.com/docs/en/about-claude/
+# pricing (verified 2026-06). Opus dropped 3x from the old 4.x $15/$75
+# starting with 4.5. The total is dominated by the cache-read rate, so that
+# one matters most. Override with --rate-* for other models (e.g. Sonnet 4.6
+# is $3/$15, cache read $0.30; Haiku 4.5 is $1/$5, cache read $0.10).
 RATES = {
     "output": 25.0,      # base output
     "input": 5.0,        # base (uncached) input
-    "cache_write": 6.25, # 1.25x input (5-min TTL)
-    "cache_read": 0.50,  # 0.10x input
+    "cache_write": 6.25, # 5-min cache write = 1.25x input (1h write is $10)
+    "cache_read": 0.50,  # cache hit/refresh = 0.10x input
 }
 
 # Loaded cost of one engineer-day, USD — used only for the ROI comparison.
@@ -196,9 +198,11 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "## Cost",
         "",
         "What this would cost on the **metered Claude API**, at Anthropic's "
-        "published **Opus 4.8** rates (USD per million tokens, current as of "
-        "2026-06). The total scales linearly with the cache-read rate, which "
-        "dominates; override with `--rate-*` for other models.",
+        "official **Opus 4.8** rates (USD per million tokens — input $5, output "
+        "$25, 5-min cache write $6.25, cache read $0.50; "
+        "[source](https://platform.claude.com/docs/en/about-claude/pricing), "
+        "verified 2026-06). The total scales linearly with the cache-read rate, "
+        "which dominates; override with `--rate-*` for other models.",
         "",
         "| Token type | Rate / M | Tokens | Cost |",
         "| --- | ---: | ---: | ---: |",
@@ -243,9 +247,10 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "think-time with reading time.",
         "- **Token counts come straight from the `usage` field** on each "
         "assistant message; **timing from event timestamps**.",
-        "- **Costs use Anthropic's published Opus 4.8 rates** (current as of "
-        "2026-06); the labor comparison is a rough industry figure, not a "
-        "measured one.",
+        "- **Costs use Anthropic's official Opus 4.8 rates** "
+        "([pricing docs](https://platform.claude.com/docs/en/about-claude/pricing), "
+        "verified 2026-06); the labor comparison is a rough industry figure, "
+        "not a measured one.",
         "",
     ]
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -338,7 +343,7 @@ def main() -> None:
         print(f"  Idle (excluded)      {hms(idle)}\n")
 
     c = costs(outp, inp, cc, cr, rates)
-    print("COST (metered API, Opus 4.8 published rates, 2026-06)")
+    print("COST (metered API, official Opus 4.8 rates, verified 2026-06)")
     print(f"  Output      @ ${rates['output']:>6.2f}/M   ${c['output']:>10,.2f}")
     print(f"  Input       @ ${rates['input']:>6.2f}/M   ${c['input']:>10,.2f}")
     print(f"  Cache write @ ${rates['cache_write']:>6.2f}/M   ${c['cache_write']:>10,.2f}")
