@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models.dart';
 import '../core/payoff.dart';
+import 'format.dart';
 
 class PayoffChart extends StatelessWidget {
   const PayoffChart({super.key, required this.holding, this.range = 0.40});
@@ -16,11 +17,17 @@ class PayoffChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 240,
-      child: CustomPaint(
-        painter: _PayoffPainter(holding, range, Theme.of(context).colorScheme),
-        child: const SizedBox.expand(),
+    final h = holding;
+    return Semantics(
+      label: 'Payoff chart. Index move ${pctSigned(h.indexGain)} maps to a '
+          'projected payoff of ${pctSigned(h.projGain)}. Protection: '
+          '${h.protectionType}, cap ${capLabel(h.cap)}.',
+      child: SizedBox(
+        height: 240,
+        child: CustomPaint(
+          painter: _PayoffPainter(holding, range, Theme.of(context).colorScheme),
+          child: const SizedBox.expand(),
+        ),
       ),
     );
   }

@@ -23,9 +23,15 @@ String capLabel(double? cap) => cap == null ? 'Uncapped' : pct(cap);
 // Semantic gain/loss colors — reference these everywhere instead of ad-hoc hex.
 const gainGreen = Color(0xFF0A7D28);
 const lossRed = Color(0xFFB00020);
+// Brighter variants for sufficient contrast on dark surfaces.
+const _gainGreenDark = Color(0xFF4ADE80);
+const _lossRedDark = Color(0xFFFF6B6B);
 
-Color gainColor(double v, ColorScheme c) =>
-    v > 0 ? gainGreen : (v < 0 ? lossRed : c.onSurfaceVariant);
+Color gainColor(double v, ColorScheme c) {
+  if (v == 0) return c.onSurfaceVariant;
+  final dark = c.brightness == Brightness.dark;
+  return v > 0 ? (dark ? _gainGreenDark : gainGreen) : (dark ? _lossRedDark : lossRed);
+}
 
 /// Single source of truth for protection-type colors: a pill background/
 /// foreground pair plus a solid accent. Used by the table pill, the detail
