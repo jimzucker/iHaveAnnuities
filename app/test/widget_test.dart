@@ -190,6 +190,49 @@ void main() {
     expect(store.hiddenIndexes.contains('RUT'), isTrue);
   });
 
+  testWidgets('combined index chart fills a phone portrait without overflow',
+      (tester) async {
+    final overflows = <String>[];
+    final prev = FlutterError.onError;
+    FlutterError.onError = (d) => d.exceptionAsString().contains('overflowed')
+        ? overflows.add(d.exceptionAsString())
+        : prev?.call(d);
+    addTearDown(() => FlutterError.onError = prev);
+
+    int ep(int y, int m, int d) =>
+        DateTime.utc(y, m, d).millisecondsSinceEpoch ~/ 1000;
+    final json = '{"asOf":"2026-06-15","daily":{"SPX":'
+        '[[${ep(2026, 4, 15)},7000.0],[${ep(2026, 5, 15)},7300.0],'
+        '[${ep(2026, 6, 15)},7536.0]]},"intraday":{}}';
+    final client = MockClient((_) async => http.Response(json, 200));
+    final store = PortfolioStore();
+    tester.view.physicalSize = const Size(390, 844); // iPhone-class portrait
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: store,
+      child: MaterialApp(home: IndexChartScreen(client: client)),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(overflows, isEmpty); // chrome + chart fit the portrait
+    // The chart claims the bulk of the portrait height (not a cramped sliver).
+    final chart = find.byType(CustomPaint).evaluate().map((e) {
+      final ro = e.renderObject;
+      return ro is RenderBox && ro.hasSize ? ro.size : Size.zero;
+    }).where((s) => s.height > 300);
+    expect(chart, isNotEmpty);
+    expect(chart.first.height, greaterThan(450));
+
+    // Touch crosshair works at this size.
+    final g = await tester.startGesture(tester.getCenter(find.byType(CustomPaint).last));
+    await g.moveBy(const Offset(30, 0));
+    await tester.pump();
+    await g.up();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('info button opens the disclosures page', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));

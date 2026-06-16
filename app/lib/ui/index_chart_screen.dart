@@ -29,7 +29,8 @@ const _indexColor = <String, Color>{
 };
 
 // Plot padding — shared so the cursor gesture and the painter agree on geometry.
-const _padL = 48.0, _padR = 12.0, _padT = 10.0, _padB = 18.0;
+// _padB leaves room for the x-axis date labels under the plot.
+const _padL = 48.0, _padR = 12.0, _padT = 10.0, _padB = 24.0;
 
 class IndexChartScreen extends StatefulWidget {
   const IndexChartScreen({super.key, this.base = '', this.client});
@@ -256,6 +257,23 @@ class _MultiLinePainter extends CustomPainter {
       _txt(canvas, '${(v * 100).round()}%', Offset(_padL - 6, y - 6));
     }
 
+    // ---- x-axis: evenly spaced date ticks with faint gridlines, so the line
+    // can be read against actual dates (not just an unlabeled span).
+    final xGrid = Paint()
+      ..color = cs.outlineVariant.withValues(alpha: 0.25)
+      ..strokeWidth = 1;
+    const xTicks = 3;
+    for (var i = 0; i <= xTicks; i++) {
+      final frac = i / xTicks;
+      final x = _padL + frac * w;
+      final dt = DateTime.fromMillisecondsSinceEpoch((t0 + frac * tSpan).round());
+      if (i > 0 && i < xTicks) {
+        canvas.drawLine(Offset(x, _padT), Offset(x, _padT + ht), xGrid);
+      }
+      _txt(canvas, date(dt), Offset(x, _padT + ht + 5),
+          anchor: i == 0 ? _Anchor.left : (i == xTicks ? _Anchor.right : _Anchor.center));
+    }
+
     for (final s in series) {
       final path = Path();
       for (var i = 0; i < s.pts.length; i++) {
@@ -318,14 +336,18 @@ class _MultiLinePainter extends CustomPainter {
     }
   }
 
-  void _txt(Canvas canvas, String s, Offset at, {Color? color}) {
+  void _txt(Canvas canvas, String s, Offset at,
+      {Color? color, _Anchor anchor = _Anchor.right}) {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
           style: TextStyle(color: color ?? cs.onSurfaceVariant, fontSize: 10)),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(at.dx - tp.width, at.dy));
+    var dx = at.dx;
+    if (anchor == _Anchor.right) dx -= tp.width;
+    if (anchor == _Anchor.center) dx -= tp.width / 2;
+    tp.paint(canvas, Offset(dx, at.dy));
   }
 
   /// A small filled, rounded label (so crosshair values don't blend into the
