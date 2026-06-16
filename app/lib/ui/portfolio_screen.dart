@@ -275,17 +275,14 @@ class _Quote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // Underlined to read as a link (tap → combined index chart).
-    return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: '$label '),
-        TextSpan(text: level(value), style: const TextStyle(fontWeight: FontWeight.bold)),
-      ]),
-      style: TextStyle(
-        decoration: TextDecoration.underline,
-        decorationColor: cs.onPrimaryContainer.withValues(alpha: 0.6),
-      ),
+    final deco = TextStyle(
+      decoration: TextDecoration.underline, // reads as a link → index chart
+      decorationColor: cs.onPrimaryContainer.withValues(alpha: 0.6),
     );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Text('$label ', style: deco),
+      Text(level(value), style: deco.copyWith(fontWeight: FontWeight.bold)),
+    ]);
   }
 }
 

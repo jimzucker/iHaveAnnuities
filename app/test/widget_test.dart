@@ -43,7 +43,7 @@ void main() {
     expect(find.textContaining('S&P 500'), findsOneWidget);
     expect(find.textContaining('Nasdaq-100'), findsOneWidget);
     expect(find.textContaining('Russell 2000'), findsOneWidget);
-    expect(find.textContaining('Dow 44,012'), findsOneWidget); // quote, not "Download"
+    expect(find.text('Dow '), findsOneWidget); // quote label, not "Download"
     expect(find.textContaining('Nasdaq Comp'), findsOneWidget);
     expect(find.textContaining('12-Jun-26'), findsOneWidget); // updated date
   });

@@ -25,6 +25,8 @@ jobs:
         run: flutter analyze
       - name: test + coverage
         working-directory: app
-        run: flutter test --coverage
+        # Exclude 'golden' screenshot tests — they're a README image generator,
+        # not a regression check (font rendering is platform-specific).
+        run: flutter test --coverage --exclude-tags golden
       - name: coverage gate (core 100% / data ≥95%)
         run: python3 scripts/check_coverage.py app/coverage/lcov.info
