@@ -40,6 +40,11 @@ void main() {
     expect(note.index, 'SPX/NDX/RUT'); // v1.0 worst-of label
     expect(note.ndxStrike, 27290);     // worst-of strikes round-trip
     expect(note.rutStrike, 2719);
+    // Unrealized $ excludes realized income: value = initial + realized + gain.
+    expect(note.realized, closeTo(1.10, 1e-9));
+    expect(note.projGainDollarsK, closeTo(1.12, 1e-2)); // not 2.22
+    expect(note.initial + note.realized + note.projGainDollarsK,
+        closeTo(note.projValueK, 1e-6));
   });
 
   test('exports the v1.2 column order (identity → inputs → outcome → …)', () {

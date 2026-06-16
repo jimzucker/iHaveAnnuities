@@ -243,7 +243,7 @@ List<int> writeTracker(
   total[5] = DoubleCellValue(totInitial); // F Initial
   total[6] = DoubleCellValue(totRealized); // G Realized
   total[7] = DoubleCellValue(totProjValue); // H Proj Value
-  total[8] = DoubleCellValue(totProjValue - totInitial); // I Proj $ Gain
+  total[8] = DoubleCellValue(totProjValue - totInitial - totRealized); // I Proj $ Gain (unrealized)
   s.appendRow(total);
 
   _styleTracker(s, holdings.length);

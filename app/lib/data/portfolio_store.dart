@@ -81,7 +81,9 @@ class PortfolioStore extends ChangeNotifier {
   double get totalInitial => _holdings.fold(0.0, (s, h) => s + h.initial);
   double get totalRealized => _holdings.fold(0.0, (s, h) => s + h.realized);
   double get totalProjValue => _holdings.fold(0.0, (s, h) => s + h.projValueK);
-  double get totalProjGain => totalProjValue - totalInitial;
+
+  /// Total UNREALIZED gain (excludes realized): projValue = initial + realized + gain.
+  double get totalProjGain => totalProjValue - totalInitial - totalRealized;
 
   /// Load persisted holdings, then fetch + apply market prices.
   Future<void> setSort(int column, bool ascending) async {

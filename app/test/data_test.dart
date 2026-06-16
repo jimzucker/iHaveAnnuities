@@ -204,7 +204,9 @@ void main() {
       expect(n, 8);
       expect(store.totalInitial, closeTo(800.0, 1e-6));
       expect(store.totalProjValue, greaterThan(0));
-      expect(store.totalProjGain, closeTo(store.totalProjValue - 800.0, 1e-6));
+      // Unrealized total excludes realized: value = initial + realized + gain.
+      expect(store.totalProjGain,
+          closeTo(store.totalProjValue - 800.0 - store.totalRealized, 1e-6));
 
       // export round-trips back through the parser
       final exported = store.exportXlsx();

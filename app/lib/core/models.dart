@@ -121,8 +121,9 @@ class Holding {
   /// Projected value at reset, in $000.
   double get projValueK => projValue(initial, projGain, realized: realized);
 
-  /// Projected $ gain at reset, in $000.
-  double get projGainDollarsK => projValueK - initial;
+  /// Unrealized $ gain at reset, in $000 — the credited gain only, EXCLUDING
+  /// realized income. By construction: projValue = initial + realized + this.
+  double get projGainDollarsK => initial * projGain;
 
   /// Upside status of the current period:
   ///  - `loss`     — projected payoff is negative
