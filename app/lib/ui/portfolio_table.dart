@@ -72,20 +72,34 @@ class PortfolioTable extends StatelessWidget {
         _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
       ];
 
+  /// Columns shown in the compact "core" view (identity + key inputs/outcome
+  /// + the monitored reset countdown). Full view shows everything.
+  static const _coreLabels = <String>{
+    'Issuer', 'Type', 'Index', 'Floor Type',
+    'Initial (\$000)', 'Proj Value @ Reset (\$000)',
+    'Proj \$ Gain @ Reset (\$000)', 'Proj Gain @ Reset',
+    'Next Reset', 'Days to Reset',
+  };
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
     final asOf = store.market?.asOf ?? DateTime(2026, 6, 14);
     final cs = Theme.of(context).colorScheme;
-    final cols = _columns(cs);
+    final all = _columns(cs);
+    final shown =
+        store.fullColumns ? all : all.where((c) => _coreLabels.contains(c.label)).toList();
 
-    final sortIdx = store.sortColumn.clamp(0, cols.length - 1);
+    // Sort uses the FULL-list column identity so it survives view switches.
+    final sortIdxAll = store.sortColumn.clamp(0, all.length - 1);
+    final keyer = all[sortIdxAll].key;
     final items = [...store.holdings];
-    final keyer = cols[sortIdx].key;
     items.sort((a, b) {
       final r = keyer(a, asOf).compareTo(keyer(b, asOf));
       return store.sortAscending ? r : -r;
     });
+    // Position of the sorted column within the shown list (null if hidden).
+    final shownSortIdx = shown.indexOf(all[sortIdxAll]);
 
     return Scrollbar(
       thumbVisibility: true,
@@ -94,7 +108,7 @@ class PortfolioTable extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            sortColumnIndex: sortIdx,
+            sortColumnIndex: shownSortIdx >= 0 ? shownSortIdx : null,
             sortAscending: store.sortAscending,
             headingRowColor: WidgetStatePropertyAll(cs.primary),
             headingTextStyle: TextStyle(
@@ -103,21 +117,24 @@ class PortfolioTable extends StatelessWidget {
             dataRowMaxHeight: 48,
             columnSpacing: 22,
             columns: [
-              for (final c in cols)
+              for (final c in shown)
                 DataColumn(
                   label: Text(c.label),
                   numeric: c.numeric,
-                  onSort: (i, asc) => store.setSort(i, asc),
+                  // Map the shown-list position back to the full-list index.
+                  onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
                 ),
               const DataColumn(label: Text('')),
             ],
             rows: [
-              for (final x in items)
+              for (final (i, x) in items.indexed)
                 DataRow(
+                  color: WidgetStateProperty.resolveWith(
+                      (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
                   onSelectChanged: (_) => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
                   cells: [
-                    for (final c in cols) c.cell(x, asOf, cs),
+                    for (final c in shown) c.cell(x, asOf, cs),
                     DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
                         tooltip: 'Edit',

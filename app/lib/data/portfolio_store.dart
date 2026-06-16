@@ -20,6 +20,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _key = 'portfolio.v1';
   static const _sortKey = 'sortColumn.v1';
   static const _ascKey = 'sortAsc.v1';
+  static const _fullColKey = 'fullColumns.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
@@ -35,9 +36,13 @@ class PortfolioStore extends ChangeNotifier {
   bool _refreshing = false;
   int _sortColumn = defaultSortColumn;
   bool _sortAscending = true;
+  bool _fullColumns = true;
 
   int get sortColumn => _sortColumn;
   bool get sortAscending => _sortAscending;
+
+  /// Whether the table shows every column (true) or a compact core view.
+  bool get fullColumns => _fullColumns;
 
   /// True while a market refresh is in flight (drives the app-bar spinner).
   bool get refreshing => _refreshing;
@@ -64,10 +69,18 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setFullColumns(bool full) async {
+    _fullColumns = full;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_fullColKey, full);
+    notifyListeners();
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
     _sortAscending = prefs.getBool(_ascKey) ?? true;
+    _fullColumns = prefs.getBool(_fullColKey) ?? true;
     final raw = prefs.getString(_key);
     if (raw != null) {
       try {

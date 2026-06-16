@@ -40,6 +40,14 @@ class PortfolioScreen extends StatelessWidget {
                 : const Icon(Icons.refresh),
             onPressed: store.refreshing ? null : () => _refresh(context, store),
           ),
+          if (!store.isEmpty)
+            IconButton(
+              tooltip: store.fullColumns ? 'Compact columns' : 'All columns',
+              icon: Icon(store.fullColumns
+                  ? Icons.view_column
+                  : Icons.view_column_outlined),
+              onPressed: () => store.setFullColumns(!store.fullColumns),
+            ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
             itemBuilder: (_) => const [

@@ -116,6 +116,22 @@ void main() {
     expect(find.byTooltip('Delete'), findsWidgets);
   });
 
+  testWidgets('compact-columns toggle hides static columns', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(store.fullColumns, isTrue);
+    expect(find.text('Strike'), findsOneWidget); // shown in full view
+
+    await tester.tap(find.byTooltip('Compact columns'));
+    await tester.pumpAndSettle();
+    expect(store.fullColumns, isFalse);
+    expect(find.text('Strike'), findsNothing);   // hidden in compact view
+    expect(find.text('Issuer'), findsOneWidget);  // identity stays
+    expect(find.text('Proj Value @ Reset (\$000)'), findsOneWidget);
+  });
+
   testWidgets('tapping a column header changes the sort', (tester) async {
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
