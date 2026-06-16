@@ -168,12 +168,13 @@ class PortfolioTable extends StatelessWidget {
         return _cardList(context, store, items, asOf, cs);
       }
       // Freeze the leading identity columns (and the header row) so they stay
-      // put while scrolling a large portfolio.
+      // put while scrolling a large portfolio. Columns are FLEXIBLE (ColumnSize)
+      // so they fill the width — fixed widths left a gap on wide screens in the
+      // compact view (fewer columns than the viewport could hold).
       final frozen = shown.takeWhile((c) => _identityLabels.contains(c.label)).length;
-      final widths = [for (final c in shown) _colWidth(c)];
-      final minW = widths.fold(0.0, (s, w) => s + w) +
-          104 /*actions*/ +
-          16 * (shown.length + 2);
+      // minWidth scales with the column count: when the viewport is wider the
+      // flexible columns fill it (no gap); when narrower the table scrolls.
+      final minW = 132.0 * shown.length + 130 /*actions + margins*/;
 
       return DataTable2(
         columnSpacing: 16,
@@ -194,10 +195,10 @@ class PortfolioTable extends StatelessWidget {
             DataColumn2(
               label: Text(c.label, softWrap: true),
               numeric: c.numeric,
-              fixedWidth: _colWidth(c),
+              size: _colSize(c),
               onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
             ),
-          const DataColumn2(label: Text('Actions'), fixedWidth: 104),
+          const DataColumn2(label: Text('Actions'), size: ColumnSize.S, fixedWidth: 104),
         ],
         rows: [
           for (final (i, x) in items.indexed)
@@ -233,17 +234,17 @@ class PortfolioTable extends StatelessWidget {
     });
   }
 
-  /// Per-column fixed width (px). Wrapped headers keep these compact.
-  static double _colWidth(_Col c) => switch (c.label) {
-        'Index' => 118,
-        'Days to Maturity' => 110,
-        'Reset Freq' => 92,
-        'Part.' => 74,
-        'CAP' => 84,
-        'Floor' => 80,
-        'Issuer' => 100,
-        'Type' || 'Floor Type' => 90,
-        _ => c.numeric ? 96 : 98,
+  /// Relative column width (flexible, so columns fill the viewport width).
+  static ColumnSize _colSize(_Col c) => switch (c.label) {
+        'Issuer' ||
+        'Index' ||
+        'Projected Value' ||
+        'Unrealized \$' ||
+        'Next Reset' ||
+        'Maturity' =>
+          ColumnSize.L,
+        'Type' || 'Floor Type' || 'CAP' || 'Part.' || 'Floor' => ColumnSize.S,
+        _ => ColumnSize.M,
       };
 
   /// Bold portfolio TOTAL row under the money columns.

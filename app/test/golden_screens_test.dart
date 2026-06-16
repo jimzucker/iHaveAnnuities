@@ -57,6 +57,20 @@ void main() {
     await screenMatchesGolden(tester, 'overview-app');
   });
 
+  testGoldens('overview-compact (compact columns, wide — no gap)', (tester) async {
+    await loadAppFonts();
+    final store = seeded();
+    await store.setFullColumns(false);
+    await store.setHideSummary(true);
+    await tester.pumpWidgetBuilder(
+      ChangeNotifierProvider.value(value: store, child: const PortfolioScreen()),
+      wrapper: materialAppWrapper(theme: _theme(Brightness.light)),
+      surfaceSize: const Size(1500, 700),
+    );
+    await tester.pumpAndSettle();
+    await screenMatchesGolden(tester, 'overview-compact');
+  });
+
   testGoldens('hero (portfolio summary card)', (tester) async {
     await loadAppFonts();
     await tester.pumpWidgetBuilder(

@@ -245,6 +245,22 @@ void main() {
     expect(find.byType(Card), findsWidgets); // one card per holding
   });
 
+  testWidgets('wide viewport + compact columns renders the table (no gap path)',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900); // wider than the table
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await store.setFullColumns(false); // compact: few columns on a wide screen
+    await tester.pumpWidget(_wrap(store));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Projected Value'), findsOneWidget); // table (not cards)
+    expect(find.text('Strike'), findsNothing); // compact hides it
+  });
+
   testWidgets('tapping a column header changes the sort', (tester) async {
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
