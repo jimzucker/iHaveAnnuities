@@ -132,6 +132,18 @@ void main() {
     expect(find.text('Proj Value @ Reset (\$000)'), findsOneWidget);
   });
 
+  testWidgets('narrow viewport renders holding cards, not the table', (tester) async {
+    tester.view.physicalSize = const Size(420, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.byType(DataTable), findsNothing);
+    expect(find.byType(Card), findsWidgets); // one card per holding
+  });
+
   testWidgets('tapping a column header changes the sort', (tester) async {
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());

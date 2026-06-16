@@ -101,7 +101,12 @@ class PortfolioTable extends StatelessWidget {
     // Position of the sorted column within the shown list (null if hidden).
     final shownSortIdx = shown.indexOf(all[sortIdxAll]);
 
-    return Scrollbar(
+    return LayoutBuilder(builder: (context, constraints) {
+      // Narrow viewports (phones) get a card list instead of the wide table.
+      if (constraints.maxWidth < 720) {
+        return _cardList(context, store, items, asOf, cs);
+      }
+      return Scrollbar(
       thumbVisibility: true,
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
@@ -154,7 +159,85 @@ class PortfolioTable extends StatelessWidget {
         ),
       ),
     );
+    });
   }
+
+  /// Phone layout: one card per holding instead of the wide table.
+  Widget _cardList(BuildContext context, PortfolioStore store,
+      List<Holding> items, DateTime asOf, ColorScheme cs) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
+      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final x = items[i];
+        final prot = protectionPalette(x.protectionType, cs);
+        final gc = gainColor(x.projGainDollarsK, cs);
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => HoldingDetail(holding: x))),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                      child: Text(store.labelFor(x),
+                          style: const TextStyle(fontWeight: FontWeight.bold))),
+                  _pill(x.account.label, cs.secondaryContainer, cs.onSecondaryContainer),
+                  const SizedBox(width: 6),
+                  _pill(x.protectionType, prot.bg, prot.fg),
+                ]),
+                const SizedBox(height: 8),
+                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(moneyK(x.projValueK),
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text('Proj value @ reset',
+                          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+                    ]),
+                  ),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text('${x.projGainDollarsK >= 0 ? '▲' : '▼'} ${moneyK(x.projGainDollarsK)}',
+                        style: TextStyle(color: gc, fontWeight: FontWeight.w600)),
+                    Text(pctSigned(x.projGain),
+                        style: TextStyle(fontSize: 12, color: gainColor(x.projGain, cs))),
+                  ]),
+                ]),
+                const Divider(height: 18),
+                Row(children: [
+                  _meta('Index', x.index, cs),
+                  _meta('Index gain', pctSigned(x.indexGain), cs),
+                  _meta('Next reset', '${x.daysToReset(asOf)}d · ${date(x.nextReset)}', cs),
+                ]),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                        tooltip: 'Edit',
+                        icon: const Icon(Icons.edit, size: 18),
+                        onPressed: () => _edit(context, store, x)),
+                    IconButton(
+                        tooltip: 'Delete',
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        onPressed: () => _delete(context, store, x)),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _meta(String label, String value, ColorScheme cs) => Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+          Text(value, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+        ]),
+      );
 
   Future<void> _edit(BuildContext context, PortfolioStore store, Holding x) async {
     final edited = await Navigator.of(context)
