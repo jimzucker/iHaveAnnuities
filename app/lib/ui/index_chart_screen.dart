@@ -95,70 +95,91 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
     final hidden = store.hiddenIndexes;
     final series = _visible(hidden);
 
+    final size = MediaQuery.of(context).size;
+    // Portrait phones: a chart that fills the viewport stays cramped, so give it
+    // 1.5× the screen height and let the page scroll (controls scroll up out of
+    // the way). Wide/landscape keeps the chart filling the available height.
+    final portrait = size.height > size.width && size.width < 700;
+
+    final controls = <Widget>[
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<HistoryRange>(
+          showSelectedIcon: false,
+          segments: [
+            for (final r in HistoryRange.values)
+              ButtonSegment(value: r, label: Text(r.label)),
+          ],
+          selected: {_range},
+          onSelectionChanged: (s) => setState(() {
+            _range = s.first;
+            _cursorFrac = null;
+          }),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // Tappable legend — tap to hide/show an index (remembered).
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        for (final (sym, label) in _indexes)
+          _LegendChip(
+            label: label,
+            color: _indexColor[sym]!,
+            change: _change(sym),
+            off: hidden.contains(sym),
+            onTap: () => store.toggleIndex(sym),
+          ),
+      ]),
+      const SizedBox(height: 12),
+    ];
+
+    Widget chart() => LayoutBuilder(builder: (context, box) {
+          void setCursor(double dx) {
+            final w = box.maxWidth - _padL - _padR;
+            setState(() => _cursorFrac =
+                w <= 0 ? null : ((dx - _padL) / w).clamp(0.0, 1.0));
+          }
+
+          return MouseRegion(
+            onHover: (e) => setCursor(e.localPosition.dx),
+            onExit: (_) => setState(() => _cursorFrac = null),
+            child: GestureDetector(
+              onTapDown: (d) => setCursor(d.localPosition.dx),
+              onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
+              onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
+              child: CustomPaint(
+                painter: _MultiLinePainter(series, cs, _range.label, _cursorFrac),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          );
+        });
+
+    // The chart region: a tall fixed height when we scroll, else fill the rest.
+    Widget chartRegion() {
+      final Widget content = _error != null
+          ? Center(child: Text(_error!, style: TextStyle(color: cs.error)))
+          : _hist == null
+              ? const Center(child: CircularProgressIndicator())
+              : series.isEmpty
+                  ? const Center(child: Text('No indexes selected'))
+                  : chart();
+      if (portrait) return SizedBox(height: size.height * 1.5, child: content);
+      return Expanded(child: content);
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Indexes')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SegmentedButton<HistoryRange>(
-              showSelectedIcon: false,
-              segments: [
-                for (final r in HistoryRange.values)
-                  ButtonSegment(value: r, label: Text(r.label)),
-              ],
-              selected: {_range},
-              onSelectionChanged: (s) => setState(() {
-                _range = s.first;
-                _cursorFrac = null;
-              }),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Tappable legend — tap to hide/show an index (remembered).
-          Wrap(spacing: 8, runSpacing: 6, children: [
-            for (final (sym, label) in _indexes)
-              _LegendChip(
-                label: label,
-                color: _indexColor[sym]!,
-                change: _change(sym),
-                off: hidden.contains(sym),
-                onTap: () => store.toggleIndex(sym),
-              ),
-          ]),
-          const SizedBox(height: 12),
-          if (_error != null)
-            Text(_error!, style: TextStyle(color: cs.error))
-          else if (_hist == null)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (series.isEmpty)
-            const Expanded(child: Center(child: Text('No indexes selected')))
-          else
-            Expanded(
-              child: LayoutBuilder(builder: (context, box) {
-                void setCursor(double dx) {
-                  final w = box.maxWidth - _padL - _padR;
-                  setState(() => _cursorFrac =
-                      w <= 0 ? null : ((dx - _padL) / w).clamp(0.0, 1.0));
-                }
-
-                return MouseRegion(
-                  onHover: (e) => setCursor(e.localPosition.dx),
-                  onExit: (_) => setState(() => _cursorFrac = null),
-                  child: GestureDetector(
-                    onTapDown: (d) => setCursor(d.localPosition.dx),
-                    onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
-                    onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
-                    child: CustomPaint(
-                      painter: _MultiLinePainter(series, cs, _range.label, _cursorFrac),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                );
-              }),
-            ),
-        ]),
+        child: portrait
+            ? SingleChildScrollView(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [...controls, chartRegion()]),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [...controls, chartRegion()]),
       ),
     );
   }

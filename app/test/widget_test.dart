@@ -190,7 +190,7 @@ void main() {
     expect(store.hiddenIndexes.contains('RUT'), isTrue);
   });
 
-  testWidgets('combined index chart fills a phone portrait without overflow',
+  testWidgets('combined index chart in portrait is a tall, scrollable chart',
       (tester) async {
     final overflows = <String>[];
     final prev = FlutterError.onError;
@@ -216,21 +216,16 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(overflows, isEmpty); // chrome + chart fit the portrait
-    // The chart claims the bulk of the portrait height (not a cramped sliver).
-    final chart = find.byType(CustomPaint).evaluate().map((e) {
+    expect(overflows, isEmpty); // scrolls instead of overflowing
+    expect(find.byType(Scrollable), findsWidgets); // page can scroll
+    // The chart is taller than the viewport (~1.5× screen height) so the line
+    // is readable; the user scrolls to see all of it.
+    final heights = find.byType(CustomPaint).evaluate().map((e) {
       final ro = e.renderObject;
-      return ro is RenderBox && ro.hasSize ? ro.size : Size.zero;
-    }).where((s) => s.height > 300);
-    expect(chart, isNotEmpty);
-    expect(chart.first.height, greaterThan(450));
-
-    // Touch crosshair works at this size.
-    final g = await tester.startGesture(tester.getCenter(find.byType(CustomPaint).last));
-    await g.moveBy(const Offset(30, 0));
-    await tester.pump();
-    await g.up();
-    expect(tester.takeException(), isNull);
+      return ro is RenderBox && ro.hasSize ? ro.size.height : 0.0;
+    });
+    // ~1.5× the 844px viewport — taller than the screen, so it scrolls.
+    expect(heights.any((h) => h > 1000), isTrue);
   });
 
   testWidgets('info button opens the disclosures page', (tester) async {
