@@ -32,11 +32,15 @@ class PortfolioStore extends ChangeNotifier {
   List<Holding> _holdings = [];
   Market? _market;
   String? _status;
+  bool _refreshing = false;
   int _sortColumn = defaultSortColumn;
   bool _sortAscending = true;
 
   int get sortColumn => _sortColumn;
   bool get sortAscending => _sortAscending;
+
+  /// True while a market refresh is in flight (drives the app-bar spinner).
+  bool get refreshing => _refreshing;
 
   List<Holding> get holdings => List.unmodifiable(_holdings);
   Market? get market => _market;
@@ -84,14 +88,18 @@ class PortfolioStore extends ChangeNotifier {
   }
 
   Future<void> refreshMarket() async {
+    _refreshing = true;
+    notifyListeners();
     try {
       _market = await Market.fetch(base: base, client: client);
       _revalue();
       _status = null;
     } catch (e) {
       _status = 'Prices unavailable (${e.runtimeType}); showing last import.';
+    } finally {
+      _refreshing = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   void _revalue() {

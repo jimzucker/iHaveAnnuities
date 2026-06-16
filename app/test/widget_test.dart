@@ -37,6 +37,13 @@ void main() {
     expect(find.textContaining('Updated 12-Jun-26'), findsOneWidget);
   });
 
+  testWidgets('refresh button shows a spinner while refreshing', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    expect(store.refreshing, isFalse);
+  });
+
   testWidgets('empty state offers add / import / template / sample', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));

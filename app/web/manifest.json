@@ -1,11 +1,11 @@
 {
-    "name": "ihaveannuities",
-    "short_name": "ihaveannuities",
+    "name": "iHaveAnnuities",
+    "short_name": "iHaveAnnuities",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1F3A5F",
+    "theme_color": "#1F3A5F",
+    "description": "Track structured-product annuities — index-linked returns with cap, participation, and floor/buffer/barrier downside protection.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

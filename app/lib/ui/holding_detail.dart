@@ -112,8 +112,8 @@ class _KeyFigures extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Wrap(spacing: 32, runSpacing: 12, children: [
-          fig('Proj value @ reset', money000(h.projValueK), cs.onPrimaryContainer),
-          fig('Proj \$ gain', money000(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+          fig('Proj value @ reset', moneyK(h.projValueK), cs.onPrimaryContainer),
+          fig('Proj \$ gain', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
           fig('Payoff return', pctSigned(h.projGain), gainColor(h.projGain, cs)),
           fig('Index gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
         ]),
@@ -148,7 +148,9 @@ class _Section extends StatelessWidget {
                   TableRow(children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 0),
-                      child: Text(label, style: tt.bodyMedium?.copyWith(color: Colors.grey)),
+                      child: Text(label,
+                          style: tt.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(left: 16, top: 5, bottom: 5),

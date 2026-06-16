@@ -4,6 +4,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'format.dart';
+
 class InfoPage extends StatelessWidget {
   const InfoPage({super.key});
 
@@ -42,21 +44,21 @@ class InfoPage extends StatelessWidget {
               _Section(title: 'How the downside protection works', children: [
                 _Bullet(
                     label: 'Protected (0% floor)',
-                    color: cs.primary,
+                    color: protectionPalette('Protected', cs).accent,
                     text:
                         'No loss for the period — your principal is protected at '
                         'each reset. Upside still applies (subject to cap and '
                         'participation).'),
                 _Bullet(
                     label: 'Hard (buffer)',
-                    color: const Color(0xFF0A7D28),
+                    color: protectionPalette('Hard', cs).accent,
                     text:
                         'A buffer absorbs the first portion of a decline. If the '
                         'index falls 22% with a 15% buffer, you absorb only the '
                         '7% beyond it.'),
                 _Bullet(
                     label: 'Soft (barrier)',
-                    color: const Color(0xFFB8860B),
+                    color: protectionPalette('Soft', cs).accent,
                     text:
                         'Fully protected unless the index falls past the barrier. '
                         'Cross it and the entire decline applies — a 35% drop '

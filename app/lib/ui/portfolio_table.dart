@@ -43,14 +43,10 @@ class PortfolioTable extends StatelessWidget {
         _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
         _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
         _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor))),
-        _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, _) {
+        _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
-          final (bg, fg) = switch (p) {
-            'Soft' => (const Color(0xFFFFF3E0), const Color(0xFFB26A00)),
-            'Protected' => (const Color(0xFFE6EFFF), const Color(0xFF1F3A5F)),
-            _ => (const Color(0xFFEAF7EC), const Color(0xFF0A7D28)),
-          };
-          return DataCell(_pill(p, bg, fg));
+          final c = protectionPalette(p, cs);
+          return DataCell(_pill(p, c.bg, c.fg));
         }),
         _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike))),
         _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),

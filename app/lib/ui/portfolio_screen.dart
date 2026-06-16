@@ -24,12 +24,21 @@ class PortfolioScreen extends StatelessWidget {
     final store = context.watch<PortfolioStore>();
     return Scaffold(
       appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 12),
+          child: Icon(Icons.shield_moon_outlined),
+        ),
         title: const Text('iHaveAnnuities'),
         actions: [
           IconButton(
             tooltip: 'Refresh prices',
-            icon: const Icon(Icons.refresh),
-            onPressed: store.refreshMarket,
+            icon: store.refreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh),
+            onPressed: store.refreshing ? null : () => _refresh(context, store),
           ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
@@ -79,6 +88,14 @@ class PortfolioScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _refresh(BuildContext context, PortfolioStore store) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await store.refreshMarket();
+    messenger.showSnackBar(SnackBar(
+      content: Text(store.status ?? 'Prices updated ${date(store.market!.asOf)}'),
+    ));
   }
 
   Future<void> _add(BuildContext context, PortfolioStore store) async {
@@ -177,16 +194,16 @@ class _Summary extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       color: cs.surfaceContainerHighest,
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        _stat('Contracts', '${store.holdings.length}', cs.onSurface),
-        _stat('Principal', moneyK(store.totalInitial), cs.onSurface),
-        _stat('Proj value', moneyK(store.totalProjValue), cs.onSurface),
-        _stat('Proj gain', moneyK(store.totalProjGain), gainColor(store.totalProjGain, cs)),
+        _stat('Contracts', '${store.holdings.length}', cs.onSurface, cs),
+        _stat('Principal', moneyK(store.totalInitial), cs.onSurface, cs),
+        _stat('Proj value', moneyK(store.totalProjValue), cs.onSurface, cs),
+        _stat('Proj gain', moneyK(store.totalProjGain), gainColor(store.totalProjGain, cs), cs),
       ]),
     );
   }
 
-  Widget _stat(String k, String v, Color c) => Column(children: [
-        Text(k, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+  Widget _stat(String k, String v, Color c, ColorScheme cs) => Column(children: [
+        Text(k, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         Text(v, style: TextStyle(fontWeight: FontWeight.bold, color: c)),
       ]);
 }
@@ -213,8 +230,10 @@ class _Empty extends StatelessWidget {
             Text('No holdings yet',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
-            const Text('Add a contract, import your tracker, or load the sample.',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+            Text('Add a contract, import your tracker, or load the sample.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 16),
             FilledButton.icon(
                 onPressed: onAdd,
