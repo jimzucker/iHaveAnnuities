@@ -140,7 +140,7 @@ class _ProjectedBlock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${store.holdings.length} contracts · ${moneyK(store.totalInitial)} principal',
+        Text('${store.holdings.length} contracts',
             style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         const SizedBox(height: 2),
         TweenAnimationBuilder<double>(
@@ -150,18 +150,31 @@ class _ProjectedBlock extends StatelessWidget {
           builder: (_, v, _) => Text(moneyK(v),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         ),
-        Text('Proj value @ reset', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 200,
-          child: _GainBar(pct: pct, color: gc),
-        ),
-        const SizedBox(height: 2),
-        Text('${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})',
-            style: TextStyle(fontSize: 12, color: gc, fontWeight: FontWeight.w600)),
+        Text('Projected value @ reset',
+            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 20, runSpacing: 6, children: [
+          _kv('Principal', moneyK(store.totalInitial), cs.onSurface, cs),
+          _kv('Realized', moneyK(store.totalRealized), cs.onSurface, cs),
+          _kv('Unrealized G/L',
+              '${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})', gc, cs),
+        ]),
+        const SizedBox(height: 8),
+        SizedBox(width: 220, child: _GainBar(pct: pct, color: gc)),
       ],
     );
   }
+
+  Widget _kv(String k, String v, Color valueColor, ColorScheme cs) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(k, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+          Text(v,
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: valueColor)),
+        ],
+      );
 }
 
 class _GainBar extends StatelessWidget {

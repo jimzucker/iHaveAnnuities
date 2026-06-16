@@ -139,6 +139,10 @@ class Holding {
     return GainStatus.gain;
   }
 
+  /// True when this holding carries a cap that could be reached (i.e. it makes
+  /// sense to show a "cap reached / room left" indicator).
+  bool get hasCap => cap != null && !isIncomeNote;
+
   int daysToMaturity(DateTime asOf) => maturity.difference(asOf).inDays;
   int daysToReset(DateTime asOf) => nextReset.difference(asOf).inDays;
 

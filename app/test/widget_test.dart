@@ -109,9 +109,9 @@ void main() {
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
     await tester.pumpWidget(_wrap(store));
-    expect(find.text('Unreal %'), findsOneWidget);
+    expect(find.text('Unrealized %'), findsOneWidget);
     expect(find.text('Floor Type'), findsOneWidget);
-    expect(find.text('Days→Reset'), findsOneWidget);
+    expect(find.text('Days to Reset'), findsOneWidget);
     expect(find.text('TOTAL'), findsOneWidget); // totals row
     expect(find.byTooltip('Edit'), findsWidgets);
     expect(find.byTooltip('Delete'), findsWidgets);
@@ -130,7 +130,7 @@ void main() {
     expect(store.fullColumns, isFalse);
     expect(find.text('Strike'), findsNothing);   // hidden in compact view
     expect(find.text('Issuer'), findsOneWidget);  // identity stays
-    expect(find.text('Proj Value'), findsOneWidget);
+    expect(find.text('Projected Value'), findsOneWidget);
     expect(find.text('Index Gain'), findsOneWidget); // kept in compact
   });
 

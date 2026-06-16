@@ -4,6 +4,7 @@
 // column is sortable; the chosen sort is remembered (PortfolioStore), defaulting
 // to Next Reset ascending. Per-row edit/delete; tap a row to drill in.
 
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -59,7 +60,10 @@ class PortfolioTable extends StatelessWidget {
   // money is shown in full dollars on screen ($ in $000s only in the .xlsx).
   static List<_Col> _columns(ColorScheme cs) => [
         // Identity
-        _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(), (h, _, _) => _t(h.issuer)),
+        // Issuer is styled as a link to signal the row drills into the detail.
+        _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(),
+            (h, _, cs) => DataCell(Text(h.issuer,
+                style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)))),
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
             DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
         _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
@@ -72,29 +76,47 @@ class PortfolioTable extends StatelessWidget {
         _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial))),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized))),
         // Outcome
-        _Col('Proj Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
-        _Col('Unreal \$', true, (h, _) => h.projGainDollarsK,
+        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
+        _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: gainColor(h.projGainDollarsK, cs))))),
         // Projected payoff %, highlighted by status: red loss / green gain /
-        // amber + lock when the cap is reached.
-        _Col('Unreal %', true, (h, _) => h.projGain, (h, _, cs) {
+        // amber when the cap is reached. A lock (cap reached) or open-lock
+        // (room left) icon — each with a tooltip — flags capped products.
+        _Col('Unrealized %', true, (h, _) => h.projGain, (h, _, cs) {
           final st = h.gainStatus;
           final color = gainStatusColor(st, cs);
-          return DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(pctSigned(h.projGain), style: TextStyle(color: color)),
-            if (st == GainStatus.capped)
-              Padding(
-                  padding: const EdgeInsets.only(left: 3),
-                  child: Icon(Icons.lock, size: 12, color: color)),
-          ]));
+          final capped = st == GainStatus.capped;
+          final roomLeft = st == GainStatus.gain && h.hasCap;
+          final icon = capped
+              ? Icons.lock
+              : (roomLeft ? Icons.lock_open : null);
+          final tip = capped
+              ? 'Cap reached — upside ceilinged at ${capLabel(h.cap)}'
+              : (roomLeft ? 'Below the ${capLabel(h.cap)} cap — room left' : null);
+          // Text.rich (not a Row) so it clips rather than overflowing the
+          // fixed-width column.
+          final text = Text.rich(
+            TextSpan(children: [
+              TextSpan(text: pctSigned(h.projGain)),
+              if (icon != null)
+                WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                        padding: const EdgeInsets.only(left: 3),
+                        child: Icon(icon, size: 12, color: color))),
+            ]),
+            style: TextStyle(color: color),
+            overflow: TextOverflow.clip,
+          );
+          return DataCell(tip != null ? Tooltip(message: tip, child: text) : text);
         }),
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
         // Timing (monitor)
         _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
-        _Col('Days→Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
+        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
         _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
-        _Col('Days→Mat', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
+        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
         // Terms (static)
         _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
         _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
@@ -109,9 +131,12 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Floor Type',
-    'Initial', 'Proj Value', 'Unreal \$', 'Unreal %',
-    'Index Gain', 'Next Reset', 'Days→Reset',
+    'Initial', 'Projected Value', 'Unrealized \$', 'Unrealized %',
+    'Index Gain', 'Next Reset', 'Days to Reset',
   };
+
+  /// The leading identity columns, frozen when scrolling horizontally.
+  static const _identityLabels = <String>{'Issuer', 'Type', 'Index', 'Floor Type'};
 
   @override
   Widget build(BuildContext context) {
@@ -138,61 +163,84 @@ class PortfolioTable extends StatelessWidget {
       if (constraints.maxWidth < 720) {
         return _cardList(context, store, items, asOf, cs);
       }
-      return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            sortColumnIndex: shownSortIdx >= 0 ? shownSortIdx : null,
-            sortAscending: store.sortAscending,
-            headingRowColor: WidgetStatePropertyAll(cs.primary),
-            headingTextStyle: TextStyle(
-                color: cs.onPrimary, fontWeight: FontWeight.w600, fontSize: 12),
-            dataRowMinHeight: 40,
-            dataRowMaxHeight: 48,
-            columnSpacing: 22,
-            columns: [
-              for (final c in shown)
-                DataColumn(
-                  label: Text(c.label),
-                  numeric: c.numeric,
-                  // Map the shown-list position back to the full-list index.
-                  onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
-                ),
-              const DataColumn(label: Text('')),
-            ],
-            rows: [
-              for (final (i, x) in items.indexed)
-                DataRow(
-                  color: WidgetStateProperty.resolveWith(
-                      (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
-                  onSelectChanged: (_) => Navigator.of(context).push(detailRoute(x)),
-                  cells: [
-                    for (final c in shown) c.cell(x, asOf, cs),
-                    DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton(
-                        tooltip: 'Edit',
-                        icon: const Icon(Icons.edit, size: 18),
-                        onPressed: () => _edit(context, store, x),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete',
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        onPressed: () => _delete(context, store, x),
-                      ),
-                    ])),
-                  ],
-                ),
-              _totalsRow(shown, store, cs),
-            ],
-          ),
-        ),
-      ),
-    );
+      // Freeze the leading identity columns (and the header row) so they stay
+      // put while scrolling a large portfolio.
+      final frozen = shown.takeWhile((c) => _identityLabels.contains(c.label)).length;
+      final widths = [for (final c in shown) _colWidth(c)];
+      final minW = widths.fold(0.0, (s, w) => s + w) +
+          104 /*actions*/ +
+          16 * (shown.length + 2);
+
+      return DataTable2(
+        columnSpacing: 16,
+        horizontalMargin: 12,
+        minWidth: minW,
+        fixedTopRows: 1,
+        fixedLeftColumns: frozen,
+        showCheckboxColumn: false,
+        sortColumnIndex: shownSortIdx >= 0 ? shownSortIdx : null,
+        sortAscending: store.sortAscending,
+        headingRowColor: WidgetStatePropertyAll(cs.primary),
+        headingTextStyle: TextStyle(
+            color: cs.onPrimary, fontWeight: FontWeight.w600, fontSize: 11.5),
+        headingRowHeight: 52,
+        dataRowHeight: 44,
+        columns: [
+          for (final c in shown)
+            DataColumn2(
+              label: Text(c.label, softWrap: true),
+              numeric: c.numeric,
+              fixedWidth: _colWidth(c),
+              onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
+            ),
+          const DataColumn2(label: Text('Actions'), fixedWidth: 104),
+        ],
+        rows: [
+          for (final (i, x) in items.indexed)
+            DataRow2(
+              color: WidgetStateProperty.resolveWith(
+                  (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
+              onTap: () => Navigator.of(context).push(detailRoute(x)),
+              cells: [
+                for (final c in shown) c.cell(x, asOf, cs),
+                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(
+                    tooltip: 'Edit',
+                    icon: const Icon(Icons.edit, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    onPressed: () => _edit(context, store, x),
+                  ),
+                  IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    onPressed: () => _delete(context, store, x),
+                  ),
+                ])),
+              ],
+            ),
+          _totalsRow(shown, store, cs),
+        ],
+      );
     });
   }
+
+  /// Per-column fixed width (px). Wrapped headers keep these compact.
+  static double _colWidth(_Col c) => switch (c.label) {
+        'Index' => 118,
+        'Days to Maturity' => 110,
+        'Reset Freq' => 92,
+        'Part.' => 74,
+        'CAP' => 84,
+        'Floor' => 80,
+        'Issuer' => 100,
+        'Type' || 'Floor Type' => 90,
+        _ => c.numeric ? 96 : 98,
+      };
 
   /// Bold portfolio TOTAL row under the money columns.
   DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
@@ -214,9 +262,9 @@ class PortfolioTable extends StatelessWidget {
         t = moneyK(store.totalInitial);
       case 'Realized':
         t = moneyK(store.totalRealized);
-      case 'Proj Value':
+      case 'Projected Value':
         t = moneyK(store.totalProjValue);
-      case 'Unreal \$':
+      case 'Unrealized \$':
         t = moneyK(store.totalProjGain);
         color = gainColor(store.totalProjGain, cs);
     }
