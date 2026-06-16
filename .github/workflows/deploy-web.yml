@@ -9,6 +9,7 @@ on:
     paths:
       - 'app/**'
       - 'data/market.json'
+      - 'data/history.json'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
   # Redeploy after the market job updates prices (token pushes don't fire `push`).
@@ -38,8 +39,10 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --base-href /iHaveAnnuities/
-      - name: bundle latest market.json
-        run: cp data/market.json app/build/web/market.json
+      - name: bundle latest market + history json
+        run: |
+          cp data/market.json app/build/web/market.json
+          cp data/history.json app/build/web/history.json
       - uses: actions/upload-pages-artifact@v5
         with:
           path: app/build/web

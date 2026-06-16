@@ -13,6 +13,7 @@ import '../core/models.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
+import 'index_chart_screen.dart';
 import 'info_page.dart';
 import 'portfolio_hero.dart';
 import 'portfolio_table.dart';
@@ -229,8 +230,19 @@ class _PricesHeader extends StatelessWidget {
   const _PricesHeader();
   @override
   Widget build(BuildContext context) {
-    final m = context.watch<PortfolioStore>().market;
+    final store = context.watch<PortfolioStore>();
+    final m = store.market;
     final cs = Theme.of(context).colorScheme;
+    // Large-cap benchmarks first, the two Nasdaqs adjacent, then small-caps.
+    final quotes = m == null
+        ? const <(String, String, double?)>[]
+        : <(String, String, double?)>[
+            ('S&P 500', 'SPX', m.spx),
+            ('Dow', 'DJI', m.dow),
+            ('Nasdaq Comp', 'COMP', m.comp),
+            ('Nasdaq-100', 'NDX', m.ndx),
+            ('Russell 2000', 'RUT', m.rut),
+          ];
     return Container(
       width: double.infinity,
       color: cs.primaryContainer,
@@ -240,15 +252,17 @@ class _PricesHeader extends StatelessWidget {
         child: m == null
             ? const Text('Loading prices…')
             : Wrap(spacing: 18, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                // Large-cap benchmarks first, the two Nasdaqs kept adjacent,
-                // then small-caps.
-                _Quote('S&P 500', m.spx),
-                if (m.dow != null) _Quote('Dow', m.dow!),
-                if (m.comp != null) _Quote('Nasdaq Comp', m.comp!),
-                _Quote('Nasdaq-100', m.ndx),
-                _Quote('Russell 2000', m.rut),
-                Text('Updated ${date(m.asOf)}',
-                    style: const TextStyle(fontStyle: FontStyle.italic)),
+                for (final q in quotes)
+                  if (q.$3 != null)
+                    InkWell(
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => IndexChartScreen(
+                              symbol: q.$2, label: q.$1, base: store.base))),
+                      child: _Quote(q.$1, q.$3!),
+                    ),
+                Icon(Icons.show_chart, size: 15, color: cs.onPrimaryContainer),
+                Text('updated ${date(m.asOf)}',
+                    style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
               ]),
       ),
     );

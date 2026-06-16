@@ -13,7 +13,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:ihaveannuities/ui/holding_form.dart';
+import 'package:ihaveannuities/ui/index_chart_screen.dart';
 import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
 
@@ -41,7 +44,7 @@ void main() {
     expect(find.textContaining('Russell 2000'), findsOneWidget);
     expect(find.textContaining('Dow 44,012'), findsOneWidget); // quote, not "Download"
     expect(find.textContaining('Nasdaq Comp'), findsOneWidget);
-    expect(find.textContaining('Updated 12-Jun-26'), findsOneWidget);
+    expect(find.textContaining('12-Jun-26'), findsOneWidget); // updated date
   });
 
   testWidgets('refresh button shows a spinner while refreshing', (tester) async {
@@ -100,6 +103,21 @@ void main() {
     final item = tester.widget<PopupMenuItem<String>>(
         find.widgetWithText(PopupMenuItem<String>, 'Load sample'));
     expect(item.enabled, isFalse);
+  });
+
+  testWidgets('index chart screen shows ranges + a chart', (tester) async {
+    const historyJson = '{"asOf":"2026-06-15","daily":{"SPX":'
+        '[[1700000000,100.0],[1710000000,120.0],[1718000000,150.0]]},'
+        '"intraday":{"SPX":[[1717900000,148.0],[1718000000,150.0]]}}';
+    final client = MockClient((_) async => http.Response(historyJson, 200));
+    await tester.pumpWidget(MaterialApp(
+        home: IndexChartScreen(symbol: 'SPX', label: 'S&P 500', client: client)));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'S&P 500'), findsOneWidget);
+    expect(find.text('Max'), findsOneWidget); // range selector
+    await tester.tap(find.text('Max'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomPaint), findsWidgets); // chart painted
   });
 
   testWidgets('info button opens the disclosures page', (tester) async {
