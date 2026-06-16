@@ -23,6 +23,9 @@ class PortfolioScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
+    // The table (and its compact-columns toggle) only show on wide viewports;
+    // phones use the card layout where the toggle has no effect.
+    final wide = MediaQuery.of(context).size.width >= 720;
     return Scaffold(
       appBar: AppBar(
         leading: const Padding(
@@ -41,19 +44,13 @@ class PortfolioScreen extends StatelessWidget {
                 : const Icon(Icons.refresh),
             onPressed: store.refreshing ? null : () => _refresh(context, store),
           ),
-          if (!store.isEmpty)
+          if (!store.isEmpty && wide)
             IconButton(
               tooltip: store.fullColumns ? 'Compact columns' : 'All columns',
               icon: Icon(store.fullColumns
                   ? Icons.view_column
                   : Icons.view_column_outlined),
               onPressed: () => store.setFullColumns(!store.fullColumns),
-            ),
-          if (!store.isEmpty)
-            IconButton(
-              tooltip: store.hideSummary ? 'Show summary' : 'Hide summary',
-              icon: Icon(store.hideSummary ? Icons.unfold_more : Icons.unfold_less),
-              onPressed: () => store.setHideSummary(!store.hideSummary),
             ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
@@ -81,6 +78,11 @@ class PortfolioScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
+          if (!store.isEmpty)
+            _SummaryToggle(
+              hidden: store.hideSummary,
+              onTap: () => store.setHideSummary(!store.hideSummary),
+            ),
           if (!store.hideSummary) const _PricesHeader(),
           if (store.status != null)
             Container(
@@ -262,6 +264,36 @@ class _Quote extends StatelessWidget {
         TextSpan(text: '$label '),
         TextSpan(text: level(value), style: const TextStyle(fontWeight: FontWeight.bold)),
       ]));
+}
+
+/// A thin, labeled, tappable strip that collapses/expands the prices + hero.
+class _SummaryToggle extends StatelessWidget {
+  const _SummaryToggle({required this.hidden, required this.onTap});
+  final bool hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        color: cs.surfaceContainerHighest,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(children: [
+          Icon(hidden ? Icons.expand_more : Icons.expand_less,
+              size: 18, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(hidden ? 'Show summary' : 'Hide summary',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
 }
 
 /// Dialog requiring the user to type a phrase before the action enables.

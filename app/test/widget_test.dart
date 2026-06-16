@@ -175,9 +175,10 @@ void main() {
     expect(find.text('Protection'), findsOneWidget); // hero visible
     expect(find.textContaining('S&P 500'), findsOneWidget); // quotes visible
 
-    await tester.tap(find.byTooltip('Hide summary'));
+    await tester.tap(find.text('Hide summary')); // collapsible strip
     await tester.pumpAndSettle();
     expect(store.hideSummary, isTrue);
+    expect(find.text('Show summary'), findsOneWidget); // strip flips label
     expect(find.text('Protection'), findsNothing);
     expect(find.textContaining('S&P 500'), findsNothing);
   });
@@ -207,6 +208,10 @@ void main() {
   });
 
   testWidgets('delete removes a holding after confirm', (tester) async {
+    // Use the card layout (narrow) so the Delete button is on-screen.
+    tester.view.physicalSize = const Size(420, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
