@@ -63,6 +63,10 @@ void main() {
     ]);
     // monitor dates precede the static terms.
     expect(names.indexOf('Next Reset'), lessThan(names.indexOf('CAP')));
+    // a styled TOTAL row is appended (and skipped on re-import).
+    final totalRow = rows.firstWhere(
+        (r) => r.isNotEmpty && r.first?.toString().trim() == 'TOTAL');
+    expect(totalRow[7], closeTo(851.97, 0.01)); // Proj Value total (col H)
   });
 
   test('gainStatus flags capped / loss / gain', () {

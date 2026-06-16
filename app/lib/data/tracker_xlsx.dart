@@ -233,5 +233,70 @@ List<int> writeTracker(
       isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null, // X
     ]);
   }
+
+  // ---- TOTAL row (mirrors the on-screen totals) ----
+  final totInitial = holdings.fold(0.0, (a, h) => a + h.initial);
+  final totRealized = holdings.fold(0.0, (a, h) => a + h.realized);
+  final totProjValue = holdings.fold(0.0, (a, h) => a + h.projValueK);
+  final total = List<CellValue?>.filled(headers.length, null);
+  total[0] = TextCellValue('TOTAL');
+  total[5] = DoubleCellValue(totInitial); // F Initial
+  total[6] = DoubleCellValue(totRealized); // G Realized
+  total[7] = DoubleCellValue(totProjValue); // H Proj Value
+  total[8] = DoubleCellValue(totProjValue - totInitial); // I Proj $ Gain
+  s.appendRow(total);
+
+  _styleTracker(s, holdings.length);
   return excel.encode()!;
 }
+
+/// Apply header styling, per-column number formats, a bold total row, and
+/// column widths so the exported file reads like the on-screen table.
+void _styleTracker(Sheet s, int nRows) {
+  const headerRowIdx = 2; // title(0), legend(1), header(2)
+  final totalRowIdx = headerRowIdx + nRows + 1;
+
+  final pctF = NumFormat.standard_10; // 0.00%
+  final curF = CustomNumericNumFormat(formatCode: '\$#,##0.00');
+  final numF = NumFormat.standard_4; // #,##0.00
+  final dateF = NumFormat.standard_15; // d-mmm-yy
+  final byHeader = <String, NumFormat>{
+    'Initial (\$000)': curF, 'Realized (\$000)': curF,
+    'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
+    'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
+    'CAP': pctF, 'Part.': pctF, 'Floor': pctF,
+    'Next Reset': dateF, 'Maturity': dateF, 'Open': dateF, 'Last Reset': dateF,
+    'Strike': numF, 'NDX_Strike': numF, 'RUT_Strike': numF,
+  };
+
+  final headStyle = CellStyle(
+    bold: true,
+    fontColorHex: ExcelColor.fromHexString('FFFFFFFF'),
+    backgroundColorHex: ExcelColor.fromHexString('FF1F3A5F'),
+    horizontalAlign: HorizontalAlign.Center,
+    textWrapping: TextWrapping.WrapText,
+  );
+
+  CellStyle bodyStyle(NumFormat f, {bool bold = false}) =>
+      CellStyle(numberFormat: f, bold: bold);
+
+  for (var c = 0; c < headers.length; c++) {
+    final name = headers[c];
+    final f = byHeader[name] ?? NumFormat.standard_0;
+    s.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: headerRowIdx))
+        .cellStyle = headStyle;
+    for (var r = headerRowIdx + 1; r <= totalRowIdx; r++) {
+      s.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r)).cellStyle =
+          bodyStyle(f, bold: r == totalRowIdx);
+    }
+    s.setColumnWidth(c, _xlsxColWidth(name));
+  }
+}
+
+double _xlsxColWidth(String name) => switch (name) {
+      'Position' => 22,
+      'Issuer' || 'Index' => 14,
+      'Proj Value @ Reset (\$000)' || 'Proj \$ Gain @ Reset (\$000)' => 16,
+      'Floor Type' || 'Reset Freq' || 'Days to Maturity' => 12,
+      _ => 11,
+    };
