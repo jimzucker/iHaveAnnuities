@@ -259,7 +259,6 @@ class _PricesHeader extends StatelessWidget {
                           builder: (_) => IndexChartScreen(base: store.base))),
                       child: _Quote(q.$1, q.$3!),
                     ),
-                Icon(Icons.show_chart, size: 15, color: cs.onPrimaryContainer),
                 Text('updated ${date(m.asOf)}',
                     style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
               ]),
@@ -275,14 +274,21 @@ class _Quote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final deco = TextStyle(
-      decoration: TextDecoration.underline, // reads as a link → index chart
-      decorationColor: cs.onPrimaryContainer.withValues(alpha: 0.6),
+    // A bordered chip with a chart icon → unmistakably tappable (→ index chart).
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.onPrimaryContainer.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('$label '),
+        Text(level(value), style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(width: 5),
+        Icon(Icons.show_chart,
+            size: 13, color: cs.onPrimaryContainer.withValues(alpha: 0.85)),
+      ]),
     );
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text('$label ', style: deco),
-      Text(level(value), style: deco.copyWith(fontWeight: FontWeight.bold)),
-    ]);
   }
 }
 

@@ -279,6 +279,7 @@ class _MultiLinePainter extends CustomPainter {
       DateTime? at;
       // Right-align labels if the cursor is past mid-chart (avoid clipping).
       final left = cursorFrac! > 0.6;
+      final marks = <({Color color, double dotY, String text})>[];
       for (final s in series) {
         // nearest point in time
         (DateTime, double)? best;
@@ -293,13 +294,22 @@ class _MultiLinePainter extends CustomPainter {
         if (best == null) continue;
         at ??= best.$1;
         final o = Offset(sx(best.$1), sy(best.$2));
-        canvas.drawCircle(o, 3.5,
-            Paint()..color = Colors.white..style = PaintingStyle.fill);
+        canvas.drawCircle(o, 3.5, Paint()..color = Colors.white);
         canvas.drawCircle(o, 3.5,
             Paint()..color = s.color..strokeWidth = 2..style = PaintingStyle.stroke);
-        // Filled chip (line color bg, white text) so values stay readable.
-        _chip(canvas, pctSigned(best.$2), Offset(cx + (left ? -8 : 8), o.dy),
-            bg: s.color, fg: Colors.white, anchor: left ? _Anchor.right : _Anchor.left);
+        marks.add((color: s.color, dotY: o.dy, text: pctSigned(best.$2)));
+      }
+      // Spread overlapping labels apart (flat/close lines cluster otherwise);
+      // filled chips (line color bg, white text) keep values readable.
+      marks.sort((a, b) => a.dotY.compareTo(b.dotY));
+      const gap = 16.0;
+      var prevY = double.negativeInfinity;
+      for (final m in marks) {
+        var y = m.dotY < prevY + gap ? prevY + gap : m.dotY;
+        y = y.clamp(_padT + 9.0, _padT + ht - 2.0);
+        prevY = y;
+        _chip(canvas, m.text, Offset(cx + (left ? -8 : 8), y),
+            bg: m.color, fg: Colors.white, anchor: left ? _Anchor.right : _Anchor.left);
       }
       if (at != null) {
         _chip(canvas, date(at), Offset(cx, _padT + ht + 3),
