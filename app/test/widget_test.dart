@@ -69,6 +69,39 @@ void main() {
     expect(find.text('About & Disclosures'), findsOneWidget);
   });
 
+  testWidgets('clear all data is gated by typing the phrase', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear all data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Clear all data?'), findsOneWidget);
+
+    final confirm = find.widgetWithText(FilledButton, 'Clear all data');
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull); // disabled
+    await tester.enterText(find.byType(TextField), 'clear all data');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull); // enabled
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(store.holdings, isEmpty);
+  });
+
+  testWidgets('load sample is disabled when a portfolio exists', (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    final item = tester.widget<PopupMenuItem<String>>(
+        find.widgetWithText(PopupMenuItem<String>, 'Load sample'));
+    expect(item.enabled, isFalse);
+  });
+
   testWidgets('info button opens the disclosures page', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));

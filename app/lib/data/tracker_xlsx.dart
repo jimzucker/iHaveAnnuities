@@ -274,11 +274,19 @@ void _styleTracker(Sheet s, int nRows) {
     fontColorHex: ExcelColor.fromHexString('FFFFFFFF'),
     backgroundColorHex: ExcelColor.fromHexString('FF1F3A5F'),
     horizontalAlign: HorizontalAlign.Center,
+    verticalAlign: VerticalAlign.Center,
     textWrapping: TextWrapping.WrapText,
   );
+  // Tiger striping: alternate rows get a light-blue fill; the TOTAL row a tint.
+  final stripeFill = ExcelColor.fromHexString('FFEAF1FB');
+  final totalFill = ExcelColor.fromHexString('FFD7E3F4');
 
-  CellStyle bodyStyle(NumFormat f, {bool bold = false}) =>
-      CellStyle(numberFormat: f, bold: bold);
+  CellStyle bodyStyle(NumFormat f, {bool bold = false, ExcelColor? fill}) =>
+      CellStyle(
+        numberFormat: f,
+        bold: bold,
+        backgroundColorHex: fill ?? ExcelColor.none,
+      );
 
   for (var c = 0; c < headers.length; c++) {
     final name = headers[c];
@@ -286,17 +294,26 @@ void _styleTracker(Sheet s, int nRows) {
     s.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: headerRowIdx))
         .cellStyle = headStyle;
     for (var r = headerRowIdx + 1; r <= totalRowIdx; r++) {
+      final isTotal = r == totalRowIdx;
+      final dataIdx = r - (headerRowIdx + 1);
+      final fill = isTotal
+          ? totalFill
+          : (dataIdx.isOdd ? stripeFill : null);
       s.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r)).cellStyle =
-          bodyStyle(f, bold: r == totalRowIdx);
+          bodyStyle(f, bold: isTotal, fill: fill);
     }
     s.setColumnWidth(c, _xlsxColWidth(name));
   }
 }
 
 double _xlsxColWidth(String name) => switch (name) {
-      'Position' => 22,
-      'Issuer' || 'Index' => 14,
-      'Proj Value @ Reset (\$000)' || 'Proj \$ Gain @ Reset (\$000)' => 16,
-      'Floor Type' || 'Reset Freq' || 'Days to Maturity' => 12,
+      'Position' => 24,
+      'Index' => 15,
+      'Issuer' || 'Type' => 12,
+      'Proj Value @ Reset (\$000)' || 'Proj \$ Gain @ Reset (\$000)' => 15,
+      'Initial (\$000)' || 'Realized (\$000)' => 13,
+      'Floor Type' || 'Reset Freq' || 'Days to Maturity' || 'Days to Reset' => 12,
+      'Next Reset' || 'Maturity' || 'Open' || 'Last Reset' => 11,
+      'CAP' || 'Part.' || 'Floor' => 9,
       _ => 11,
     };

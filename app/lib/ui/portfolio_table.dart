@@ -356,14 +356,21 @@ class PortfolioTable extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context, PortfolioStore store, Holding x) async {
+    final cs = Theme.of(context).colorScheme;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete holding?'),
-        content: Text(store.labelFor(x)),
+        content: Text('${store.labelFor(x)}\n\nThis removes the contract from '
+            'your portfolio.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: cs.error, foregroundColor: cs.onError),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
