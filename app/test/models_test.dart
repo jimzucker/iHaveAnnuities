@@ -103,6 +103,45 @@ void main() {
     expect(h.projValueK, closeTo(100.0, 1e-9));
   });
 
+  test('projValue reinvests realized — on gains AND losses', () {
+    // gain: (100 + 20) * (1 + 0.10) = 132.0; unrealized = 120 * 0.10 = 12.0
+    final g = _h(cap: null, floor: 0, strike: 100, currentLevel: 110, realized: 20);
+    expect(g.projValueK, closeTo(132.0, 1e-9));
+    expect(g.projGainDollarsK, closeTo(12.0, 1e-9));
+    expect(g.initial + g.realized + g.projGainDollarsK, closeTo(g.projValueK, 1e-9));
+    // loss: (100 + 10) * (1 + -0.07) = 102.30; unrealized = 110 * -0.07 = -7.70
+    final l = _h(
+        cap: null, floor: -0.05, floorType: FloorType.hard,
+        strike: 100, currentLevel: 88, realized: 10); // -12% beyond -5% buffer => -7%
+    expect(l.projGain, closeTo(-0.07, 1e-9));
+    expect(l.projValueK, closeTo(102.30, 1e-9));
+    expect(l.projGainDollarsK, closeTo(-7.70, 1e-9));
+  });
+
+  test('gainStatus + hasCap across loss / flat / gain / capped', () {
+    // capped: +20% vs a 10% cap
+    final capped = _h(cap: 0.10, floor: 0, strike: 100, currentLevel: 120);
+    expect(capped.gainStatus, GainStatus.capped);
+    expect(capped.hasCap, isTrue);
+    // gain with room left (capped product, below the cap)
+    expect(_h(cap: 0.30, floor: 0, strike: 100, currentLevel: 110).gainStatus,
+        GainStatus.gain);
+    // gain uncapped
+    final unc = _h(cap: null, floor: 0, strike: 100, currentLevel: 110);
+    expect(unc.gainStatus, GainStatus.gain);
+    expect(unc.hasCap, isFalse);
+    // flat: -10% sits within a -20% buffer => 0%
+    expect(
+        _h(cap: 0.10, floor: -0.20, floorType: FloorType.hard, strike: 100, currentLevel: 90)
+            .gainStatus,
+        GainStatus.flat);
+    // loss: -20% beyond a -10% buffer => -10%
+    expect(
+        _h(cap: 0.10, floor: -0.10, floorType: FloorType.hard, strike: 100, currentLevel: 80)
+            .gainStatus,
+        GainStatus.loss);
+  });
+
   test('protectionType: Protected / Hard / Soft (v1.0)', () {
     expect(_h(cap: null, floor: 0, strike: 100, currentLevel: 100).protectionType,
         'Protected');

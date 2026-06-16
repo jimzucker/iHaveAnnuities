@@ -45,6 +45,13 @@ The numeric difference matters: on a −28% index, a **−20% buffer** loses 8%,
 **−20% floor** would cap the loss at 20%, while a **−20% soft barrier** (breached)
 loses the full 28%.
 
+The projected value reinvests realized income into the base (matching the tracker):
+
+```
+projValue   = (initial + realized) × (1 + payoff)
+unrealized  = (initial + realized) × payoff      # projValue = initial + realized + unrealized
+```
+
 ## Example contracts — $100,000 starting principal
 
 The eight illustrative contracts below match the table in the image above. They
@@ -96,7 +103,7 @@ and export; on web it persists in the browser between visits.
 ```bash
 cd app
 flutter pub get
-flutter test            # 75 tests; core 100% / data ≥95% coverage gate
+flutter test            # 77 tests; core 100% / data ≥95% coverage gate
 flutter run -d chrome   # run the web app locally
 ```
 
