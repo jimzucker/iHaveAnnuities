@@ -136,45 +136,49 @@ class _ProjectedBlock extends StatelessWidget {
     final gain = store.totalProjGain;
     final pct = store.totalInitial <= 0 ? 0.0 : gain / store.totalInitial;
     final gc = gainColor(gain, cs);
+    Widget kpi(String label, Widget value) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            value,
+            Text(label, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+          ],
+        );
+    const big = TextStyle(fontSize: 22, fontWeight: FontWeight.bold);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('${store.holdings.length} contracts',
             style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: store.totalProjValue),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOutCubic,
-          builder: (_, v, _) => Text(moneyK(v),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        ),
-        Text('Projected Value',
-            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 20, runSpacing: 6, children: [
-          _kv('Principal', moneyK(store.totalInitial), cs.onSurface, cs),
-          _kv('Realized', moneyK(store.totalRealized), cs.onSurface, cs),
-          _kv('Unrealized G/L',
-              '${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})', gc, cs),
+        const SizedBox(height: 6),
+        // The two headline totals, large and meaningfully colored.
+        Wrap(spacing: 32, runSpacing: 8, children: [
+          kpi(
+            'Total Value',
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: store.totalProjValue),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, _) => Text(moneyK(v), style: big),
+            ),
+          ),
+          kpi(
+            'Total Unrealized G/L',
+            Text('${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})',
+                style: big.copyWith(color: gc)),
+          ),
         ]),
         const SizedBox(height: 8),
-        SizedBox(width: 220, child: _GainBar(pct: pct, color: gc)),
+        SizedBox(width: 240, child: _GainBar(pct: pct, color: gc)),
+        const SizedBox(height: 6),
+        Text(
+            'Principal ${moneyK(store.totalInitial)}   ·   '
+            'Realized ${moneyK(store.totalRealized)}',
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
       ],
     );
   }
-
-  Widget _kv(String k, String v, Color valueColor, ColorScheme cs) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(k, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-          Text(v,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: valueColor)),
-        ],
-      );
 }
 
 class _GainBar extends StatelessWidget {

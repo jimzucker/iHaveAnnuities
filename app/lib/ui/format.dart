@@ -39,17 +39,24 @@ Color gainColor(double v, ColorScheme c) {
   return v > 0 ? (dark ? _gainGreenDark : gainGreen) : (dark ? _lossRedDark : lossRed);
 }
 
+/// Color only the EXCEPTION: red for a loss, neutral otherwise — so losses
+/// stand out instead of every positive row being green.
+Color lossColor(double v, ColorScheme c) => v < 0
+    ? (c.brightness == Brightness.dark ? _lossRedDark : lossRed)
+    : c.onSurface;
+
 // "Cap reached" amber — a positive gain that has hit its ceiling.
 const capAmber = Color(0xFFB26A00);
 const _capAmberDark = Color(0xFFE0A030);
 
-/// Color for the upside status: red loss · green gain · amber capped.
+/// Color for the upside status — only the exceptions are colored (red loss,
+/// amber capped); a routine gain is neutral so it doesn't wash the table green.
 Color gainStatusColor(GainStatus s, ColorScheme c) {
   final dark = c.brightness == Brightness.dark;
   return switch (s) {
     GainStatus.loss => dark ? _lossRedDark : lossRed,
     GainStatus.capped => dark ? _capAmberDark : capAmber,
-    GainStatus.gain => dark ? _gainGreenDark : gainGreen,
+    GainStatus.gain => c.onSurface,
     GainStatus.flat => c.onSurfaceVariant,
   };
 }

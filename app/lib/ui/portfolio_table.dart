@@ -46,8 +46,10 @@ class PortfolioTable extends StatelessWidget {
   const PortfolioTable({super.key});
 
   static DataCell _t(String s) => DataCell(Text(s));
+  // Neutral unless it's a loss — keeps routine positives from washing the table
+  // green so losses (red) and capped rows (amber) actually stand out.
   static DataCell _signed(double v, ColorScheme cs) =>
-      DataCell(Text(pctSigned(v), style: TextStyle(color: gainColor(v, cs))));
+      DataCell(Text(pctSigned(v), style: TextStyle(color: lossColor(v, cs))));
 
   static Widget _pill(String text, Color bg, Color fg) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -83,7 +85,7 @@ class PortfolioTable extends StatelessWidget {
         _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
-                style: TextStyle(color: gainColor(h.projGainDollarsK, cs))))),
+                style: TextStyle(color: lossColor(h.projGainDollarsK, cs))))),
         // Projected payoff %, highlighted by status: red loss / green gain /
         // amber when the cap is reached. A lock (cap reached) or open-lock
         // (room left) icon — each with a tooltip — flags capped products.
@@ -286,7 +288,7 @@ class PortfolioTable extends StatelessWidget {
       itemBuilder: (_, i) {
         final x = items[i];
         final prot = protectionPalette(x.protectionType, cs);
-        final gc = gainColor(x.projGainDollarsK, cs);
+        final gc = lossColor(x.projGainDollarsK, cs); // red loss, neutral else
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
           child: InkWell(
@@ -321,7 +323,8 @@ class PortfolioTable extends StatelessWidget {
                     Text('${x.projGainDollarsK >= 0 ? '▲' : '▼'} ${moneyK(x.projGainDollarsK)}',
                         style: TextStyle(color: gc, fontWeight: FontWeight.w600)),
                     Text(pctSigned(x.projGain),
-                        style: TextStyle(fontSize: 12, color: gainColor(x.projGain, cs))),
+                        style: TextStyle(
+                            fontSize: 12, color: gainStatusColor(x.gainStatus, cs))),
                   ]),
                 ]),
                 const Divider(height: 18),

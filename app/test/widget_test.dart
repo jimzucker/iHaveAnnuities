@@ -18,6 +18,7 @@ import 'package:http/testing.dart';
 import 'package:ihaveannuities/ui/holding_detail.dart';
 import 'package:ihaveannuities/ui/holding_form.dart';
 import 'package:ihaveannuities/ui/index_chart_screen.dart';
+import 'package:ihaveannuities/ui/index_period_chart.dart';
 import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
 
@@ -130,6 +131,26 @@ void main() {
     expect(find.text('12.25% cap reached'), findsOneWidget); // status chip
     expect(find.textContaining('Return at reset vs. the index move'),
         findsOneWidget); // plain-English chart caption
+  });
+
+  testWidgets('index-period chart plots the index since the last reset',
+      (tester) async {
+    int e(int y, int m, int d) =>
+        DateTime.utc(y, m, d).millisecondsSinceEpoch ~/ 1000;
+    final json = '{"asOf":"2026-06-15","daily":{"SPX":'
+        '[[${e(2025, 12, 1)},6300.0],[${e(2026, 3, 1)},7000.0],'
+        '[${e(2026, 6, 1)},7536.0]]},"intraday":{}}';
+    final client = MockClient((_) async => http.Response(json, 200));
+    final aspida = parseTracker(
+            File('../data/example-portfolio.xlsx').readAsBytesSync())
+        .firstWhere((h) => h.issuer == 'ASPIDA'); // ^GSPC, lastReset 2025-11
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: IndexPeriodChart(holding: aspida, client: client))));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(CustomPaint), findsWidgets); // index path painted
+    expect(find.textContaining('since the last reset'), findsOneWidget);
   });
 
   testWidgets('combined index chart: ranges, legend toggle, remembered',

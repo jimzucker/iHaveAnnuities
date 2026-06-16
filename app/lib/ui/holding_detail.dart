@@ -12,7 +12,7 @@ import '../core/payoff.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
-import 'payoff_chart.dart';
+import 'index_period_chart.dart';
 
 class HoldingDetail extends StatelessWidget {
   const HoldingDetail({super.key, required this.holding});
@@ -36,18 +36,6 @@ class HoldingDetail extends StatelessWidget {
   }
 
   /// Plain-English read of where it stands today.
-  String _chartCaption(Holding h) {
-    final state = switch (h.gainStatus) {
-      GainStatus.capped => 'cap reached',
-      GainStatus.loss => 'in loss',
-      GainStatus.flat => 'flat',
-      GainStatus.gain => 'gaining',
-    };
-    return 'Return at reset vs. the index move. Today the index is '
-        '${pctSigned(h.indexGain)} → you would receive ${pctSigned(h.projGain)} '
-        '($state).';
-  }
-
   @override
   Widget build(BuildContext context) {
     final store = context.read<PortfolioStore>();
@@ -85,7 +73,7 @@ class HoldingDetail extends StatelessWidget {
           // Wide screens: chart and the fact cards side by side (everything
           // above the fold). Narrow: stacked.
           LayoutBuilder(builder: (context, c) {
-            final chart = _chartCard(context, h, cs);
+            final chart = _chartCard(context, h, store.base);
             final sections = _sections(context, h, asOf, cs);
             if (c.maxWidth >= 960) {
               return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -101,18 +89,10 @@ class HoldingDetail extends StatelessWidget {
     );
   }
 
-  Widget _chartCard(BuildContext context, Holding h, ColorScheme cs) => Card(
+  Widget _chartCard(BuildContext context, Holding h, String base) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            PayoffChart(holding: h),
-            const SizedBox(height: 8),
-            Text(_chartCaption(h),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
-          ]),
+          child: IndexPeriodChart(holding: h, base: base),
         ),
       );
 
