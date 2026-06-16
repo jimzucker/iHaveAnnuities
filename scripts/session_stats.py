@@ -25,15 +25,19 @@ import sys
 # Gaps longer than this (minutes) count as idle, not active work.
 DEFAULT_IDLE_MIN = 5
 
-# Claude Opus 4.x standard API rates, USD per million tokens. These are
-# assumptions for ROI math — verify against current pricing. The total is
-# dominated by the cache-read rate, so that one matters most.
+# Claude Opus 4.8 standard API rates, USD per million tokens (Anthropic
+# published pricing, current as of 2026-06; Opus dropped 3x from the old
+# 4.x $15/$75 starting with 4.5). The total is dominated by the cache-read
+# rate, so that one matters most. Override with --rate-* for other models.
 RATES = {
-    "output": 75.0,       # base output
-    "input": 15.0,        # base (uncached) input
-    "cache_write": 18.75, # 1.25x input (5-min TTL)
-    "cache_read": 1.50,   # 0.10x input
+    "output": 25.0,      # base output
+    "input": 5.0,        # base (uncached) input
+    "cache_write": 6.25, # 1.25x input (5-min TTL)
+    "cache_read": 0.50,  # 0.10x input
 }
+
+# Loaded cost of one engineer-day, USD — used only for the ROI comparison.
+DAY_RATE = 800
 
 
 def transcript_dir_for(repo_path: str) -> str:
@@ -191,10 +195,10 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "",
         "## Cost",
         "",
-        "What this would cost on the **metered Claude API**, using Opus 4.x "
-        "standard rates (USD per million tokens). These rates are assumptions — "
-        "verify against current pricing; the total scales linearly with the "
-        "cache-read rate, which dominates.",
+        "What this would cost on the **metered Claude API**, at Anthropic's "
+        "published **Opus 4.8** rates (USD per million tokens, current as of "
+        "2026-06). The total scales linearly with the cache-read rate, which "
+        "dominates; override with `--rate-*` for other models.",
         "",
         "| Token type | Rate / M | Tokens | Cost |",
         "| --- | ---: | ---: | ---: |",
@@ -222,9 +226,11 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "**ROI framing.** A from-scratch Flutter app — payoff engine, custom "
         "`.xlsx` reader/writer, 60+ tests with a CI coverage gate, Pages deploy, "
         "and a market-data cron — is realistically **3–10 engineer-days**. At "
-        f"~$800/loaded-day that's **$2,400–$8,000** of labor, so even the metered "
-        f"~${c['total']:,.0f} (or a month of subscription) is roughly **5–15× "
-        "cheaper** than the equivalent hands-on time.",
+        f"~${DAY_RATE:,}/loaded-day that's **${3 * DAY_RATE:,}–${10 * DAY_RATE:,}** "
+        f"of labor, so even the metered ~${c['total']:,.0f} (or a month of "
+        f"subscription) is roughly **{3 * DAY_RATE / c['total']:.0f}–"
+        f"{10 * DAY_RATE / c['total']:.0f}× cheaper** than the equivalent "
+        "hands-on time.",
         "",
         "## Caveats",
         "",
@@ -237,8 +243,9 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "think-time with reading time.",
         "- **Token counts come straight from the `usage` field** on each "
         "assistant message; **timing from event timestamps**.",
-        "- **Costs are estimates** at the assumed Opus 4.x rates above; the "
-        "labor comparison is a rough industry figure, not a measured one.",
+        "- **Costs use Anthropic's published Opus 4.8 rates** (current as of "
+        "2026-06); the labor comparison is a rough industry figure, not a "
+        "measured one.",
         "",
     ]
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -331,7 +338,7 @@ def main() -> None:
         print(f"  Idle (excluded)      {hms(idle)}\n")
 
     c = costs(outp, inp, cc, cr, rates)
-    print("COST (metered API, assumed Opus 4.x rates)")
+    print("COST (metered API, Opus 4.8 published rates, 2026-06)")
     print(f"  Output      @ ${rates['output']:>6.2f}/M   ${c['output']:>10,.2f}")
     print(f"  Input       @ ${rates['input']:>6.2f}/M   ${c['input']:>10,.2f}")
     print(f"  Cache write @ ${rates['cache_write']:>6.2f}/M   ${c['cache_write']:>10,.2f}")
