@@ -107,8 +107,8 @@ instead of the 20-column horizontal scroll.
 ---
 
 ### Status
-- [ ] Part 1 — reorder (screen + schema v1.1 + generator)
-- [ ] Part 2 — additional reference indices (Dow, Nasdaq Composite)
+- [x] Part 1 — reorder (screen + schema v1.1 + generator) — shipped
+- [x] Part 2 — additional reference indices (Dow, Nasdaq Composite) — shipped
 - [ ] Part 3 — table readability
 - [ ] Part 4 — portfolio hero
 - [ ] Part 5 — accessibility & theming
