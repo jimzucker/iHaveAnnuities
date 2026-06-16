@@ -11,6 +11,7 @@ Usage:
     python3 scripts/session_stats.py            # all transcripts for this repo
     python3 scripts/session_stats.py FILE.jsonl # a specific transcript
     python3 scripts/session_stats.py --idle 10  # idle gap threshold in minutes
+    python3 scripts/session_stats.py --md       # write the Markdown report
 """
 from __future__ import annotations
 
@@ -23,6 +24,16 @@ import sys
 
 # Gaps longer than this (minutes) count as idle, not active work.
 DEFAULT_IDLE_MIN = 5
+
+# Claude Opus 4.x standard API rates, USD per million tokens. These are
+# assumptions for ROI math — verify against current pricing. The total is
+# dominated by the cache-read rate, so that one matters most.
+RATES = {
+    "output": 75.0,       # base output
+    "input": 15.0,        # base (uncached) input
+    "cache_write": 18.75, # 1.25x input (5-min TTL)
+    "cache_read": 1.50,   # 0.10x input
+}
 
 
 def transcript_dir_for(repo_path: str) -> str:
@@ -95,13 +106,29 @@ def hms(td: dt.timedelta) -> str:
     return f"{s // 3600}h {s % 3600 // 60}m {s % 60}s"
 
 
+def costs(outp, inp, cc, cr, rates):
+    """Return per-category USD cost plus the no-cache counterfactual."""
+    c = {
+        "output": outp / 1e6 * rates["output"],
+        "input": inp / 1e6 * rates["input"],
+        "cache_write": cc / 1e6 * rates["cache_write"],
+        "cache_read": cr / 1e6 * rates["cache_read"],
+    }
+    c["total"] = sum(c.values())
+    # If cache reads had been billed as normal input tokens.
+    c["nocache_reads"] = cr / 1e6 * rates["input"]
+    c["cache_savings"] = c["nocache_reads"] - c["cache_read"]
+    return c
+
+
 def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
                    turns, events, active, claude, user, idle, idle_min,
-                   n_user_records) -> None:
+                   n_user_records, rates) -> None:
     """Write the full narrative report — the story, not just the tables."""
     cr_m = cr / 1e6
     out_m = outp / 1e6
     total_m = total / 1e6
+    c = costs(outp, inp, cc, cr, rates)
     lines = [
         "# Build session story",
         "",
@@ -162,6 +189,43 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         ]
     lines += [
         "",
+        "## Cost",
+        "",
+        "What this would cost on the **metered Claude API**, using Opus 4.x "
+        "standard rates (USD per million tokens). These rates are assumptions — "
+        "verify against current pricing; the total scales linearly with the "
+        "cache-read rate, which dominates.",
+        "",
+        "| Token type | Rate / M | Tokens | Cost |",
+        "| --- | ---: | ---: | ---: |",
+        f"| Output | ${rates['output']:.2f} | {outp:,} | ${c['output']:,.2f} |",
+        f"| Input (uncached) | ${rates['input']:.2f} | {inp:,} | "
+        f"${c['input']:,.2f} |",
+        f"| Cache write | ${rates['cache_write']:.2f} | {cc:,} | "
+        f"${c['cache_write']:,.2f} |",
+        f"| Cache read | ${rates['cache_read']:.2f} | {cr:,} | "
+        f"${c['cache_read']:,.2f} |",
+        f"| **Total** | | | **≈ ${c['total']:,.0f}** |",
+        "",
+        f"**Prompt caching saved ~${c['cache_savings']:,.0f}.** Those "
+        f"{cr_m:.0f} M cache reads, if billed as normal input tokens "
+        f"(${rates['input']:.0f}/M), would have been **~${c['nocache_reads']:,.0f}** "
+        f"instead of **${c['cache_read']:,.0f}** — a "
+        f"{rates['input'] / rates['cache_read']:.0f}× discount, and the single "
+        "biggest cost lever.",
+        "",
+        "**At work this usually isn't metered API.** Most teams run Claude Code "
+        "on a flat **subscription** (Max ~$100–200/mo), where this build is "
+        f"effectively included; the ~${c['total']:,.0f} above is the equivalent "
+        "à-la-carte value, useful for ROI math but not what most orgs pay.",
+        "",
+        "**ROI framing.** A from-scratch Flutter app — payoff engine, custom "
+        "`.xlsx` reader/writer, 60+ tests with a CI coverage gate, Pages deploy, "
+        "and a market-data cron — is realistically **3–10 engineer-days**. At "
+        f"~$800/loaded-day that's **$2,400–$8,000** of labor, so even the metered "
+        f"~${c['total']:,.0f} (or a month of subscription) is roughly **5–15× "
+        "cheaper** than the equivalent hands-on time.",
+        "",
         "## Caveats",
         "",
         f"- All from **{len(files)} transcript "
@@ -173,6 +237,8 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         "think-time with reading time.",
         "- **Token counts come straight from the `usage` field** on each "
         "assistant message; **timing from event timestamps**.",
+        "- **Costs are estimates** at the assumed Opus 4.x rates above; the "
+        "labor comparison is a rough industry figure, not a measured one.",
         "",
     ]
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -188,7 +254,17 @@ def main() -> None:
     ap.add_argument("--md", nargs="?", const="docs/SESSION_STATS.md", default=None,
                     metavar="PATH",
                     help="write a Markdown report (default path docs/SESSION_STATS.md)")
+    ap.add_argument("--rate-output", type=float, default=RATES["output"])
+    ap.add_argument("--rate-input", type=float, default=RATES["input"])
+    ap.add_argument("--rate-cache-write", type=float, default=RATES["cache_write"])
+    ap.add_argument("--rate-cache-read", type=float, default=RATES["cache_read"])
     args = ap.parse_args()
+    rates = {
+        "output": args.rate_output,
+        "input": args.rate_input,
+        "cache_write": args.rate_cache_write,
+        "cache_read": args.rate_cache_read,
+    }
 
     files = find_transcripts(args.paths)
     rows: list[dict] = []
@@ -231,7 +307,7 @@ def main() -> None:
         n_user_records = sum(1 for r in rows if r.get("type") == "user")
         write_markdown(args.md, files, len(rows), outp, inp, cc, cr, total,
                        prompts, assistant_turns, events, active, claude, user,
-                       idle, args.idle, n_user_records)
+                       idle, args.idle, n_user_records, rates)
         print(f"Wrote {args.md}")
         return
 
@@ -252,7 +328,17 @@ def main() -> None:
         print(f"  Active (gaps <{args.idle:g}m)   {hms(active)}")
         print(f"    Claude working     {hms(claude)}")
         print(f"    User prompting     {hms(user)}")
-        print(f"  Idle (excluded)      {hms(idle)}")
+        print(f"  Idle (excluded)      {hms(idle)}\n")
+
+    c = costs(outp, inp, cc, cr, rates)
+    print("COST (metered API, assumed Opus 4.x rates)")
+    print(f"  Output      @ ${rates['output']:>6.2f}/M   ${c['output']:>10,.2f}")
+    print(f"  Input       @ ${rates['input']:>6.2f}/M   ${c['input']:>10,.2f}")
+    print(f"  Cache write @ ${rates['cache_write']:>6.2f}/M   ${c['cache_write']:>10,.2f}")
+    print(f"  Cache read  @ ${rates['cache_read']:>6.2f}/M   ${c['cache_read']:>10,.2f}")
+    print(f"  Total                       ${c['total']:>10,.2f}")
+    print(f"  Caching saved ~${c['cache_savings']:,.0f} vs. uncached "
+          f"(~${c['nocache_reads']:,.0f})")
 
 
 if __name__ == "__main__":
