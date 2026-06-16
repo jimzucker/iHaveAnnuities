@@ -4,6 +4,7 @@
 // (shared_preferences → localStorage on web). Import/export use the tracker
 // .xlsx schema; revaluation marks holdings to the latest published prices.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,23 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
+
+  /// Hour (local, 24h) at/after which the once-per-day post-close refresh fires.
+  /// 17:00 ≈ the 5 PM ET market-data publish (assumes an ET user).
+  static const refreshTriggerHour = 17;
+
+  Timer? _autoTimer;
+  DateTime? _lastAutoRefresh;
+
+  /// Whether a once-per-day post-close auto-refresh is due: true when [now] is
+  /// at/past today's [triggerHour] and we haven't refreshed since then. Pure so
+  /// it can be unit-tested without timers.
+  static bool autoRefreshDue(DateTime now, DateTime? last,
+      {int triggerHour = refreshTriggerHour}) {
+    final trigger = DateTime(now.year, now.month, now.day, triggerHour);
+    if (now.isBefore(trigger)) return false;
+    return last == null || last.isBefore(trigger);
+  }
 
   final String base;
 
@@ -92,6 +110,23 @@ class PortfolioStore extends ChangeNotifier {
     }
     notifyListeners();
     await refreshMarket();
+    // While the app stays open, re-pull market.json once per day shortly after
+    // the publish time — so a kept-open tab appears to update on its own.
+    _autoTimer ??= Timer.periodic(
+        const Duration(minutes: 20), (_) => _maybeAutoRefresh());
+  }
+
+  Future<void> _maybeAutoRefresh() async {
+    final now = DateTime.now();
+    if (!autoRefreshDue(now, _lastAutoRefresh)) return;
+    _lastAutoRefresh = now;
+    await refreshMarket();
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _persist() async {

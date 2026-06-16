@@ -67,11 +67,13 @@ class InfoPage extends StatelessWidget {
 
               _Section(title: 'Where the numbers come from', children: [
                 _Para(
-                    'Index levels (S&P 500, Nasdaq-100, Russell 2000) are pulled '
-                    'from a public market feed and refreshed once per trading day '
-                    'at the 5 PM ET close. Everything else is computed from the '
-                    'contract terms you enter. The "as of" date in the header '
-                    'shows when prices were last updated.'),
+                    'Index levels (S&P 500, Dow, Nasdaq Composite, Nasdaq-100, '
+                    'and Russell 2000) are pulled from a public market feed and '
+                    'refreshed once per trading day at the 5 PM ET close; if you '
+                    'leave the app open it re-checks once a day after the close. '
+                    'Everything else is computed from the contract terms you '
+                    'enter. The "as of" date in the header shows when prices were '
+                    'last updated.'),
               ]),
 
               _Section(title: 'Your data', children: [

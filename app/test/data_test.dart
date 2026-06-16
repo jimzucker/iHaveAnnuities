@@ -135,6 +135,21 @@ void main() {
       expect(m.bySymbol['COMP'], 23501.75);
     });
 
+    test('autoRefreshDue fires once per day after the trigger hour', () {
+      DateTime at(int h, [int day = 16]) => DateTime(2026, 6, day, h);
+      // Before 17:00 → never due.
+      expect(PortfolioStore.autoRefreshDue(at(9), null), isFalse);
+      // At/after 17:00 with no prior refresh → due.
+      expect(PortfolioStore.autoRefreshDue(at(17), null), isTrue);
+      expect(PortfolioStore.autoRefreshDue(at(20), null), isTrue);
+      // Already refreshed after today's trigger → not due again today.
+      expect(PortfolioStore.autoRefreshDue(at(20), at(17, 16)), isFalse);
+      // Last refresh was before today's trigger → due.
+      expect(PortfolioStore.autoRefreshDue(at(18), at(16, 16)), isTrue);
+      // New day, last refresh was yesterday evening → due again.
+      expect(PortfolioStore.autoRefreshDue(at(18, 17), at(18, 16)), isTrue);
+    });
+
     test('older payload without dow/comp is null-safe', () {
       final m = Market.parse(_marketJson); // no dow/comp keys
       expect(m.dow, isNull);

@@ -11,7 +11,10 @@ types (the tracker's *Floor Type* column):
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
-tracker `.xlsx`; index prices refresh daily at 5 PM ET on trading days.
+tracker `.xlsx`; index prices (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100,
+Russell 2000) refresh daily at 5 PM ET on trading days, and a kept‑open tab
+re‑checks once a day after the close. Light/dark, with a responsive card layout
+on phones.
 
 ![Overview](docs/overview.png)
 
@@ -93,7 +96,7 @@ and export; on web it persists in the browser between visits.
 ```bash
 cd app
 flutter pub get
-flutter test            # 58 tests; core 100% / data ≥95% coverage gate
+flutter test            # 70 tests; core 100% / data ≥95% coverage gate
 flutter run -d chrome   # run the web app locally
 ```
 
@@ -101,8 +104,12 @@ flutter run -d chrome   # run the web app locally
   participation, capped/uncapped, income notes).
 - **Data** (`lib/data`): robust `.xlsx` reader/writer (the tracker schema), market
   feed, and browser-persisted store.
-- **Prices**: `data/market.json` is refreshed by a GitHub Action at 5 PM ET on
-  trading days (Yahoo Finance, no API key); the web app is published to GitHub Pages.
+- **Prices**: `data/market.json` (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100,
+  Russell 2000) is refreshed by a GitHub Action at 5 PM ET on trading days
+  (Yahoo Finance, no API key); a kept‑open tab also re‑pulls once a day after the
+  close. The web app is published to GitHub Pages.
+- **Table**: sortable, with a compact/full column toggle and (on phones) a card
+  layout; the drill‑down shows a payoff chart and key figures.
 - The example/template spreadsheets and `docs/overview.png` are all generated from
   `docs/gen_overview.py` (`python3 docs/gen_overview.py`).
 - `scripts/session_stats.py` summarizes the Claude Code build sessions for this repo

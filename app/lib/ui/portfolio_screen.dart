@@ -171,11 +171,13 @@ class _PricesHeader extends StatelessWidget {
         child: m == null
             ? const Text('Loading prices…')
             : Wrap(spacing: 18, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                // Large-cap benchmarks first, the two Nasdaqs kept adjacent,
+                // then small-caps.
                 _Quote('S&P 500', m.spx),
-                _Quote('Nasdaq-100', m.ndx),
-                _Quote('Russell 2000', m.rut),
                 if (m.dow != null) _Quote('Dow', m.dow!),
                 if (m.comp != null) _Quote('Nasdaq Comp', m.comp!),
+                _Quote('Nasdaq-100', m.ndx),
+                _Quote('Russell 2000', m.rut),
                 Text('Updated ${date(m.asOf)}',
                     style: const TextStyle(fontStyle: FontStyle.italic)),
               ]),
