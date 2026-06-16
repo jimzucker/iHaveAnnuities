@@ -293,32 +293,50 @@ class _MultiLinePainter extends CustomPainter {
         if (best == null) continue;
         at ??= best.$1;
         final o = Offset(sx(best.$1), sy(best.$2));
-        canvas.drawCircle(o, 3.5, Paint()..color = s.color);
-        _txt(canvas, pctSigned(best.$2), Offset(cx + (left ? -8 : 8), o.dy - 6),
-            color: s.color, anchor: left ? _Anchor.right : _Anchor.left);
+        canvas.drawCircle(o, 3.5,
+            Paint()..color = Colors.white..style = PaintingStyle.fill);
+        canvas.drawCircle(o, 3.5,
+            Paint()..color = s.color..strokeWidth = 2..style = PaintingStyle.stroke);
+        // Filled chip (line color bg, white text) so values stay readable.
+        _chip(canvas, pctSigned(best.$2), Offset(cx + (left ? -8 : 8), o.dy),
+            bg: s.color, fg: Colors.white, anchor: left ? _Anchor.right : _Anchor.left);
       }
       if (at != null) {
-        _txt(canvas, date(at), Offset(cx, _padT + ht + 4),
-            anchor: _Anchor.center);
+        _chip(canvas, date(at), Offset(cx, _padT + ht + 3),
+            bg: cs.surfaceContainerHighest, fg: cs.onSurface, anchor: _Anchor.center);
       }
     }
   }
 
-  void _txt(Canvas canvas, String s, Offset at,
-      {Color? color, _Anchor anchor = _Anchor.right}) {
+  void _txt(Canvas canvas, String s, Offset at, {Color? color}) {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(
-              color: color ?? cs.onSurfaceVariant,
-              fontSize: 10,
-              fontWeight: color == null ? FontWeight.normal : FontWeight.w600)),
+          style: TextStyle(color: color ?? cs.onSurfaceVariant, fontSize: 10)),
       textDirection: TextDirection.ltr,
     )..layout();
-    var dx = at.dx;
-    if (anchor == _Anchor.right) dx -= tp.width;
-    if (anchor == _Anchor.center) dx -= tp.width / 2;
-    tp.paint(canvas, Offset(dx, at.dy));
+    tp.paint(canvas, Offset(at.dx - tp.width, at.dy));
+  }
+
+  /// A small filled, rounded label (so crosshair values don't blend into the
+  /// lines). [at] is the anchor point; vertically centered on it.
+  void _chip(Canvas canvas, String s, Offset at,
+      {required Color bg, required Color fg, _Anchor anchor = _Anchor.left}) {
+    final tp = TextPainter(
+      text: TextSpan(
+          text: s,
+          style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w700)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const padH = 4.0, padV = 2.0;
+    final boxW = tp.width + padH * 2, boxH = tp.height + padV * 2;
+    var x = at.dx;
+    if (anchor == _Anchor.right) x -= boxW;
+    if (anchor == _Anchor.center) x -= boxW / 2;
+    final rect = Rect.fromLTWH(x, at.dy - boxH / 2, boxW, boxH);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(4)), Paint()..color = bg);
+    tp.paint(canvas, Offset(x + padH, rect.top + padV));
   }
 
   @override
