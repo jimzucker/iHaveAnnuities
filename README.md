@@ -105,6 +105,8 @@ flutter run -d chrome   # run the web app locally
   trading days (Yahoo Finance, no API key); the web app is published to GitHub Pages.
 - The example/template spreadsheets and `docs/overview.png` are all generated from
   `docs/gen_overview.py` (`python3 docs/gen_overview.py`).
+- `scripts/session_stats.py` summarizes the Claude Code build sessions for this repo
+  (token usage, prompt/turn counts, active vs. idle time) from the local transcripts.
 
 ## License
 
