@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/models.dart';
+
 final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 final _date = DateFormat('dd-MMM-yy');
 final _level = NumberFormat('#,##0.00');
@@ -31,6 +33,21 @@ Color gainColor(double v, ColorScheme c) {
   if (v == 0) return c.onSurfaceVariant;
   final dark = c.brightness == Brightness.dark;
   return v > 0 ? (dark ? _gainGreenDark : gainGreen) : (dark ? _lossRedDark : lossRed);
+}
+
+// "Cap reached" amber — a positive gain that has hit its ceiling.
+const capAmber = Color(0xFFB26A00);
+const _capAmberDark = Color(0xFFE0A030);
+
+/// Color for the upside status: red loss · green gain · amber capped.
+Color gainStatusColor(GainStatus s, ColorScheme c) {
+  final dark = c.brightness == Brightness.dark;
+  return switch (s) {
+    GainStatus.loss => dark ? _lossRedDark : lossRed,
+    GainStatus.capped => dark ? _capAmberDark : capAmber,
+    GainStatus.gain => dark ? _gainGreenDark : gainGreen,
+    GainStatus.flat => c.onSurfaceVariant,
+  };
 }
 
 /// Single source of truth for protection-type colors: a pill background/

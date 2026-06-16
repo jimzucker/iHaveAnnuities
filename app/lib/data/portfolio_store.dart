@@ -22,6 +22,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _sortKey = 'sortColumn.v1';
   static const _ascKey = 'sortAsc.v1';
   static const _fullColKey = 'fullColumns.v1';
+  static const _hideSummaryKey = 'hideSummary.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
@@ -55,12 +56,16 @@ class PortfolioStore extends ChangeNotifier {
   int _sortColumn = defaultSortColumn;
   bool _sortAscending = true;
   bool _fullColumns = true;
+  bool _hideSummary = false;
 
   int get sortColumn => _sortColumn;
   bool get sortAscending => _sortAscending;
 
   /// Whether the table shows every column (true) or a compact core view.
   bool get fullColumns => _fullColumns;
+
+  /// Whether the prices banner + hero are hidden to maximize the list (phones).
+  bool get hideSummary => _hideSummary;
 
   /// True while a market refresh is in flight (drives the app-bar spinner).
   bool get refreshing => _refreshing;
@@ -74,6 +79,7 @@ class PortfolioStore extends ChangeNotifier {
   String labelFor(Holding h) => dedupedPosition(h, _holdings);
 
   double get totalInitial => _holdings.fold(0.0, (s, h) => s + h.initial);
+  double get totalRealized => _holdings.fold(0.0, (s, h) => s + h.realized);
   double get totalProjValue => _holdings.fold(0.0, (s, h) => s + h.projValueK);
   double get totalProjGain => totalProjValue - totalInitial;
 
@@ -94,11 +100,19 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setHideSummary(bool hide) async {
+    _hideSummary = hide;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hideSummaryKey, hide);
+    notifyListeners();
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
     _sortAscending = prefs.getBool(_ascKey) ?? true;
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
+    _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
     final raw = prefs.getString(_key);
     if (raw != null) {
       try {

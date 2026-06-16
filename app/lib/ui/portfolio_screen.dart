@@ -49,6 +49,12 @@ class PortfolioScreen extends StatelessWidget {
                   : Icons.view_column_outlined),
               onPressed: () => store.setFullColumns(!store.fullColumns),
             ),
+          if (!store.isEmpty)
+            IconButton(
+              tooltip: store.hideSummary ? 'Show summary' : 'Hide summary',
+              icon: Icon(store.hideSummary ? Icons.unfold_more : Icons.unfold_less),
+              onPressed: () => store.setHideSummary(!store.hideSummary),
+            ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
             itemBuilder: (_) => const [
@@ -70,7 +76,7 @@ class PortfolioScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          const _PricesHeader(),
+          if (!store.hideSummary) const _PricesHeader(),
           if (store.status != null)
             Container(
               width: double.infinity,
@@ -79,7 +85,7 @@ class PortfolioScreen extends StatelessWidget {
               child: Text(store.status!,
                   style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
             ),
-          if (!store.isEmpty) const PortfolioHero(),
+          if (!store.isEmpty && !store.hideSummary) const PortfolioHero(),
           Expanded(
             child: store.isEmpty
                 ? _Empty(

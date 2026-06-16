@@ -65,6 +65,17 @@ void main() {
     expect(names.indexOf('Next Reset'), lessThan(names.indexOf('CAP')));
   });
 
+  test('gainStatus flags capped / loss / gain', () {
+    final hs = parseTracker(File(examplePath).readAsBytesSync());
+    // +18% index vs a 12.25% cap → ceilinged.
+    expect(hs.firstWhere((h) => h.issuer == 'ASPIDA').gainStatus,
+        GainStatus.capped);
+    // −35% breaches the −30% soft barrier → full loss.
+    expect(hs.firstWhere((h) => h.issuer == 'BNP').gainStatus, GainStatus.loss);
+    // uncapped +40% at 92.25% participation → gain with no ceiling.
+    expect(hs.firstWhere((h) => h.issuer == 'HSBC').gainStatus, GainStatus.gain);
+  });
+
   test('downloadable template.xlsx is valid + parseable', () {
     final holdings = parseTracker(File('../data/template.xlsx').readAsBytesSync());
     expect(holdings, isNotEmpty); // sample rows present

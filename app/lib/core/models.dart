@@ -15,6 +15,9 @@ enum AccountType { nonQual, ira, roth }
 /// * [ResetFreq.monthly] — resets every month (income-note coupon cadence).
 enum ResetFreq { inception, annual, monthly }
 
+/// Upside status of a holding's current period (drives the table highlight).
+enum GainStatus { loss, flat, gain, capped }
+
 extension ResetFreqLabel on ResetFreq {
   String get label => switch (this) {
         ResetFreq.inception => 'Inception',
@@ -120,6 +123,21 @@ class Holding {
 
   /// Projected $ gain at reset, in $000.
   double get projGainDollarsK => projValueK - initial;
+
+  /// Upside status of the current period:
+  ///  - `loss`     — projected payoff is negative
+  ///  - `capped`   — a positive gain that has reached the cap (ceilinged)
+  ///  - `gain`     — a positive gain with room left (or uncapped)
+  ///  - `flat`     — exactly zero
+  GainStatus get gainStatus {
+    if (projGain < 0) return GainStatus.loss;
+    if (projGain == 0) return GainStatus.flat;
+    final c = cap;
+    if (!isIncomeNote && c != null && participation * indexGain >= c - 1e-9) {
+      return GainStatus.capped;
+    }
+    return GainStatus.gain;
+  }
 
   int daysToMaturity(DateTime asOf) => maturity.difference(asOf).inDays;
   int daysToReset(DateTime asOf) => nextReset.difference(asOf).inDays;

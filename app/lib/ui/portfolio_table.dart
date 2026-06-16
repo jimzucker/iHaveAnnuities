@@ -55,6 +55,8 @@ class PortfolioTable extends StatelessWidget {
       );
 
   // v1.2 order: Identity → Inputs → Outcome → Timing (monitor) → Terms (static).
+  // Labels are short (the header length, not the data, drove the column width);
+  // money is shown in full dollars on screen ($ in $000s only in the .xlsx).
   static List<_Col> _columns(ColorScheme cs) => [
         // Identity
         _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(), (h, _, _) => _t(h.issuer)),
@@ -67,20 +69,32 @@ class PortfolioTable extends StatelessWidget {
           return DataCell(_pill(p, c.bg, c.fg));
         }),
         // Inputs
-        _Col('Initial (\$000)', true, (h, _) => h.initial, (h, _, _) => _t(money000(h.initial))),
-        _Col('Realized (\$000)', true, (h, _) => h.realized, (h, _, _) => _t(money000(h.realized))),
+        _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial))),
+        _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized))),
         // Outcome
-        _Col('Proj Value @ Reset (\$000)', true, (h, _) => h.projValueK, (h, _, _) => _t(money000(h.projValueK))),
-        _Col('Proj \$ Gain @ Reset (\$000)', true, (h, _) => h.projGainDollarsK,
-            (h, _, cs) => DataCell(Text(money000(h.projGainDollarsK),
+        _Col('Proj Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
+        _Col('Unreal \$', true, (h, _) => h.projGainDollarsK,
+            (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: gainColor(h.projGainDollarsK, cs))))),
-        _Col('Proj Gain @ Reset', true, (h, _) => h.projGain, (h, _, cs) => _signed(h.projGain, cs)),
-        _Col('Index Gain %', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
+        // Projected payoff %, highlighted by status: red loss / green gain /
+        // amber + lock when the cap is reached.
+        _Col('Unreal %', true, (h, _) => h.projGain, (h, _, cs) {
+          final st = h.gainStatus;
+          final color = gainStatusColor(st, cs);
+          return DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(pctSigned(h.projGain), style: TextStyle(color: color)),
+            if (st == GainStatus.capped)
+              Padding(
+                  padding: const EdgeInsets.only(left: 3),
+                  child: Icon(Icons.lock, size: 12, color: color)),
+          ]));
+        }),
+        _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
         // Timing (monitor)
         _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
-        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
+        _Col('Days→Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
         _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
-        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
+        _Col('Days→Mat', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
         // Terms (static)
         _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
         _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
@@ -95,9 +109,8 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Floor Type',
-    'Initial (\$000)', 'Proj Value @ Reset (\$000)',
-    'Proj \$ Gain @ Reset (\$000)', 'Proj Gain @ Reset',
-    'Next Reset', 'Days to Reset',
+    'Initial', 'Proj Value', 'Unreal \$', 'Unreal %',
+    'Index Gain', 'Next Reset', 'Days→Reset',
   };
 
   @override
@@ -172,12 +185,43 @@ class PortfolioTable extends StatelessWidget {
                     ])),
                   ],
                 ),
+              _totalsRow(shown, store, cs),
             ],
           ),
         ),
       ),
     );
     });
+  }
+
+  /// Bold portfolio TOTAL row under the money columns.
+  DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
+      DataRow(
+        color: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+        cells: [
+          for (final c in shown) _totalCell(c.label, store, cs),
+          const DataCell(Text('')),
+        ],
+      );
+
+  static DataCell _totalCell(String label, PortfolioStore store, ColorScheme cs) {
+    String t = '';
+    Color? color;
+    switch (label) {
+      case 'Issuer':
+        t = 'TOTAL';
+      case 'Initial':
+        t = moneyK(store.totalInitial);
+      case 'Realized':
+        t = moneyK(store.totalRealized);
+      case 'Proj Value':
+        t = moneyK(store.totalProjValue);
+      case 'Unreal \$':
+        t = moneyK(store.totalProjGain);
+        color = gainColor(store.totalProjGain, cs);
+    }
+    return DataCell(
+        Text(t, style: TextStyle(fontWeight: FontWeight.bold, color: color)));
   }
 
   /// Phone layout: one card per holding instead of the wide table.
