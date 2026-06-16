@@ -28,6 +28,9 @@ const _indexColor = <String, Color>{
   'RUT': Color(0xFF2EA043),
 };
 
+// Plot padding — shared so the cursor gesture and the painter agree on geometry.
+const _padL = 48.0, _padR = 12.0, _padT = 10.0, _padB = 18.0;
+
 class IndexChartScreen extends StatefulWidget {
   const IndexChartScreen({super.key, this.base = '', this.client});
 
@@ -42,6 +45,7 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
   IndexHistory? _hist;
   String? _error;
   HistoryRange _range = HistoryRange.oneM;
+  double? _cursorFrac; // 0..1 across the plot; null when not hovering/touching
 
   @override
   void initState() {
@@ -104,7 +108,10 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
                   ButtonSegment(value: r, label: Text(r.label)),
               ],
               selected: {_range},
-              onSelectionChanged: (s) => setState(() => _range = s.first),
+              onSelectionChanged: (s) => setState(() {
+                _range = s.first;
+                _cursorFrac = null;
+              }),
             ),
           ),
           const SizedBox(height: 12),
@@ -128,10 +135,27 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
             const Expanded(child: Center(child: Text('No indexes selected')))
           else
             Expanded(
-              child: CustomPaint(
-                painter: _MultiLinePainter(series, cs, _range.label),
-                child: const SizedBox.expand(),
-              ),
+              child: LayoutBuilder(builder: (context, box) {
+                void setCursor(double dx) {
+                  final w = box.maxWidth - _padL - _padR;
+                  setState(() => _cursorFrac =
+                      w <= 0 ? null : ((dx - _padL) / w).clamp(0.0, 1.0));
+                }
+
+                return MouseRegion(
+                  onHover: (e) => setCursor(e.localPosition.dx),
+                  onExit: (_) => setState(() => _cursorFrac = null),
+                  child: GestureDetector(
+                    onTapDown: (d) => setCursor(d.localPosition.dx),
+                    onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
+                    onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
+                    child: CustomPaint(
+                      painter: _MultiLinePainter(series, cs, _range.label, _cursorFrac),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                );
+              }),
             ),
         ]),
       ),
@@ -189,17 +213,19 @@ class _LegendChip extends StatelessWidget {
   }
 }
 
+enum _Anchor { left, center, right }
+
 class _MultiLinePainter extends CustomPainter {
-  _MultiLinePainter(this.series, this.cs, this.rangeLabel);
+  _MultiLinePainter(this.series, this.cs, this.rangeLabel, this.cursorFrac);
   final List<({String sym, Color color, List<(DateTime, double)> pts})> series;
   final ColorScheme cs;
   final String rangeLabel;
+  final double? cursorFrac;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padL = 48.0, padR = 12.0, padT = 10.0, padB = 8.0;
-    final w = size.width - padL - padR;
-    final ht = size.height - padT - padB;
+    final w = size.width - _padL - _padR;
+    final ht = size.height - _padT - _padB;
 
     double yLo = 0, yHi = 0, t0 = double.infinity, t1 = -double.infinity;
     for (final s in series) {
@@ -216,8 +242,8 @@ class _MultiLinePainter extends CustomPainter {
     yLo -= ySpan * 0.1;
     final tSpan = (t1 - t0) == 0 ? 1.0 : (t1 - t0);
 
-    double sx(DateTime t) => padL + (t.millisecondsSinceEpoch - t0) / tSpan * w;
-    double sy(double v) => padT + (yHi - v) / (yHi - yLo) * ht;
+    double sx(DateTime t) => _padL + (t.millisecondsSinceEpoch - t0) / tSpan * w;
+    double sy(double v) => _padT + (yHi - v) / (yHi - yLo) * ht;
 
     final grid = Paint()
       ..color = cs.outlineVariant.withValues(alpha: 0.4)
@@ -225,9 +251,9 @@ class _MultiLinePainter extends CustomPainter {
     for (var i = 0; i <= 4; i++) {
       final v = yLo + (yHi - yLo) * i / 4;
       final y = sy(v);
-      canvas.drawLine(Offset(padL, y), Offset(padL + w, y),
+      canvas.drawLine(Offset(_padL, y), Offset(_padL + w, y),
           v.abs() < 1e-9 ? (grid..color = cs.outlineVariant) : grid);
-      _txt(canvas, '${(v * 100).round()}%', Offset(padL - 6, y - 6));
+      _txt(canvas, '${(v * 100).round()}%', Offset(_padL - 6, y - 6));
     }
 
     for (final s in series) {
@@ -243,18 +269,61 @@ class _MultiLinePainter extends CustomPainter {
             ..strokeWidth = 2
             ..style = PaintingStyle.stroke);
     }
+
+    // ---- crosshair: vertical line + a dot & value label per line ----
+    if (cursorFrac != null && series.isNotEmpty) {
+      final cx = _padL + cursorFrac! * w;
+      canvas.drawLine(Offset(cx, _padT), Offset(cx, _padT + ht),
+          Paint()..color = cs.onSurface.withValues(alpha: 0.5)..strokeWidth = 1);
+      final cursorMs = (t0 + cursorFrac! * tSpan).round();
+      DateTime? at;
+      // Right-align labels if the cursor is past mid-chart (avoid clipping).
+      final left = cursorFrac! > 0.6;
+      for (final s in series) {
+        // nearest point in time
+        (DateTime, double)? best;
+        var bestD = double.infinity;
+        for (final p in s.pts) {
+          final d = (p.$1.millisecondsSinceEpoch - cursorMs).abs().toDouble();
+          if (d < bestD) {
+            bestD = d;
+            best = p;
+          }
+        }
+        if (best == null) continue;
+        at ??= best.$1;
+        final o = Offset(sx(best.$1), sy(best.$2));
+        canvas.drawCircle(o, 3.5, Paint()..color = s.color);
+        _txt(canvas, pctSigned(best.$2), Offset(cx + (left ? -8 : 8), o.dy - 6),
+            color: s.color, anchor: left ? _Anchor.right : _Anchor.left);
+      }
+      if (at != null) {
+        _txt(canvas, date(at), Offset(cx, _padT + ht + 4),
+            anchor: _Anchor.center);
+      }
+    }
   }
 
-  void _txt(Canvas canvas, String s, Offset at) {
+  void _txt(Canvas canvas, String s, Offset at,
+      {Color? color, _Anchor anchor = _Anchor.right}) {
     final tp = TextPainter(
       text: TextSpan(
-          text: s, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 10)),
+          text: s,
+          style: TextStyle(
+              color: color ?? cs.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: color == null ? FontWeight.normal : FontWeight.w600)),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(at.dx - tp.width, at.dy));
+    var dx = at.dx;
+    if (anchor == _Anchor.right) dx -= tp.width;
+    if (anchor == _Anchor.center) dx -= tp.width / 2;
+    tp.paint(canvas, Offset(dx, at.dy));
   }
 
   @override
   bool shouldRepaint(covariant _MultiLinePainter old) =>
-      old.series != series || old.rangeLabel != rangeLabel;
+      old.series != series ||
+      old.rangeLabel != rangeLabel ||
+      old.cursorFrac != cursorFrac;
 }
