@@ -1,15 +1,17 @@
 // Copyright 2026 Jim Zucker
 // SPDX-License-Identifier: Apache-2.0
-// Read/write the Zucker Annuity Tracker .xlsx schema v1.0. The same format is
+// Read/write the Zucker Annuity Tracker .xlsx schema v1.1. The same format is
 // used for import, the shipped example/template, and what the app exports — so
 // the user's real spreadsheet round-trips.
 //
-// Writer always emits v1.0. Reader accepts v1.0 plus a one-cycle compatibility
-// layer for the legacy vocabulary (`Absolute`, `Hard`, `Soft` floor type with
-// title-case-or-not; `4-Year`/`5-Year`/`6-Year` reset freq → `Inception`;
-// text `Uncapped` CAP → uncapped). New writer artifacts use the v1.0 24-column
-// layout with `Position` (derived) in column A and `NDX_Strike`/`RUT_Strike`
-// for worst-of notes in columns W/X.
+// v1.1 reorders the columns to "Identity → Outcome → Terms → Schedule → Inputs"
+// for readability (matches the on-screen table). The reader maps columns BY
+// HEADER NAME, so v1.0 files (and the user's real tracker) still import — and
+// re-exporting converts them to v1.1 order. The reader also keeps a one-cycle
+// compatibility layer for the legacy vocabulary (`Absolute`/`Hard`/`Soft` floor
+// type with title-case-or-not; `4-Year`/`5-Year`/`6-Year` reset freq →
+// `Inception`; text `Uncapped` CAP → uncapped). `Position` (derived) stays in
+// column A and `NDX_Strike`/`RUT_Strike` for worst-of notes stay in W/X.
 
 import 'package:excel/excel.dart';
 
@@ -19,30 +21,30 @@ import 'xlsx_reader.dart';
 
 const _sheetName = 'Annuity Tracker';
 
-/// v1.0 column order (A → X).
+/// v1.1 column order (A → X): Identity → Outcome → Terms → Schedule → Inputs.
 const headers = <String>[
   'Position', // A — derived, output-only
-  'Index Gain %',
+  'Issuer', // B — identity
+  'Type',
+  'Index',
+  'Floor Type',
+  'Proj Value @ Reset (\$000)', // F — outcome
+  'Proj \$ Gain @ Reset (\$000)',
   'Proj Gain @ Reset',
-  'CAP',
+  'Index Gain %',
+  'CAP', // J — terms
   'Part.',
   'Floor',
-  'Floor Type',
   'Strike',
-  'Open',
-  'Last Reset',
+  'Next Reset', // N — schedule
+  'Days to Reset',
   'Maturity',
   'Days to Maturity',
   'Reset Freq',
-  'Next Reset',
-  'Days to Reset',
-  'Initial (\$000)',
+  'Open',
+  'Last Reset',
+  'Initial (\$000)', // U — inputs
   'Realized (\$000)',
-  'Proj Value @ Reset (\$000)',
-  'Proj \$ Gain @ Reset (\$000)',
-  'Type',
-  'Issuer',
-  'Index',
   'NDX_Strike', // W — populated only for worst-of
   'RUT_Strike', // X — populated only for worst-of
 ];
@@ -204,30 +206,30 @@ List<int> writeTracker(
   for (final x in holdings) {
     final isWorstOf = x.index.contains('/');
     s.appendRow(<CellValue?>[
-      TextCellValue(dedupedPosition(x, holdings)),
-      DoubleCellValue(x.indexGain),
-      DoubleCellValue(x.projGain),
-      DoubleCellValue(x.cap ?? kUncappedSentinel),
-      DoubleCellValue(x.participation),
-      DoubleCellValue(x.floor),
-      TextCellValue(x.protectionType),
-      DoubleCellValue(x.strike),
-      _dateCell(x.openDate),
-      _dateCell(x.lastReset),
-      _dateCell(x.maturity),
-      IntCellValue(x.daysToMaturity(asOf)),
-      TextCellValue(x.resetFreq.label),
-      _dateCell(x.nextReset),
-      IntCellValue(x.daysToReset(asOf)),
-      DoubleCellValue(x.initial),
-      DoubleCellValue(x.realized),
-      DoubleCellValue(x.projValueK),
-      DoubleCellValue(x.projGainDollarsK),
-      TextCellValue(x.account.label),
-      TextCellValue(x.issuer),
-      TextCellValue(x.index),
-      isWorstOf && x.ndxStrike != null ? DoubleCellValue(x.ndxStrike!) : null,
-      isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null,
+      TextCellValue(dedupedPosition(x, holdings)), // A Position
+      TextCellValue(x.issuer), // B Issuer
+      TextCellValue(x.account.label), // C Type
+      TextCellValue(x.index), // D Index
+      TextCellValue(x.protectionType), // E Floor Type
+      DoubleCellValue(x.projValueK), // F Proj Value
+      DoubleCellValue(x.projGainDollarsK), // G Proj $ Gain
+      DoubleCellValue(x.projGain), // H Proj Gain @ Reset
+      DoubleCellValue(x.indexGain), // I Index Gain %
+      DoubleCellValue(x.cap ?? kUncappedSentinel), // J CAP
+      DoubleCellValue(x.participation), // K Part.
+      DoubleCellValue(x.floor), // L Floor
+      DoubleCellValue(x.strike), // M Strike
+      _dateCell(x.nextReset), // N Next Reset
+      IntCellValue(x.daysToReset(asOf)), // O Days to Reset
+      _dateCell(x.maturity), // P Maturity
+      IntCellValue(x.daysToMaturity(asOf)), // Q Days to Maturity
+      TextCellValue(x.resetFreq.label), // R Reset Freq
+      _dateCell(x.openDate), // S Open
+      _dateCell(x.lastReset), // T Last Reset
+      DoubleCellValue(x.initial), // U Initial
+      DoubleCellValue(x.realized), // V Realized
+      isWorstOf && x.ndxStrike != null ? DoubleCellValue(x.ndxStrike!) : null, // W
+      isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null, // X
     ]);
   }
   return excel.encode()!;

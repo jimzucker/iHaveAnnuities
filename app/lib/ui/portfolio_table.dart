@@ -35,35 +35,41 @@ class PortfolioTable extends StatelessWidget {
         child: Text(text, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
       );
 
+  // v1.1 order: Identity → Outcome → Terms → Schedule → Inputs.
   static List<_Col> _columns(ColorScheme cs) => [
+        // Identity
         _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(), (h, _, _) => _t(h.issuer)),
-        _Col('Index Gain %', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
-        _Col('Proj Gain @ Reset', true, (h, _) => h.projGain, (h, _, cs) => _signed(h.projGain, cs)),
+        _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
+            DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
         _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
-        _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
-        _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
-        _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor))),
         _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
           final c = protectionPalette(p, cs);
           return DataCell(_pill(p, c.bg, c.fg));
         }),
-        _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike))),
-        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),
-        _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
-        _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
-        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
-        _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label)),
-        _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
-        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
-        _Col('Initial (\$000)', true, (h, _) => h.initial, (h, _, _) => _t(money000(h.initial))),
-        _Col('Realized (\$000)', true, (h, _) => h.realized, (h, _, _) => _t(money000(h.realized))),
+        // Outcome
         _Col('Proj Value @ Reset (\$000)', true, (h, _) => h.projValueK, (h, _, _) => _t(money000(h.projValueK))),
         _Col('Proj \$ Gain @ Reset (\$000)', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(money000(h.projGainDollarsK),
                 style: TextStyle(color: gainColor(h.projGainDollarsK, cs))))),
-        _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
-            DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
+        _Col('Proj Gain @ Reset', true, (h, _) => h.projGain, (h, _, cs) => _signed(h.projGain, cs)),
+        _Col('Index Gain %', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
+        // Terms
+        _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
+        _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
+        _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor))),
+        _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike))),
+        // Schedule
+        _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
+        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
+        _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
+        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
+        _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label)),
+        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),
+        _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
+        // Inputs
+        _Col('Initial (\$000)', true, (h, _) => h.initial, (h, _, _) => _t(money000(h.initial))),
+        _Col('Realized (\$000)', true, (h, _) => h.realized, (h, _, _) => _t(money000(h.realized))),
       ];
 
   @override

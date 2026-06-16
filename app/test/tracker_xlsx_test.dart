@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ihaveannuities/core/models.dart';
 import 'package:ihaveannuities/core/payoff.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:ihaveannuities/data/xlsx_reader.dart';
 
 void main() {
   final examplePath = '../data/example-portfolio.xlsx';
@@ -39,6 +40,26 @@ void main() {
     expect(note.index, 'SPX/NDX/RUT'); // v1.0 worst-of label
     expect(note.ndxStrike, 27290);     // worst-of strikes round-trip
     expect(note.rutStrike, 2719);
+  });
+
+  test('exports the v1.1 column order (identity → outcome → … )', () {
+    final original = parseTracker(File(examplePath).readAsBytesSync());
+    final bytes = writeTracker(original,
+        asOf: DateTime(2026, 6, 14),
+        prices: {'SPX': 7400, 'NDX': 29600, 'RUT': 2950});
+    final rows = XlsxReader.decode(bytes)['Annuity Tracker']!;
+    final headerRow = rows.firstWhere(
+        (r) => r.any((c) => c?.toString().trim() == 'Issuer'));
+    final names = headerRow
+        .map((c) => c?.toString().trim())
+        .where((s) => s != null && s.isNotEmpty)
+        .toList();
+    expect(names, headers); // full v1.1 order
+    // identity leads, outcome ($ value) is left of the terms, Type near Issuer.
+    expect(names.take(7).toList(), [
+      'Position', 'Issuer', 'Type', 'Index', 'Floor Type',
+      'Proj Value @ Reset (\$000)', 'Proj \$ Gain @ Reset (\$000)',
+    ]);
   });
 
   test('downloadable template.xlsx is valid + parseable', () {
