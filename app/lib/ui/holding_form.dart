@@ -25,6 +25,22 @@ class _HoldingFormState extends State<HoldingForm> {
   late ResetFreq _reset;
   late bool _uncapped;
   late bool _note;
+
+  static const _indexOptions = <String>[
+    'SPX', 'NDX', 'RUT', 'DOW', 'COMP', 'worst-of SPX/NDX/RUT',
+  ];
+
+  /// Map any stored index value (Yahoo ticker, short name, worst-of label) to
+  /// one of [_indexOptions] so the dropdown never gets an out-of-range value.
+  static String _indexOption(String? raw) {
+    final u = (raw ?? 'SPX').toUpperCase();
+    if (u.contains('/') || u.contains('WORST')) return 'worst-of SPX/NDX/RUT';
+    if (u.contains('DJI') || u.contains('DOW')) return 'DOW';
+    if (u.contains('IXIC') || u.contains('COMP')) return 'COMP';
+    if (u.contains('NDX')) return 'NDX';
+    if (u.contains('RUT')) return 'RUT';
+    return 'SPX';
+  }
   late DateTime _open, _lastReset, _maturity, _nextReset;
 
   @override
@@ -32,7 +48,7 @@ class _HoldingFormState extends State<HoldingForm> {
     super.initState();
     final h = widget.initial;
     final now = DateTime(2026, 6, 14);
-    _index = h?.index ?? 'SPX';
+    _index = _indexOption(h?.index); // normalize tickers to a dropdown value
     _account = h?.account ?? AccountType.nonQual;
     _floorType = h?.floorType ?? FloorType.hard;
     _reset = h?.resetFreq ?? ResetFreq.annual;
@@ -113,8 +129,7 @@ class _HoldingFormState extends State<HoldingForm> {
           padding: const EdgeInsets.all(16),
           children: [
             _text('issuer', 'Issuer', required: true),
-            _dropdown<String>('Index', _index,
-                const ['SPX', 'NDX', 'RUT', 'DOW', 'COMP', 'worst-of SPX/NDX/RUT'],
+            _dropdown<String>('Index', _index, _indexOptions,
                 (v) => setState(() => _index = v!), (v) => v),
             _dropdown<AccountType>('Account / Type', _account, AccountType.values,
                 (v) => setState(() => _account = v!), (v) => v.label),

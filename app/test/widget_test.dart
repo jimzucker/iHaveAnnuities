@@ -175,6 +175,17 @@ void main() {
     expect(store.holdings.length, before - 1);
   });
 
+  testWidgets('edit form opens for a Yahoo-ticker index (no dropdown crash)',
+      (tester) async {
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final aspida = holdings.firstWhere((h) => h.issuer == 'ASPIDA'); // index ^GSPC
+    await tester.pumpWidget(MaterialApp(home: HoldingForm(initial: aspida)));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('SPX'), findsOneWidget); // ^GSPC normalized to a dropdown value
+  });
+
   testWidgets('form requires an Issuer', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
     await tester.tap(find.text('SAVE'));
