@@ -151,6 +151,17 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(CustomPaint), findsWidgets); // index path painted
     expect(find.textContaining('since the last reset'), findsOneWidget);
+
+    // Hover/tap the chart: the crosshair gesture path must not throw.
+    final chart = find.byType(IndexPeriodChart);
+    await tester.tapAt(tester.getCenter(chart));
+    await tester.pump();
+    final g = await tester.startGesture(tester.getCenter(chart));
+    await g.moveBy(const Offset(40, 0));
+    await tester.pump();
+    await g.up();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('combined index chart: ranges, legend toggle, remembered',

@@ -13,6 +13,9 @@ import '../data/index_history.dart';
 import 'format.dart';
 import 'payoff_chart.dart';
 
+// Plot padding — shared so the cursor gesture and the painter agree on geometry.
+const _padL = 58.0, _padR = 12.0, _padT = 14.0, _padB = 22.0;
+
 class IndexPeriodChart extends StatefulWidget {
   const IndexPeriodChart({super.key, required this.holding, this.base = '', this.client});
 
@@ -27,6 +30,7 @@ class IndexPeriodChart extends StatefulWidget {
 class _IndexPeriodChartState extends State<IndexPeriodChart> {
   IndexHistory? _hist;
   bool _failed = false;
+  double? _cursorFrac; // 0..1 across the plot; null when not hovering/touching
 
   @override
   void initState() {
@@ -81,10 +85,27 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
       const SizedBox(height: 8),
       SizedBox(
         height: 250,
-        child: CustomPaint(
-          painter: _IndexPeriodPainter(h, pts, cs),
-          child: const SizedBox.expand(),
-        ),
+        child: LayoutBuilder(builder: (context, box) {
+          void setCursor(double dx) {
+            final w = box.maxWidth - _padL - _padR;
+            setState(() => _cursorFrac =
+                w <= 0 ? null : ((dx - _padL) / w).clamp(0.0, 1.0));
+          }
+
+          return MouseRegion(
+            onHover: (e) => setCursor(e.localPosition.dx),
+            onExit: (_) => setState(() => _cursorFrac = null),
+            child: GestureDetector(
+              onTapDown: (d) => setCursor(d.localPosition.dx),
+              onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
+              onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
+              child: CustomPaint(
+                painter: _IndexPeriodPainter(h, pts, cs, _cursorFrac),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          );
+        }),
       ),
       const SizedBox(height: 8),
       Text(caption,
@@ -114,14 +135,15 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
 }
 
 class _IndexPeriodPainter extends CustomPainter {
-  _IndexPeriodPainter(this.h, this.pts, this.cs);
+  _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac);
   final Holding h;
   final List<(DateTime, double)> pts;
   final ColorScheme cs;
+  final double? cursorFrac; // 0..1 across the plot; null when not hovering
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padL = 58.0, padR = 12.0, padT = 14.0, padB = 22.0;
+    const padL = _padL, padR = _padR, padT = _padT, padB = _padB;
     final w = size.width - padL - padR;
     final ht = size.height - padT - padB;
 
@@ -200,9 +222,74 @@ class _IndexPeriodPainter extends CustomPainter {
     canvas.drawCircle(last, 4,
         Paint()..color = cs.primary..strokeWidth = 2..style = PaintingStyle.stroke);
 
-    // x date labels (start / end)
-    _txt(canvas, date(pts.first.$1), Offset(padL, padT + ht + 5), anchor: _A.left);
-    _txt(canvas, date(pts.last.$1), Offset(padL + w, padT + ht + 5), anchor: _A.right);
+    // ---- x-axis: evenly spaced date ticks with faint gridlines ----
+    final tick = Paint()
+      ..color = cs.outlineVariant.withValues(alpha: 0.25)
+      ..strokeWidth = 1;
+    const ticks = 4;
+    for (var i = 0; i <= ticks; i++) {
+      final frac = i / ticks;
+      final x = padL + frac * w;
+      final dt = DateTime.fromMillisecondsSinceEpoch((t0 + frac * tSpan).round());
+      if (i > 0 && i < ticks) {
+        canvas.drawLine(Offset(x, padT), Offset(x, padT + ht), tick);
+      }
+      _txt(canvas, date(dt), Offset(x, padT + ht + 5),
+          anchor: i == 0 ? _A.left : (i == ticks ? _A.right : _A.center));
+    }
+
+    // ---- crosshair cursor (hover / touch) ----
+    if (cursorFrac != null && pts.length >= 2) {
+      final cx = padL + cursorFrac! * w;
+      final targetMs = t0 + cursorFrac! * tSpan;
+      // nearest sample to the cursor
+      var best = pts.first;
+      var bestD = double.infinity;
+      for (final p in pts) {
+        final d = (p.$1.millisecondsSinceEpoch - targetMs).abs();
+        if (d < bestD) {
+          bestD = d;
+          best = p;
+        }
+      }
+      // vertical crosshair line
+      canvas.drawLine(Offset(cx, padT), Offset(cx, padT + ht),
+          Paint()..color = cs.onSurface.withValues(alpha: 0.45)..strokeWidth = 1);
+      // dot on the index line
+      final o = Offset(sx(best.$1), sy(best.$2));
+      canvas.drawCircle(o, 4, Paint()..color = Colors.white);
+      canvas.drawCircle(o, 4,
+          Paint()..color = cs.primary..strokeWidth = 2..style = PaintingStyle.stroke);
+      // value chip: index level + move from strike
+      final move = strike == 0 ? 0.0 : best.$2 / strike - 1;
+      _chip(canvas, '${level(best.$2)}  (${pctSigned(move)})',
+          Offset(cx, padT + 2), cs.primary, Colors.white,
+          flip: cursorFrac! > 0.6, plotR: padL + w);
+      // date chip on the x-axis
+      _chip(canvas, date(best.$1), Offset(cx, padT + ht + 4),
+          cs.onSurface, cs.surface,
+          flip: cursorFrac! > 0.6, plotR: padL + w);
+    }
+  }
+
+  /// A small filled label anchored at [at] (the cursor x), flipping to the left
+  /// of the cursor near the right edge so it never clips.
+  void _chip(Canvas canvas, String s, Offset at, Color bg, Color fg,
+      {bool flip = false, double plotR = 0}) {
+    final tp = TextPainter(
+      text: TextSpan(
+          text: s,
+          style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w600)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const padX = 5.0, padY = 2.0;
+    final boxW = tp.width + padX * 2, boxH = tp.height + padY * 2;
+    var left = flip ? at.dx - 8 - boxW : at.dx + 8;
+    left = left.clamp(_padL, (plotR - boxW).clamp(_padL, plotR));
+    final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, at.dy, boxW, boxH), const Radius.circular(4));
+    canvas.drawRRect(rect, Paint()..color = bg);
+    tp.paint(canvas, Offset(left + padX, at.dy + padY));
   }
 
   void _txt(Canvas canvas, String s, Offset at, {Color? color, _A anchor = _A.left}) {
@@ -234,7 +321,8 @@ class _IndexPeriodPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _IndexPeriodPainter old) => old.pts != pts || old.h != h;
+  bool shouldRepaint(covariant _IndexPeriodPainter old) =>
+      old.pts != pts || old.h != h || old.cursorFrac != cursorFrac;
 }
 
 enum _A { left, center, right }
