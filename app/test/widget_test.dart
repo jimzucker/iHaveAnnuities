@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
@@ -21,6 +22,7 @@ import 'package:ihaveannuities/ui/index_chart_screen.dart';
 import 'package:ihaveannuities/ui/index_period_chart.dart';
 import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
+import 'package:ihaveannuities/ui/reset_history_screen.dart';
 
 final _market = Market(
     asOf: DateTime(2026, 6, 12),
@@ -243,6 +245,46 @@ void main() {
     expect(find.text('Important disclosures'), findsOneWidget);
     expect(find.textContaining('Not financial, investment, tax, or legal advice'),
         findsOneWidget);
+  });
+
+  testWidgets('reset history screen: empty state', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+        value: store, child: const MaterialApp(home: ResetHistoryScreen())));
+    expect(find.text('No resets recorded yet'), findsOneWidget);
+  });
+
+  testWidgets('reset history screen lists a logged coupon and a missed one',
+      (tester) async {
+    final events = [
+      ResetEvent(
+        holdingKey: 'k',
+        label: 'NATBANK-30%-16Apr29',
+        date: DateTime(2026, 6, 12),
+        isIncomeNote: true,
+        periodReturn: 0.01104,
+        realizedAddedK: 0.1116,
+        realizedAfterK: 0.2220,
+      ),
+      ResetEvent(
+        holdingKey: 'k',
+        label: 'NATBANK-30%-16Apr29',
+        date: DateTime(2026, 5, 12),
+        isIncomeNote: true,
+        periodReturn: 0.0,
+        realizedAddedK: 0.0,
+        realizedAfterK: 0.1104,
+        missed: true,
+      ),
+    ];
+    final store = PortfolioStore()
+      ..debugSeed([], _market, resetHistory: events);
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+        value: store, child: const MaterialApp(home: ResetHistoryScreen())));
+    expect(find.textContaining('NATBANK'), findsNWidgets(2));
+    expect(find.text('Coupon'), findsOneWidget);
+    expect(find.text('Coupon missed'), findsOneWidget);
+    expect(find.text('breached'), findsOneWidget);
   });
 
   testWidgets('info page renders the protection types', (tester) async {

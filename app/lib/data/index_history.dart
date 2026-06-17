@@ -78,6 +78,20 @@ class IndexHistory {
     return src.where((p) => !p.$1.isBefore(from)).toList();
   }
 
+  /// Closing level for [symbol] on the last trading day at or before [date]
+  /// (falls back to the earliest sample if [date] precedes all history).
+  /// Null when there's no daily history for the symbol.
+  double? levelOn(String symbol, DateTime date) {
+    final pts = daily[symbol];
+    if (pts == null || pts.isEmpty) return null;
+    SeriesPoint? atOrBefore;
+    for (final p in pts) {
+      if (p.$1.isAfter(date)) break; // daily series is ascending by time
+      atOrBefore = p;
+    }
+    return (atOrBefore ?? pts.first).$2;
+  }
+
   static Future<IndexHistory> fetch({String base = '', http.Client? client}) async {
     final c = client ?? http.Client();
     try {

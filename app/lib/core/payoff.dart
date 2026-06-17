@@ -12,8 +12,10 @@ import 'dart:math' as math;
 ///   first `|floor|` of losses; you lose 1:1 beyond it.
 /// * [FloorType.soft] with a **negative** floor is a *barrier*: fully protected
 ///   unless the index breaches the floor, then the full decline applies.
-/// * A floor of `0` is a *true floor*: no loss in the period.
-enum FloorType { hard, soft }
+/// * [FloorType.floor] with a **negative** floor is a *max-loss floor*: the loss
+///   is limited to the floor (`max(indexReturn, floor)`) and never worse.
+/// * A floor of `0` is a *true floor*: no loss in the period (any type).
+enum FloorType { hard, soft, floor }
 
 /// Upside credited gain for a non-negative index move:
 /// `uncapped ? participation*idx : min(cap, participation*idx)`.
@@ -42,12 +44,14 @@ double payoffReturn(
     return creditedGain(indexReturn, cap: cap, participation: participation);
   }
   if (floor == 0) return 0.0; // true 0% floor
-  if (floorType == FloorType.soft) {
+  return switch (floorType) {
     // barrier: protected unless breached, then full 1:1 loss
-    return indexReturn >= floor ? 0.0 : indexReturn;
-  }
-  // hard buffer: absorb first |floor|, lose 1:1 beyond
-  return math.min(0.0, indexReturn - floor);
+    FloorType.soft => indexReturn >= floor ? 0.0 : indexReturn,
+    // max-loss floor: lose down to the floor and no further
+    FloorType.floor => math.max(indexReturn, floor),
+    // hard buffer: absorb first |floor|, lose 1:1 beyond
+    FloorType.hard => math.min(0.0, indexReturn - floor),
+  };
 }
 
 /// Raw index move since [strike]. Throws if [strike] is non-positive.

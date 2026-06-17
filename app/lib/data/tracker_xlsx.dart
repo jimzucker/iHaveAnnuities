@@ -94,11 +94,14 @@ AccountType _account(String? s) => switch ((s ?? '').toLowerCase()) {
       _ => AccountType.nonQual,
     };
 
-/// v1.0 + legacy: `Soft` → soft (barrier); anything else → hard. The
-/// `Protected` value is derived in the model when `floor == 0`, so it never
-/// needs its own FloorType enum value.
-FloorType _floorType(String? s) =>
-    (s ?? 'Hard').toLowerCase() == 'soft' ? FloorType.soft : FloorType.hard;
+/// v1.0 + legacy: `Soft` → soft (barrier); `Floor`/`Floored` → floor (max-loss);
+/// anything else → hard (buffer). The `Protected` value is derived in the model
+/// when `floor == 0`, so it never needs its own FloorType enum value.
+FloorType _floorType(String? s) => switch ((s ?? 'Hard').toLowerCase()) {
+      'soft' => FloorType.soft,
+      'floor' || 'floored' => FloorType.floor,
+      _ => FloorType.hard,
+    };
 
 /// CAP read: numeric `9.99` (v1.0 sentinel) OR string containing `uncap`
 /// (legacy text) both mean uncapped → null. Otherwise parse as fraction.
@@ -199,7 +202,8 @@ List<int> writeTracker(
   ]);
   s.appendRow([
     TextCellValue('Floor Type: Protected (0% floor), Hard (buffer — '
-        'absorbs first |floor|), Soft (barrier — full loss if breached) | '
+        'absorbs first |floor|), Soft (barrier — full loss if breached), '
+        'Floor (max loss — lose only down to the floor) | '
         'CAP 9.99 = uncapped | \$ columns in \$000s'),
   ]);
   s.appendRow([for (final hd in headers) TextCellValue(hd)]);

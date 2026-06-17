@@ -12,6 +12,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models.dart';
+import '../core/reset_event.dart';
+import '../core/reset_rollover.dart';
+import 'index_history.dart';
 import 'market.dart';
 import 'tracker_xlsx.dart';
 
@@ -24,6 +27,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _fullColKey = 'fullColumns.v1';
   static const _hideSummaryKey = 'hideSummary.v1';
   static const _hiddenIdxKey = 'hiddenIndexes.v1';
+  static const _resetHistKey = 'resetHistory.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
@@ -59,6 +63,7 @@ class PortfolioStore extends ChangeNotifier {
   bool _fullColumns = true;
   bool _hideSummary = false;
   Set<String> _hiddenIndexes = {};
+  List<ResetEvent> _resetHistory = [];
 
   int get sortColumn => _sortColumn;
   bool get sortAscending => _sortAscending;
@@ -71,6 +76,9 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Index symbols the user has hidden on the combined chart (remembered).
   Set<String> get hiddenIndexes => _hiddenIndexes;
+
+  /// Logged reset events (auto-roll audit trail), newest first.
+  List<ResetEvent> get resetHistory => _resetHistory;
 
   /// True while a market refresh is in flight (drives the app-bar spinner).
   bool get refreshing => _refreshing;
@@ -132,6 +140,14 @@ class PortfolioStore extends ChangeNotifier {
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
     _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
+    final histRaw = prefs.getString(_resetHistKey);
+    if (histRaw != null) {
+      try {
+        _resetHistory = (jsonDecode(histRaw) as List)
+            .map((e) => ResetEvent.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {/* ignore corrupt cache */}
+    }
     final raw = prefs.getString(_key);
     if (raw != null) {
       try {
@@ -143,6 +159,8 @@ class PortfolioStore extends ChangeNotifier {
     }
     notifyListeners();
     await refreshMarket();
+    // Apply any resets that fell due since the data was last current.
+    await _catchUpResets();
     // While the app stays open, re-pull market.json once per day shortly after
     // the publish time — so a kept-open tab appears to update on its own.
     _autoTimer ??= Timer.periodic(
@@ -154,6 +172,7 @@ class PortfolioStore extends ChangeNotifier {
     if (!autoRefreshDue(now, _lastAutoRefresh)) return;
     _lastAutoRefresh = now;
     await refreshMarket();
+    await _catchUpResets(); // a new trading day may have crossed a reset date
   }
 
   @override
@@ -166,6 +185,53 @@ class PortfolioStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _key, jsonEncode(_holdings.map((h) => h.toJson()).toList()));
+  }
+
+  Future<void> _persistResetHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _resetHistKey, jsonEncode(_resetHistory.map((e) => e.toJson()).toList()));
+  }
+
+  /// Roll every holding forward through any reset dates that have passed (income
+  /// coupons accrue; point-to-point notes lock in the period payoff at the
+  /// reset-date index level and reset their strike). Idempotent — once rolled,
+  /// the next reset is in the future. Runs on load and after an import, so both
+  /// a kept-open portfolio and a freshly loaded `.xlsx` catch up to today.
+  Future<void> _catchUpResets() async {
+    if (_holdings.isEmpty) return;
+    final asOf = _market?.asOf ?? DateTime.now();
+    if (!_holdings.any((h) => resetDue(h, asOf))) return;
+
+    // Both annual point-to-point notes and worst-of monthly coupons need the
+    // historical index levels at each reset date.
+    IndexHistory? hist;
+    try {
+      hist = await IndexHistory.fetch(base: base, client: client);
+    } catch (_) {/* offline → leave resets pending until history loads */}
+    if (hist == null) return;
+    double? levelAt(String sym, DateTime date) => hist!.levelOn(sym, date);
+
+    final seen = _resetHistory.map((e) => e.dedupeKey).toSet();
+    final updated = <Holding>[];
+    final added = <ResetEvent>[];
+    var changed = false;
+    for (final h in _holdings) {
+      final r = catchUp(h, asOf, levelAt);
+      if (r.events.isNotEmpty) changed = true;
+      updated.add(r.holding);
+      for (final e in r.events) {
+        if (seen.add(e.dedupeKey)) added.add(e);
+      }
+    }
+    if (!changed) return;
+    _holdings = updated;
+    _resetHistory = [...added, ..._resetHistory]
+      ..sort((a, b) => b.date.compareTo(a.date));
+    _revalue();
+    await _persist();
+    await _persistResetHistory();
+    notifyListeners();
   }
 
   Future<void> refreshMarket() async {
@@ -197,6 +263,8 @@ class PortfolioStore extends ChangeNotifier {
     _revalue();
     await _persist();
     notifyListeners();
+    // A freshly loaded tracker may be months stale — catch it up to today.
+    await _catchUpResets();
   }
 
   Future<void> upsert(Holding h, {Holding? replacing}) async {
@@ -219,8 +287,10 @@ class PortfolioStore extends ChangeNotifier {
 
   Future<void> clearLocal() async {
     _holdings = [];
+    _resetHistory = [];
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+    await prefs.remove(_resetHistKey);
     notifyListeners();
   }
 
@@ -233,8 +303,10 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Seed holdings + market directly (tests only; no network/persistence).
   @visibleForTesting
-  void debugSeed(List<Holding> holdings, Market market) {
+  void debugSeed(List<Holding> holdings, Market market,
+      {List<ResetEvent> resetHistory = const []}) {
     _holdings = List.of(holdings);
+    _resetHistory = List.of(resetHistory);
     _market = market;
     _revalue();
     notifyListeners();

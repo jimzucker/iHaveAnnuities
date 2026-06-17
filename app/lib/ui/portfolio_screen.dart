@@ -17,6 +17,7 @@ import 'index_chart_screen.dart';
 import 'info_page.dart';
 import 'portfolio_hero.dart';
 import 'portfolio_table.dart';
+import 'reset_history_screen.dart';
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
@@ -67,6 +68,7 @@ class PortfolioScreen extends StatelessWidget {
               ),
               const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
               const PopupMenuDivider(),
+              const PopupMenuItem(value: 'resets', child: Text('Reset history')),
               const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
             ],
           ),
@@ -187,6 +189,9 @@ class PortfolioScreen extends StatelessWidget {
         }
         await store.clearLocal();
         messenger.showSnackBar(const SnackBar(content: Text('All data cleared')));
+      case 'resets':
+        await Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const ResetHistoryScreen()));
       case 'about':
         await Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const InfoPage()));

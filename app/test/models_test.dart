@@ -151,6 +151,10 @@ void main() {
         _h(cap: null, floor: -0.30, floorType: FloorType.soft, strike: 100, currentLevel: 100)
             .protectionType,
         'Soft');
+    expect(
+        _h(cap: null, floor: -0.15, floorType: FloorType.floor, strike: 100, currentLevel: 100)
+            .protectionType,
+        'Floor');
   });
 
   test('computed position = ISSUER-floor-maturity (issuer uppercased)', () {

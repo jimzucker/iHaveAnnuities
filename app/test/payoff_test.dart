@@ -100,6 +100,24 @@ void main() {
     });
   });
 
+  group('payoffReturn — max-loss floor', () {
+    test('within the floor => loses the actual move (-10%, -15% floor)', () {
+      expect(
+          payoffReturn(-0.10, cap: null, floor: -0.15, floorType: FloorType.floor),
+          closeTo(-0.10, 1e-12));
+    });
+    test('beyond the floor => clamped to the floor (-22%, -15% floor)', () {
+      expect(
+          payoffReturn(-0.22, cap: 0.65, floor: -0.15, floorType: FloorType.floor),
+          closeTo(-0.15, 1e-12));
+    });
+    test('exactly at the floor', () {
+      expect(
+          payoffReturn(-0.15, cap: null, floor: -0.15, floorType: FloorType.floor),
+          closeTo(-0.15, 1e-12));
+    });
+  });
+
   group('indexReturn', () {
     test('normal', () {
       expect(indexReturn(7400, 6271.19), closeTo(0.18, 1e-3));

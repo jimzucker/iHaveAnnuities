@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Coverage for models serialization, Market, and PortfolioStore.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -188,6 +189,98 @@ void main() {
       // NDX holdings revalued to the live NDX price.
       final ndx = store2.holdings.firstWhere((h) => h.baseIndex == 'NDX');
       expect(ndx.currentLevel, 29635.95);
+    });
+
+    test('catch-up rolls a worst-of income-note coupon on load and logs it',
+        () async {
+      // NATBANK example, $000 units, reset due as of the market asOf (2026-06-12).
+      final note = Holding(
+        issuer: 'NATBANK',
+        index: 'SPX/NDX/RUT',
+        account: AccountType.nonQual,
+        cap: 0.1325, // 1.104%/mo
+        participation: 1.0,
+        floor: -0.30,
+        floorType: FloorType.soft,
+        strike: 6583,
+        currentLevel: 6583,
+        openDate: DateTime(2026, 4, 16),
+        lastReset: DateTime(2026, 5, 12),
+        maturity: DateTime(2029, 4, 16),
+        nextReset: DateTime(2026, 6, 12),
+        resetFreq: ResetFreq.monthly,
+        initial: 10.0,
+        realized: 0.1104,
+        isIncomeNote: true,
+      );
+      SharedPreferences.setMockInitialValues(
+          {'portfolio.v1': jsonEncode([note.toJson()])});
+      int e(int y, int m, int d) =>
+          DateTime.utc(y, m, d).millisecondsSinceEpoch ~/ 1000;
+      // SPX 7431.46 on the reset date → worst leg +12.9%, barrier (−30%) holds.
+      final histJson = '{"asOf":"2026-06-12","daily":{"SPX":'
+          '[[${e(2026, 5, 12)},7000.0],[${e(2026, 6, 12)},7431.46]]},"intraday":{}}';
+      final c = MockClient((req) async => http.Response(
+          req.url.path.contains('history') ? histJson : _marketJson, 200));
+      final store = PortfolioStore(client: c);
+      addTearDown(store.dispose);
+      await store.init();
+
+      final h = store.holdings.single;
+      expect(h.realized, closeTo(0.2220, 1e-4)); // coupon reinvested
+      expect(h.lastReset, DateTime(2026, 6, 12));
+      expect(h.nextReset, DateTime(2026, 7, 12));
+      expect(h.strike, 6583); // strikes never reset
+      expect(store.resetHistory, hasLength(1));
+      expect(store.resetHistory.single.realizedAddedK, closeTo(0.1116, 1e-4));
+      expect(store.resetHistory.single.missed, isFalse);
+
+      // Persisted + idempotent: a fresh load doesn't roll or log again.
+      final store2 = PortfolioStore(client: c);
+      addTearDown(store2.dispose);
+      await store2.init();
+      expect(store2.holdings.single.realized, closeTo(0.2220, 1e-4));
+      expect(store2.resetHistory, hasLength(1));
+    });
+
+    test('catch-up rolls a point-to-point note from market history', () async {
+      final h = Holding(
+        issuer: 'AXA',
+        index: 'SPX',
+        account: AccountType.nonQual,
+        cap: 0.10,
+        participation: 1.0,
+        floor: 0,
+        floorType: FloorType.hard,
+        strike: 100,
+        currentLevel: 100,
+        openDate: DateTime(2024, 6, 16),
+        lastReset: DateTime(2025, 6, 16),
+        maturity: DateTime(2030, 6, 16),
+        nextReset: DateTime(2026, 6, 10),
+        resetFreq: ResetFreq.annual,
+        initial: 10.0,
+        realized: 0.0,
+      );
+      SharedPreferences.setMockInitialValues(
+          {'portfolio.v1': jsonEncode([h.toJson()])});
+      int e(int y, int m, int d) =>
+          DateTime.utc(y, m, d).millisecondsSinceEpoch ~/ 1000;
+      final histJson = '{"asOf":"2026-06-12","daily":{"SPX":'
+          '[[${e(2025, 6, 16)},100.0],[${e(2026, 6, 10)},106.0]]},"intraday":{}}';
+      final c = MockClient((req) async => http.Response(
+          req.url.path.contains('history') ? histJson : _marketJson, 200));
+      final store = PortfolioStore(client: c);
+      addTearDown(store.dispose);
+      await store.init();
+
+      final r = store.holdings.single;
+      // index 106 vs strike 100 → +6% credited (< 10% cap); strike resets to 106.
+      expect(r.realized, closeTo(0.6, 1e-6)); // 10 * 0.06
+      expect(r.strike, 106.0);
+      expect(r.nextReset, DateTime(2027, 6, 10));
+      expect(store.resetHistory.single.newStrike, 106.0);
+      expect(store.resetHistory.single.oldStrike, 100.0);
     });
 
     test('refreshMarket sets status on error', () async {

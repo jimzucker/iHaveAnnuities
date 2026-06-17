@@ -187,9 +187,24 @@ class Holding {
   /// `Protected` (floor=0), `Hard` (buffer), `Soft` (barrier).
   String get protectionType => floor == 0
       ? 'Protected'
-      : (floorType == FloorType.soft ? 'Soft' : 'Hard');
+      : switch (floorType) {
+          FloorType.soft => 'Soft',
+          FloorType.floor => 'Floor',
+          FloorType.hard => 'Hard',
+        };
 
-  Holding copyWith({double? currentLevel}) => Holding(
+  /// Stable identity across re-imports (issuer/index/account/maturity don't
+  /// change on a reset) — used to key reset-history entries.
+  String get key => '$issuer|$index|${account.name}|${maturity.toIso8601String()}';
+
+  Holding copyWith({
+    double? currentLevel,
+    double? strike,
+    double? realized,
+    DateTime? lastReset,
+    DateTime? nextReset,
+  }) =>
+      Holding(
         issuer: issuer,
         index: index,
         account: account,
@@ -197,15 +212,15 @@ class Holding {
         participation: participation,
         floor: floor,
         floorType: floorType,
-        strike: strike,
+        strike: strike ?? this.strike,
         currentLevel: currentLevel ?? this.currentLevel,
         openDate: openDate,
-        lastReset: lastReset,
+        lastReset: lastReset ?? this.lastReset,
         maturity: maturity,
-        nextReset: nextReset,
+        nextReset: nextReset ?? this.nextReset,
         resetFreq: resetFreq,
         initial: initial,
-        realized: realized,
+        realized: realized ?? this.realized,
         isIncomeNote: isIncomeNote,
         couponProj: couponProj,
         ndxStrike: ndxStrike,
