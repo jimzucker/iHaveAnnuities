@@ -258,6 +258,55 @@ class PortfolioStore extends ChangeNotifier {
     ];
   }
 
+  /// Recompute one holding from its open date: reset to the inception state
+  /// (realized 0; point-to-point strike = the index level on the open date) and
+  /// replay every reset through today. Rebuilds that holding's reset-history
+  /// entries. Use to repair a contract whose realized/strike has drifted.
+  /// Returns the number of resets replayed, or -1 if history is unavailable.
+  Future<int> recalcFromStart(Holding h) async {
+    final asOf = _market?.asOf ?? DateTime.now();
+    IndexHistory? hist;
+    try {
+      hist = await IndexHistory.fetch(base: base, client: client);
+    } catch (_) {/* handled below */}
+    if (hist == null) {
+      _status = 'History unavailable; cannot recompute.';
+      notifyListeners();
+      return -1;
+    }
+    double? levelAt(String sym, DateTime date) => hist!.levelOn(sym, date);
+
+    // Seed the inception state. Income-note strikes are fixed at inception, so
+    // they're kept; a point-to-point strike is re-derived from the open-date
+    // level (its stored strike has drifted forward through past resets).
+    final inceptionStrike =
+        h.isIncomeNote ? h.strike : (levelAt(h.baseIndex, h.openDate) ?? h.strike);
+    final firstNext = h.resetFreq == ResetFreq.inception
+        ? h.nextReset
+        : advanceReset(h.openDate, h.resetFreq);
+    final seed = h.copyWith(
+      realized: 0.0,
+      strike: inceptionStrike,
+      lastReset: h.openDate,
+      nextReset: firstNext,
+    );
+
+    final r = catchUp(seed, asOf, levelAt);
+    final i = _holdings.indexWhere((x) => x.key == h.key);
+    if (i < 0) return 0;
+    _holdings[i] = r.holding;
+    // Replace this holding's history with the freshly replayed events.
+    _resetHistory = [
+      ...r.events,
+      ..._resetHistory.where((e) => e.holdingKey != h.key),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    _revalue();
+    await _persist();
+    await _persistResetHistory();
+    notifyListeners();
+    return r.events.length;
+  }
+
   Future<void> replaceAll(List<Holding> holdings) async {
     _holdings = List.of(holdings);
     _revalue();

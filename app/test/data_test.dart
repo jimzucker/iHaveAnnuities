@@ -283,6 +283,57 @@ void main() {
       expect(store.resetHistory.single.oldStrike, 100.0);
     });
 
+    test('recalcFromStart replays a contract from its open date', () async {
+      // An income note opened 16-Apr with drifted/missing realized; recompute
+      // should replay May + Jun coupons (asOf 2026-06-12 → 1 due... build it so
+      // two coupons fall before asOf).
+      final note = Holding(
+        issuer: 'NATBANK',
+        index: 'SPX/NDX/RUT',
+        account: AccountType.nonQual,
+        cap: 0.1325,
+        participation: 1.0,
+        floor: -0.30,
+        floorType: FloorType.soft,
+        strike: 6583,
+        currentLevel: 6583,
+        openDate: DateTime(2026, 4, 16),
+        lastReset: DateTime(2026, 4, 16),
+        maturity: DateTime(2029, 4, 16),
+        nextReset: DateTime(2027, 1, 1), // wrong/drifted on purpose
+        resetFreq: ResetFreq.monthly,
+        initial: 10.0,
+        realized: 99.0, // bogus realized to be overwritten
+        isIncomeNote: true,
+      );
+      SharedPreferences.setMockInitialValues(
+          {'portfolio.v1': jsonEncode([note.toJson()])});
+      int e(int y, int m, int d) =>
+          DateTime.utc(y, m, d).millisecondsSinceEpoch ~/ 1000;
+      // asOf 20-Jun so both the 16-May and 16-Jun resets fall due; SPX above
+      // the barrier on every reset date → both coupons paid.
+      const market =
+          '{"asOf":"2026-06-20","spx":7431.46,"ndx":29635.95,"rut":2943.99}';
+      final histJson = '{"asOf":"2026-06-20","daily":{"SPX":'
+          '[[${e(2026, 4, 16)},7000.0],[${e(2026, 5, 16)},7100.0],'
+          '[${e(2026, 6, 16)},7250.0],[${e(2026, 6, 20)},7431.46]]},"intraday":{}}';
+      final c = MockClient((req) async => http.Response(
+          req.url.path.contains('history') ? histJson : market, 200));
+      final store = PortfolioStore(client: c);
+      addTearDown(store.dispose);
+      await store.init();
+
+      final n = await store.recalcFromStart(store.holdings.single);
+      expect(n, 2); // 16-May + 16-Jun coupons
+      final h = store.holdings.single;
+      // realized reset to 0 then two coupons reinvested: 10*(1.0110417^2 - 1).
+      const rate = 0.1325 / 12;
+      expect(h.realized, closeTo(10 * ((1 + rate) * (1 + rate) - 1), 1e-6));
+      expect(h.lastReset, DateTime(2026, 6, 16));
+      expect(h.nextReset, DateTime(2026, 7, 16));
+      expect(store.resetHistory.where((x) => !x.missed).length, 2);
+    });
+
     test('refreshMarket sets status on error', () async {
       final c = MockClient((_) async => http.Response('x', 500));
       final store = PortfolioStore(client: c);

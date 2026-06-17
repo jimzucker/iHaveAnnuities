@@ -57,6 +57,22 @@ class HoldingDetail extends StatelessWidget {
             }
           },
         ),
+        PopupMenuButton<String>(
+          onSelected: (v) {
+            if (v == 'recalc') _recalc(context, store, h);
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'recalc',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.restart_alt),
+                title: Text('Recompute from start'),
+                subtitle: Text('Replay every reset from the open date'),
+              ),
+            ),
+          ],
+        ),
       ]),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -87,6 +103,38 @@ class HoldingDetail extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Confirm, then replay the contract from its open date (overwrites the
+  /// drifted realized/strike and this contract's reset-history entries).
+  Future<void> _recalc(
+      BuildContext context, PortfolioStore store, Holding h) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Recompute from start?'),
+        content: const Text(
+            'This replays every reset from the open date using market history, '
+            'overwriting the current realized amount, strike, and this '
+            'contract’s reset-history entries. The originals can’t be restored.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Recompute')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final n = await store.recalcFromStart(h);
+    messenger.showSnackBar(SnackBar(
+      content: Text(n < 0
+          ? (store.status ?? 'History unavailable; could not recompute.')
+          : 'Recomputed from start — $n reset${n == 1 ? '' : 's'} replayed.'),
+    ));
   }
 
   Widget _chartCard(BuildContext context, Holding h, String base) => Card(
