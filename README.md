@@ -2,12 +2,13 @@
 
 Track structured products (annuities) that pay an index-linked return. The
 **upside** is the index move — optionally scaled by a **participation rate** and
-limited by a **cap** (or uncapped). The **downside** uses one of three protection
+limited by a **cap** (or uncapped). The **downside** uses one of four protection
 types (the tracker's *Floor Type* column):
 
 1. **Protected** (Floor = 0%) — no loss in the period; principal protected each reset.
 2. **Hard** (Floor < 0%) — *buffer*: absorbs the first *X%* of losses; you lose only beyond it.
 3. **Soft** (Floor < 0%) — *barrier*: fully protected unless the index breaches it, then full loss applies.
+4. **Floor** (Floor < 0%) — *max-loss floor*: the loss is limited to the floor and never worse.
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
@@ -52,6 +53,8 @@ Negative + Hard   → buffer: absorbs the first |floor|%, lose 1:1 beyond
 Negative + Soft   → barrier: protected unless breached, then full 1:1 loss
                     payoff = indexReturn ≥ 0 ? creditedGain
                             : (indexReturn ≥ floor ? 0 : indexReturn)
+Negative + Floor  → max-loss floor: lose only down to the floor
+                    payoff = indexReturn ≥ 0 ? creditedGain : max(indexReturn, floor)
 
 currentValue = principal × (1 + payoff)
 ```
@@ -69,13 +72,14 @@ unrealized  = (initial + realized) × payoff      # projValue = initial + realiz
 
 ## Example contracts — $100,000 starting principal
 
-The eight illustrative contracts below match the table in the image above. They
+The nine illustrative contracts below match the table in the image above. They
 are **modeled on real holdings** but normalized to a **$100,000** principal;
 index returns/levels are illustrative (dates/days as of 14‑Jun‑26). The
 `Floor Type` column is the downside-protection mechanism — **Protected** (0%
 floor), **Hard** (buffer — first |floor|% absorbed), **Soft** (barrier — full
-loss if breached). `$` values are in $000s. Reset cadences collapse to
-**Inception** (point-to-point), **Annual**, or **Monthly**.
+loss if breached), **Floor** (max loss — lose only down to the floor). `$` values
+are in $000s. Reset cadences collapse to **Inception** (point-to-point),
+**Annual**, or **Monthly**.
 
 | Issuer | Index | Cap | Part. | Floor | Floor Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -87,7 +91,8 @@ loss if breached). `$` values are in $000s. Reset cadences collapse to
 | NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.12% | **$102.23** |
 | AXA | ^NDX | 100% | 100% | −20% | Hard | Inception | IRA | −15.00% → 0.00% | **$100.00** |
 | CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
-| **Total** | | | | | | | | | **$851.98** |
+| MAREX | ^RUT | 20% | 100% | −10% | Floor | Inception | Non‑Qual | −18.00% → −10.00% | **$90.00** |
+| **Total** | | | | | | | | | **$941.98** |
 
 What each row demonstrates:
 

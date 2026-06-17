@@ -95,17 +95,35 @@ ROWS = [
          cap=None, part=1.00, floor=-0.15, soft=False, idx=0.12,
          open=d(2025,11,28), last=d(2025,11,28), mat=d(2029,12,1), nxt=d(2029,12,1),
          freq="4-Year", acct="ROTH"),
+    dict(pos="Marex 10%-12Jun31", issuer="Marex", index="^RUT",
+         cap=0.20, part=1.00, floor=-0.10, floortype="floor", soft=False, idx=-0.18,
+         open=d(2026,6,12), last=d(2026,6,12), mat=d(2031,6,12), nxt=d(2031,6,12),
+         freq="5-Year", acct="Non-Qual"),  # max-loss Floor: −18% move clamps to −10%
 ]
 
-def credited(idx, cap, part, floor, soft):
+def credited(idx, cap, part, floor, soft, floortype=None):
     if idx >= 0:
         up = part * idx
         return up if cap is None else min(cap, up)
     if floor == 0:                 # true 0% floor
         return 0.0
+    if floortype == "floor":       # max-loss floor: lose only down to the floor
+        return max(idx, floor)
     if soft:                       # barrier: protected unless breached
         return 0.0 if idx >= floor else idx
     return min(0.0, idx - floor)   # hard buffer: absorb first |floor|
+
+
+# Protection class/label for a row: Protected (floor 0), Floor (max-loss),
+# Soft (barrier), or Hard (buffer). Single source for the HTML pill + xlsx cell.
+def prot_of(r):
+    if r["floor"] == 0:
+        return "abs", "Protected"
+    if r.get("floortype") == "floor":
+        return "floor", "Floor"
+    if r["soft"]:
+        return "soft", "Soft"
+    return "hard", "Hard"
 
 def pct(x, plus=True):
     s = f"{x*100:,.2f}%"
@@ -133,7 +151,8 @@ for r in ROWS:
         r["proj_gain"] = r["proj"]
         r["realized_v"] = r["realized"]
     else:
-        r["proj_gain"] = credited(r["idx"], r["cap"], r["part"], r["floor"], r["soft"])
+        r["proj_gain"] = credited(
+            r["idx"], r["cap"], r["part"], r["floor"], r["soft"], r.get("floortype"))
         r["realized_v"] = 0.0
         r["strike"] = PRICES[base_index(r["index"])] / (1 + r["idx"])
     # Matches the tracker: realized is reinvested into the base, so the payoff
@@ -161,12 +180,7 @@ rows_html = []
 for r in ROWS:
     pc = "pos" if r["proj_gain"] > 0 else ("neg" if r["proj_gain"] < 0 else "")
     ic = "pos" if r["idx"] > 0 else ("neg" if r["idx"] < 0 else "")
-    if r["floor"] == 0:
-        prot, prot_lbl = "abs", "Protected"
-    elif r["soft"]:
-        prot, prot_lbl = "soft", "Soft"
-    else:
-        prot, prot_lbl = "hard", "Hard"
+    prot, prot_lbl = prot_of(r)
     rows_html.append(f"""      <tr>
         <td class="l">{r['issuer']}</td>
         <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td>
@@ -212,6 +226,7 @@ HTML = f"""<!--
   .hard {{ background:#eaf7ec; color:#0a7d28; }}
   .abs {{ background:#e6efff; color:#1f3a5f; }}
   .soft {{ background:#fff3e0; color:#b26a00; }}
+  .floor {{ background:#fdeaea; color:#b00020; }}
   .nq  {{ background:#fff8e1; color:#8a6d00; font-weight:600; }}
   .ira {{ background:#e6efff; color:#1f3a5f; font-weight:600; }}
   .roth{{ background:#eaf7ec; color:#0a7d28; font-weight:600; }}
@@ -223,7 +238,7 @@ HTML = f"""<!--
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Eight illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft) / max-loss (Floor). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -281,7 +296,7 @@ HEADERS = [
     "Issuer",                      # B — identity
     "Type",                        # C
     "Index",                       # D
-    "Floor Type",                  # E — Protected | Hard | Soft
+    "Floor Type",                  # E — Protected | Hard | Soft | Floor
     "Initial ($000)",              # F — inputs
     "Realized ($000)",             # G
     "Proj Value @ Reset ($000)",   # H — outcome
@@ -308,8 +323,7 @@ HEAD_FONT = Font(color="FFFFFF", bold=True)
 
 
 def _floor_type_label(r):
-    if r["floor"] == 0: return "Protected"
-    return "Soft" if r["soft"] else "Hard"
+    return prot_of(r)[1]
 
 
 def _row_values(r):
@@ -368,7 +382,8 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%d-%b-%y} "
                f"(prices: SPX {PRICES['SPX']:,.2f}  NDX {PRICES['NDX']:,.0f}  RUT {PRICES['RUT']:,.2f})"])
     ws.append(["Floor Type: Protected (0% floor), Hard (buffer — absorbs first |floor|), "
-               "Soft (barrier — full loss if breached) | CAP 9.99 = uncapped | $ columns in $000s"])
+               "Soft (barrier — full loss if breached), Floor (max loss — lose only down to the floor) "
+               "| CAP 9.99 = uncapped | $ columns in $000s"])
     ws.append(HEADERS)
     for cell in ws[3]:
         cell.fill = HEAD_FILL; cell.font = HEAD_FONT; cell.alignment = Alignment(wrap_text=True)
@@ -404,8 +419,8 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
             ["Proj Gain @ Reset", "derived", "Recomputed payoff for the period"],
             ["CAP", "input", "Fraction, e.g. 0.1125 = 11.25%. 9.99 = uncapped sentinel"],
             ["Part.", "input", "Participation rate, e.g. 1.00 = 100% (or 0.9225, 1.05)"],
-            ["Floor", "input", "<= 0. 0 = Protected; negative = buffer (Hard) / barrier (Soft) amount"],
-            ["Floor Type", "input", "'Protected' (floor=0), 'Hard' (buffer), or 'Soft' (barrier)"],
+            ["Floor", "input", "<= 0. 0 = Protected; negative = buffer (Hard) / barrier (Soft) / max-loss (Floor) amount"],
+            ["Floor Type", "input", "'Protected' (floor=0), 'Hard' (buffer), 'Soft' (barrier), or 'Floor' (max loss)"],
             ["Strike", "input", "Index level at open / last reset (SPX strike for worst-of)"],
             ["Open / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
             ["Days to Maturity", "derived", "Recomputed from Maturity"],

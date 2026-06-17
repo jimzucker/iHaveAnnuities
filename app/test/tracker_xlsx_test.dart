@@ -15,15 +15,20 @@ void main() {
   final realPath = '${Platform.environment['HOME']}/Library/Mobile Documents/'
       'com~apple~CloudDocs/jim-icloud-drive/claude-files/Zucker-Annuity-Tracker.xlsx';
 
-  test('parses the generated example-portfolio.xlsx (8 holdings)', () {
+  test('parses the generated example-portfolio.xlsx (9 holdings)', () {
     final holdings = parseTracker(File(examplePath).readAsBytesSync());
-    expect(holdings.length, 8);
+    expect(holdings.length, 9);
 
     final aspida = holdings.firstWhere((h) => h.issuer == 'ASPIDA');
     expect(aspida.cap, closeTo(0.1225, 1e-9));
     expect(aspida.floor, 0.0);
     expect(aspida.floorType, FloorType.hard);
     expect(aspida.protectionType, 'Protected');
+
+    // The max-loss Floor example imports as FloorType.floor.
+    final marex = holdings.firstWhere((h) => h.issuer == 'MAREX');
+    expect(marex.floorType, FloorType.floor);
+    expect(marex.protectionType, 'Floor');
     expect(aspida.account, AccountType.nonQual);
     expect(aspida.position, 'ASPIDA-0%-14Nov28'); // computed name, uppercase
     expect(aspida.projGain, closeTo(0.1225, 1e-6)); // recomputed from strike/gain
@@ -73,7 +78,7 @@ void main() {
     // a styled TOTAL row is appended (and skipped on re-import).
     final totalRow = rows.firstWhere(
         (r) => r.isNotEmpty && r.first?.toString().trim() == 'TOTAL');
-    expect(totalRow[7], closeTo(851.98, 0.02)); // Proj Value total (col H)
+    expect(totalRow[7], closeTo(941.98, 0.02)); // Proj Value total (col H)
   });
 
   test('gainStatus flags capped / loss / gain', () {

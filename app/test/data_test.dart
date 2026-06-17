@@ -294,27 +294,27 @@ void main() {
       final store = PortfolioStore();
       final bytes = File('../data/example-portfolio.xlsx').readAsBytesSync();
       final n = await store.importXlsx(bytes);
-      expect(n, 8);
-      expect(store.totalInitial, closeTo(800.0, 1e-6));
+      expect(n, 9);
+      expect(store.totalInitial, closeTo(900.0, 1e-6));
       expect(store.totalProjValue, greaterThan(0));
       // Unrealized total excludes realized: value = initial + realized + gain.
       expect(store.totalProjGain,
-          closeTo(store.totalProjValue - 800.0 - store.totalRealized, 1e-6));
+          closeTo(store.totalProjValue - 900.0 - store.totalRealized, 1e-6));
 
       // export round-trips back through the parser
       final exported = store.exportXlsx();
-      expect(parseTracker(exported).length, 8);
+      expect(parseTracker(exported).length, 9);
 
       final first = store.holdings.first;
       final edited = first.copyWith(currentLevel: first.currentLevel);
       await store.upsert(edited, replacing: first);
-      expect(store.holdings.length, 8);
-
-      await store.upsert(_sample());
       expect(store.holdings.length, 9);
 
+      await store.upsert(_sample());
+      expect(store.holdings.length, 10);
+
       await store.remove(store.holdings.last);
-      expect(store.holdings.length, 8);
+      expect(store.holdings.length, 9);
 
       await store.clearLocal();
       expect(store.isEmpty, isTrue);

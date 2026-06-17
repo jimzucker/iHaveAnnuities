@@ -27,6 +27,7 @@
   .hard { background:#eaf7ec; color:#0a7d28; }
   .abs { background:#e6efff; color:#1f3a5f; }
   .soft { background:#fff3e0; color:#b26a00; }
+  .floor { background:#fdeaea; color:#b00020; }
   .nq  { background:#fff8e1; color:#8a6d00; font-weight:600; }
   .ira { background:#e6efff; color:#1f3a5f; font-weight:600; }
   .roth{ background:#eaf7ec; color:#0a7d28; font-weight:600; }
@@ -38,7 +39,7 @@
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Eight illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft). Updated 14-Jun-26 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft) / max-loss (Floor). Updated 14-Jun-26 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -186,11 +187,26 @@
         <td class="c">Inception</td>
         <td class="c">28-Nov-25</td><td class="c">28-Nov-25</td>
       </tr>
+      <tr>
+        <td class="l">MAREX</td>
+        <td class="c"><span class="pill nq">Non-Qual</span></td>
+        <td class="c">^RUT</td>
+        <td class="c"><span class="pill floor">Floor</span></td>
+        <td>$100.00</td><td>$0.00</td>
+        <td>$90.00</td><td class="neg">-$10.00</td>
+        <td class="neg">-10.00%</td><td class="neg">-18.00%</td>
+        <td class="c">12-Jun-31</td><td>1,824</td>
+        <td class="c">12-Jun-31</td><td>1,824</td>
+        <td>20.00%</td><td>100.00%</td><td>-10.00%</td>
+        <td>3,597.56</td>
+        <td class="c">Inception</td>
+        <td class="c">12-Jun-26</td><td class="c">12-Jun-26</td>
+      </tr>
     </tbody>
     <tfoot>
       <tr>
-        <td class="l" colspan="4">Totals &mdash; 8 contracts</td>
-        <td>$800.00</td><td>$1.10</td><td>$851.98</td><td>$50.88</td>
+        <td class="l" colspan="4">Totals &mdash; 9 contracts</td>
+        <td>$900.00</td><td>$1.10</td><td>$941.98</td><td>$40.88</td>
         <td colspan="13"></td>
       </tr>
     </tfoot>
