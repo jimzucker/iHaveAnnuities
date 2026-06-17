@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../core/models.dart';
 import '../data/portfolio_store.dart';
+import 'confirm.dart';
 import 'format.dart';
 import 'holding_form.dart';
 import 'index_chart_screen.dart';
@@ -135,7 +136,7 @@ class PortfolioScreen extends StatelessWidget {
       case 'import':
         // Importing replaces the current holdings — guard it when there's data.
         if (!store.isEmpty &&
-            !await _confirmTyped(context,
+            !await confirmTyped(context,
                 title: 'Replace portfolio?',
                 message: 'Importing a spreadsheet replaces all your current '
                     'holdings. This can\'t be undone.',
@@ -171,7 +172,7 @@ class PortfolioScreen extends StatelessWidget {
         final n = await store.importXlsx(data.buffer.asUint8List());
         messenger.showSnackBar(SnackBar(content: Text('Loaded $n sample holdings')));
       case 'clear':
-        if (!await _confirmTyped(context,
+        if (!await confirmTyped(context,
             title: 'Clear all data?',
             message: '⚠️ This permanently deletes your locally stored portfolio '
                 'and cannot be undone. Export a backup first if you want to keep '
@@ -180,8 +181,7 @@ class PortfolioScreen extends StatelessWidget {
             confirmLabel: 'Clear all data',
             destructive: true,
             onBackup: () async {
-              await _save(
-                  'iHaveAnnuities-backup.xlsx', Uint8List.fromList(store.exportXlsx()));
+              await exportBackup(store);
               messenger.showSnackBar(
                   const SnackBar(content: Text('Backup exported')));
             })) {
@@ -196,31 +196,6 @@ class PortfolioScreen extends StatelessWidget {
         await Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const InfoPage()));
     }
-  }
-
-  /// A confirmation dialog that requires typing [phrase] before the action
-  /// button enables — a precaution for destructive / overwriting actions.
-  Future<bool> _confirmTyped(
-    BuildContext context, {
-    required String title,
-    required String message,
-    required String phrase,
-    required String confirmLabel,
-    bool destructive = false,
-    Future<void> Function()? onBackup,
-  }) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => _TypedConfirmDialog(
-        title: title,
-        message: message,
-        phrase: phrase,
-        confirmLabel: confirmLabel,
-        destructive: destructive,
-        onBackup: onBackup,
-      ),
-    );
-    return ok ?? false;
   }
 
   Future<void> _save(String name, Uint8List bytes) => FileSaver.instance.saveFile(
@@ -326,87 +301,6 @@ class _SummaryToggle extends StatelessWidget {
     );
   }
 }
-
-/// Dialog requiring the user to type a phrase before the action enables.
-class _TypedConfirmDialog extends StatefulWidget {
-  const _TypedConfirmDialog({
-    required this.title,
-    required this.message,
-    required this.phrase,
-    required this.confirmLabel,
-    this.destructive = false,
-    this.onBackup,
-  });
-  final String title;
-  final String message;
-  final String phrase;
-  final String confirmLabel;
-  final bool destructive;
-  final Future<void> Function()? onBackup;
-
-  @override
-  State<_TypedConfirmDialog> createState() => _TypedConfirmDialogState();
-}
-
-class _TypedConfirmDialogState extends State<_TypedConfirmDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final matches =
-        _controller.text.trim().toLowerCase() == widget.phrase.toLowerCase();
-    final cs = Theme.of(context).colorScheme;
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(widget.message),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) {
-              if (matches) Navigator.pop(context, true);
-            },
-            decoration: InputDecoration(
-              labelText: 'Type "${widget.phrase}" to confirm',
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        if (widget.onBackup != null)
-          TextButton.icon(
-            onPressed: () => widget.onBackup!(),
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text('Export backup'),
-          ),
-        TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel')),
-        FilledButton(
-          onPressed: matches ? () => Navigator.pop(context, true) : null,
-          style: widget.destructive
-              ? FilledButton.styleFrom(
-                  backgroundColor: cs.error, foregroundColor: cs.onError)
-              : null,
-          child: Text(widget.confirmLabel),
-        ),
-      ],
-    );
-  }
-}
-
 class _Empty extends StatelessWidget {
   const _Empty({
     required this.onAdd,

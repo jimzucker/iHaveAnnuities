@@ -411,7 +411,17 @@ void main() {
     await tester.tap(del);
     await tester.pumpAndSettle();
     expect(find.text('Delete holding?'), findsOneWidget);
+    expect(find.textContaining('cannot be undone'), findsOneWidget);
+    expect(find.text('Export backup'), findsOneWidget); // backup offered
 
+    // Guarded like Clear-all: Delete stays disabled until the phrase is typed.
+    final delBtn = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Delete'));
+    expect(delBtn.onPressed, isNull);
+    expect(store.holdings.length, before); // tapping early does nothing
+
+    await tester.enterText(find.byType(TextField), 'delete');
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
     await tester.pumpAndSettle();
     expect(store.holdings.length, before - 1);

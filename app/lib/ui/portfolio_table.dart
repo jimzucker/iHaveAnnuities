@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../core/models.dart';
 import '../data/portfolio_store.dart';
+import 'confirm.dart';
 import 'format.dart';
 import 'holding_detail.dart';
 import 'holding_form.dart';
@@ -368,24 +369,21 @@ class PortfolioTable extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context, PortfolioStore store, Holding x) async {
-    final cs = Theme.of(context).colorScheme;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete holding?'),
-        content: Text('${store.labelFor(x)}\n\nThis removes the contract from '
-            'your portfolio.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: cs.error, foregroundColor: cs.onError),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await confirmTyped(
+      context,
+      title: 'Delete holding?',
+      message: '⚠️ This permanently removes ${store.labelFor(x)} from your '
+          'locally stored portfolio and cannot be undone. Export a backup first '
+          'if you want to keep a copy.',
+      phrase: 'delete',
+      confirmLabel: 'Delete',
+      destructive: true,
+      onBackup: () async {
+        await exportBackup(store);
+        messenger.showSnackBar(const SnackBar(content: Text('Backup exported')));
+      },
     );
-    if (ok == true) await store.remove(x);
+    if (ok) await store.remove(x);
   }
 }
