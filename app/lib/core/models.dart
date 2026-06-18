@@ -194,9 +194,9 @@ class Holding {
   String get protectionType => floor == 0
       ? 'Floor' // a 0% floor is just a Floor at 0% (was "Protected")
       : switch (floorType) {
-          FloorType.soft => 'Soft-buffer',
+          FloorType.soft => 'Soft',
           FloorType.floor => 'Floor',
-          FloorType.hard => 'Hard-buffer',
+          FloorType.hard => 'Hard',
         };
 
   /// Stable identity across re-imports (issuer/index/account/maturity don't

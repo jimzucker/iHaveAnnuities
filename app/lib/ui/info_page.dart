@@ -50,15 +50,15 @@ class InfoPage extends StatelessWidget {
                         'means no loss at all; a −10% floor caps the loss at 10%. '
                         'Upside still applies (subject to cap and participation).'),
                 _Bullet(
-                    label: 'Hard-buffer',
-                    color: protectionPalette('Hard-buffer', cs).accent,
+                    label: 'Hard (buffer)',
+                    color: protectionPalette('Hard', cs).accent,
                     text:
                         'A buffer absorbs the first portion of a decline. If the '
                         'index falls 22% with a 15% buffer, you absorb only the '
                         '7% beyond it.'),
                 _Bullet(
-                    label: 'Soft-buffer (barrier)',
-                    color: protectionPalette('Soft-buffer', cs).accent,
+                    label: 'Soft (barrier)',
+                    color: protectionPalette('Soft', cs).accent,
                     text:
                         'Fully protected unless the index falls past the barrier. '
                         'Cross it and the entire decline applies — a 35% drop '

@@ -13,8 +13,8 @@
 # Downside mechanic (see README):
 #   floor == 0        -> Floor at 0%: no period loss (gains capped/participated up)
 #   floor < 0, floor  -> Floor (max-loss): lose only down to |floor|%
-#   floor < 0, Hard   -> Hard-buffer: absorbs first |floor|%, lose 1:1 beyond
-#   floor < 0, Soft   -> Soft-buffer (barrier): protected unless breached, then full loss
+#   floor < 0, Hard   -> Hard (buffer): absorbs first |floor|%, lose 1:1 beyond
+#   floor < 0, Soft   -> Soft (barrier): protected unless breached, then full loss
 #   credited gain = uncapped ? part*idx : min(cap, part*idx)
 #
 # Regenerate:
@@ -123,8 +123,8 @@ def prot_of(r):
     if r.get("floortype") == "floor":
         return "floor", "Floor"    # negative max-loss floor (red pill)
     if r["soft"]:
-        return "soft", "Soft-buffer"
-    return "hard", "Hard-buffer"
+        return "soft", "Soft"
+    return "hard", "Hard"
 
 def pct(x, plus=True):
     s = f"{x*100:,.2f}%"
@@ -240,7 +240,7 @@ HTML = f"""<!--
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard-buffer</b> (absorbs first |floor|, lose beyond), <b>Soft-buffer</b> (barrier — full loss if breached). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard</b> (buffer — absorbs first |floor|, lose beyond), <b>Soft</b> (barrier — full loss if breached). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -298,7 +298,7 @@ HEADERS = [
     "Issuer",                      # B — identity
     "Type",                        # C
     "Index",                       # D
-    "Floor Type",                  # E — Floor | Hard-buffer | Soft-buffer
+    "Floor Type",                  # E — Floor | Hard | Soft
     "Initial ($000)",              # F — inputs
     "Realized ($000)",             # G
     "Proj Value @ Reset ($000)",   # H — outcome
@@ -384,8 +384,8 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%d-%b-%y} "
                f"(prices: SPX {PRICES['SPX']:,.2f}  NDX {PRICES['NDX']:,.0f}  RUT {PRICES['RUT']:,.2f})"])
     ws.append(["Floor Type: Floor (max loss — lose only down to the floor; 0% floor = no loss), "
-               "Hard-buffer (absorbs first |floor|, lose beyond), "
-               "Soft-buffer (barrier — full loss if breached) "
+               "Hard (buffer — absorbs first |floor|, lose beyond), "
+               "Soft (barrier — full loss if breached) "
                "| CAP 9.99 = uncapped | $ columns in $000s"])
     ws.append(HEADERS)
     for cell in ws[3]:
@@ -423,7 +423,7 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
             ["CAP", "input", "Fraction, e.g. 0.1125 = 11.25%. 9.99 = uncapped sentinel"],
             ["Part.", "input", "Participation rate, e.g. 1.00 = 100% (or 0.9225, 1.05)"],
             ["Floor", "input", "<= 0. 0 = no loss (a Floor at 0%); negative = the protection level"],
-            ["Floor Type", "input", "'Floor' (max loss), 'Hard-buffer' (absorbs first |floor|), or 'Soft-buffer' (barrier)"],
+            ["Floor Type", "input", "'Floor' (max loss), 'Hard' (buffer — absorbs first |floor|), or 'Soft' (barrier)"],
             ["Strike", "input", "Index level at open / last reset (SPX strike for worst-of)"],
             ["Open / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
             ["Days to Maturity", "derived", "Recomputed from Maturity"],

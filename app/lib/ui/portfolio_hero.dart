@@ -1,7 +1,7 @@
 // Copyright 2026 Jim Zucker
 // SPDX-License-Identifier: Apache-2.0
 // A summary band above the table: a protection-mix donut (principal split
-// across Floor / Hard-buffer / Soft-buffer), a projected-gain bar, and the soonest
+// across Floor / Hard / Soft), a projected-gain bar, and the soonest
 // upcoming resets. Replaces the plain stats row.
 
 import 'dart:math' as math;
@@ -23,7 +23,7 @@ class PortfolioHero extends StatelessWidget {
     final asOf = store.market?.asOf ?? DateTime(2026, 6, 14);
 
     // Principal by protection type.
-    final mix = <String, double>{'Floor': 0, 'Hard-buffer': 0, 'Soft-buffer': 0};
+    final mix = <String, double>{'Floor': 0, 'Hard': 0, 'Soft': 0};
     for (final h in store.holdings) {
       mix[h.protectionType] = (mix[h.protectionType] ?? 0) + h.initial;
     }

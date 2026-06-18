@@ -6,8 +6,8 @@ limited by a **cap** (or uncapped). The **downside** uses one of three protectio
 types (the tracker's *Floor Type* column):
 
 1. **Floor** — *max-loss floor*: you lose only down to the floor, never worse. A **0% floor** means no loss at all; a −10% floor caps the loss at 10%.
-2. **Hard-buffer** (Floor < 0%) — *buffer*: absorbs the first *X%* of losses; you lose only beyond it.
-3. **Soft-buffer** (Floor < 0%) — *barrier*: fully protected unless the index breaches it, then the full loss applies.
+2. **Hard** (Floor < 0%) — *buffer*: absorbs the first *X%* of losses; you lose only beyond it.
+3. **Soft** (Floor < 0%) — *barrier*: fully protected unless the index breaches it, then the full loss applies.
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
@@ -48,17 +48,17 @@ Downside depends on the protection type (the tracker's **Floor** column):
 ```
 Floor (incl. 0%)  → max-loss floor: lose only down to the floor (0% = no loss)
                     payoff = indexReturn ≥ 0 ? creditedGain : max(indexReturn, floor)
-Hard-buffer       → buffer: absorbs the first |floor|%, lose 1:1 beyond
+Hard       → buffer: absorbs the first |floor|%, lose 1:1 beyond
                     payoff = indexReturn ≥ 0 ? creditedGain : min(0, indexReturn − floor)
-Soft-buffer       → barrier: protected unless breached, then full 1:1 loss
+Soft       → barrier: protected unless breached, then full 1:1 loss
                     payoff = indexReturn ≥ 0 ? creditedGain
                             : (indexReturn ≥ floor ? 0 : indexReturn)
 
 currentValue = principal × (1 + payoff)
 ```
 
-The numeric difference matters: on a −28% index, a **−20% Hard-buffer** loses 8%, a
-**−20% Floor** caps the loss at 20%, while a **−20% Soft-buffer** (breached) loses
+The numeric difference matters: on a −28% index, a **−20% Hard** loses 8%, a
+**−20% Floor** caps the loss at 20%, while a **−20% Soft** (breached) loses
 the full 28%.
 
 The projected value reinvests realized income into the base (matching the tracker):
@@ -74,21 +74,21 @@ The nine illustrative contracts below match the table in the image above. They
 are **modeled on real holdings** but normalized to a **$100,000** principal;
 index returns/levels are illustrative (dates/days as of 14‑Jun‑26). The
 `Floor Type` column is the downside-protection mechanism — **Floor** (max loss —
-lose only down to the floor; 0% = no loss), **Hard-buffer** (first |floor|%
-absorbed), **Soft-buffer** (barrier — full loss if breached). `$` values are in
+lose only down to the floor; 0% = no loss), **Hard** (first |floor|%
+absorbed), **Soft** (barrier — full loss if breached). `$` values are in
 $000s. Reset cadences collapse to **Inception** (point-to-point), **Annual**, or
 **Monthly**.
 
 | Issuer | Index | Cap | Part. | Floor | Floor Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ASPIDA | ^GSPC | 12.25% | 100% | 0% | Floor | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
-| AXA | ^GSPC | 65% | 100% | −15% | Hard-buffer | Inception | Non‑Qual | −22.00% → −7.00% | **$93.00** |
-| CITI | ^GSPC | Uncapped | 102% | −15% | Hard-buffer | Inception | IRA | +30.00% → +30.60% | **$130.60** |
-| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard-buffer | Inception | IRA | +40.00% → +36.90% | **$136.90** |
-| BNP | ^GSPC | Uncapped | 105% | −30% | Soft-buffer | Inception | ROTH | −35.00% → −35.00% | **$65.00** |
-| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft-buffer | Monthly | Non‑Qual | +8.47% → +1.10% | **$102.22** |
-| AXA | ^NDX | 100% | 100% | −20% | Hard-buffer | Inception | IRA | −15.00% → 0.00% | **$100.00** |
-| CITI | ^GSPC | Uncapped | 100% | −15% | Hard-buffer | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
+| AXA | ^GSPC | 65% | 100% | −15% | Hard | Inception | Non‑Qual | −22.00% → −7.00% | **$93.00** |
+| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Inception | IRA | +30.00% → +30.60% | **$130.60** |
+| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Inception | IRA | +40.00% → +36.90% | **$136.90** |
+| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Inception | ROTH | −35.00% → −35.00% | **$65.00** |
+| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.10% | **$102.22** |
+| AXA | ^NDX | 100% | 100% | −20% | Hard | Inception | IRA | −15.00% → 0.00% | **$100.00** |
+| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
 | MAREX | ^RUT | 20% | 100% | −10% | Floor | Inception | Non‑Qual | −18.00% → −10.00% | **$90.00** |
 | **Total** | | | | | | | | | **$941.97** |
 
@@ -105,8 +105,8 @@ What each row demonstrates:
 
 ### Use-case coverage
 
-These eight cover every distinct case in the real tracker: **downside** —
-Protected (0% floor), Hard (buffer), Soft (barrier); **cap** — capped + uncapped
+These nine cover every distinct case in the real tracker: **downside** —
+Floor (max loss, incl. 0%), Hard (buffer), Soft (barrier); **cap** — capped + uncapped
 (`9.99` sentinel); **participation** — <100% / 100% / >100%; **reset** —
 Inception / Annual / Monthly; **index** — SPX / NDX / RUT / worst‑of; **account**
 — Non‑Qual / IRA / ROTH; plus a monthly‑coupon income note alongside the

@@ -67,7 +67,7 @@ Color gainStatusColor(GainStatus s, ColorScheme c) {
 ({Color bg, Color fg, Color accent}) protectionPalette(
         String type, ColorScheme cs) =>
     switch (type) {
-      'Soft-buffer' => (
+      'Soft' => (
           bg: const Color(0xFFFFF3E0),
           fg: const Color(0xFFB26A00),
           accent: const Color(0xFFB26A00),

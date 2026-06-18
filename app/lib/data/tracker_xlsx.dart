@@ -94,14 +94,15 @@ AccountType _account(String? s) => switch ((s ?? '').toLowerCase()) {
       _ => AccountType.nonQual,
     };
 
-/// Current vocab `{Soft-buffer, Hard-buffer, Floor}` plus legacy
-/// `{Soft, Hard, Protected, Floored, Barrier, Buffer}`. `Soft-buffer`/`Soft` →
-/// soft (barrier); `Floor`/`Protected` → floor (max-loss; a 0% floor reads as
-/// "Floor"); anything else → hard (buffer). Case-insensitive.
+/// Current vocab `{Floor, Hard, Soft}` plus legacy
+/// `{Protected, Soft-buffer, Hard-buffer, Floored, Barrier, Buffer}`.
+/// `Soft`/`Soft-buffer`/`Barrier` → soft (barrier); `Floor`/`Floored`/`Protected`
+/// → floor (max-loss; a 0% floor reads as "Floor"); anything else → hard
+/// (buffer). Case-insensitive.
 FloorType _floorType(String? s) => switch ((s ?? 'hard').toLowerCase()) {
-      'soft-buffer' || 'soft' || 'barrier' => FloorType.soft,
+      'soft' || 'soft-buffer' || 'barrier' => FloorType.soft,
       'floor' || 'floored' || 'protected' => FloorType.floor,
-      _ => FloorType.hard, // 'hard-buffer', 'hard', 'buffer', anything else
+      _ => FloorType.hard, // 'hard', 'hard-buffer', 'buffer', anything else
     };
 
 /// CAP read: numeric `9.99` (v1.0 sentinel) OR string containing `uncap`
@@ -203,8 +204,8 @@ List<int> writeTracker(
   ]);
   s.appendRow([
     TextCellValue('Floor Type: Floor (max loss — lose only down to the floor; '
-        '0% floor = no loss), Hard-buffer (absorbs first |floor|, lose beyond), '
-        'Soft-buffer (barrier — full loss if breached) | '
+        '0% floor = no loss), Hard (buffer — absorbs first |floor|, lose beyond), '
+        'Soft (barrier — full loss if breached) | '
         'CAP 9.99 = uncapped | \$ columns in \$000s'),
   ]);
   s.appendRow([for (final hd in headers) TextCellValue(hd)]);
