@@ -28,7 +28,7 @@ class HoldingDetail extends StatelessWidget {
             ? 'protected unless it falls past ${pct(h.floor.abs())} (then full loss)'
             : 'a ${pct(h.floor.abs())} buffer absorbs the first losses');
     final upside = h.isIncomeNote
-        ? '${pct(h.couponProj)} monthly coupon'
+        ? '${pct(h.couponRate)} monthly coupon'
         : 'gains $cap$part';
     return '${h.index}-linked — $upside, with $down. Resets '
         '${h.resetFreq.label.toLowerCase()}; next reset ${date(h.nextReset)} '
@@ -161,7 +161,7 @@ class HoldingDetail extends StatelessWidget {
             ('Projected Value', moneyK(h.projValueK), cs.primary),
             ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
             ('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-            if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponProj)}', null),
+            if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponRate)}', null),
           ]),
         ]);
       });

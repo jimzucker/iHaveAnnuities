@@ -109,9 +109,15 @@ class Holding {
   /// Index move since [strike] (fraction).
   double get indexGain => indexReturn(currentLevel, strike);
 
+  /// Monthly contingent-coupon rate for an income note = annual cap / 12
+  /// (matches the reset engine). Falls back to the stored [couponProj] when no
+  /// cap is present, so display and the realized roll-forward always agree.
+  double get couponRate =>
+      isIncomeNote && cap != null ? cap! / 12 : couponProj;
+
   /// Projected credited gain at the next reset (fraction).
   double get projGain => isIncomeNote
-      ? couponProj
+      ? couponRate
       : payoffReturn(indexGain,
           cap: cap,
           participation: participation,

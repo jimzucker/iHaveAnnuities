@@ -68,7 +68,7 @@ class _PayoffPainter extends CustomPainter {
   final ColorScheme cs;
 
   double _payoff(double idx) => h.isIncomeNote
-      ? h.couponProj
+      ? h.couponRate
       : payoffReturn(idx,
           cap: h.cap,
           participation: h.participation,

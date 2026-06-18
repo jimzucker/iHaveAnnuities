@@ -287,6 +287,40 @@ void main() {
     expect(find.text('breached'), findsOneWidget);
   });
 
+  testWidgets('reset history clear is typed-confirm guarded', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = PortfolioStore()
+      ..debugSeed([], _market, resetHistory: [
+        ResetEvent(
+          holdingKey: 'k',
+          label: 'NATBANK-30%-16Apr29',
+          date: DateTime(2026, 6, 12),
+          isIncomeNote: true,
+          periodReturn: 0.01104,
+          realizedAddedK: 0.1116,
+          realizedAfterK: 0.2220,
+        ),
+      ]);
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+        value: store, child: const MaterialApp(home: ResetHistoryScreen())));
+
+    await tester.tap(find.byTooltip('Clear history'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('cannot be undone'), findsOneWidget);
+    // Guarded: the Clear button is disabled until the phrase is typed.
+    final btn = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Clear history'));
+    expect(btn.onPressed, isNull);
+    expect(store.resetHistory, isNotEmpty);
+
+    await tester.enterText(find.byType(TextField), 'clear');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear history'));
+    await tester.pumpAndSettle();
+    expect(store.resetHistory, isEmpty);
+    expect(find.text('No resets recorded yet'), findsOneWidget);
+  });
+
   testWidgets('info page renders the protection types', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InfoPage()));
     expect(find.textContaining('What it does'), findsOneWidget);

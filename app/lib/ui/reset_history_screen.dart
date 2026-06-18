@@ -8,17 +8,43 @@ import 'package:provider/provider.dart';
 
 import '../core/reset_event.dart';
 import '../data/portfolio_store.dart';
+import 'confirm.dart';
 import 'format.dart';
 
 class ResetHistoryScreen extends StatelessWidget {
   const ResetHistoryScreen({super.key});
+
+  Future<void> _clear(BuildContext context, PortfolioStore store) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await confirmTyped(
+      context,
+      title: 'Clear reset history?',
+      message: '⚠️ This permanently deletes the reset-history log and cannot be '
+          'undone. Your holdings keep their realized amounts — only this audit '
+          'trail is removed (you can rebuild it per contract with '
+          '“Recompute from start”).',
+      phrase: 'clear',
+      confirmLabel: 'Clear history',
+      destructive: true,
+    );
+    if (!ok) return;
+    await store.clearResetHistory();
+    messenger.showSnackBar(const SnackBar(content: Text('Reset history cleared')));
+  }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
     final events = store.resetHistory; // newest first
     return Scaffold(
-      appBar: AppBar(title: const Text('Reset History')),
+      appBar: AppBar(title: const Text('Reset History'), actions: [
+        if (events.isNotEmpty)
+          IconButton(
+            tooltip: 'Clear history',
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: () => _clear(context, store),
+          ),
+      ]),
       body: events.isEmpty
           ? const _Empty()
           : ListView.separated(

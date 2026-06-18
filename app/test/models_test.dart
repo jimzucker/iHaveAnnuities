@@ -80,7 +80,7 @@ void main() {
     expect(h.projValueK, closeTo(65.0, 1e-9));
   });
 
-  test('Income note: coupon projection + realized', () {
+  test('Income note: coupon = cap/12, projection + realized', () {
     final h = _h(
         cap: 0.1325,
         floor: -0.30,
@@ -89,12 +89,25 @@ void main() {
         currentLevel: 7140,
         realized: 1.10,
         isIncomeNote: true,
-        couponProj: 0.0112);
-    expect(h.projGain, closeTo(0.0112, 1e-12));
-    // Tracker formula: (initial + realized) * (1 + projGain) = 101.10 * 1.0112.
-    expect(h.projValueK, closeTo(102.2323, 1e-3));
+        couponProj: 0.0112); // stored value ignored; coupon derives from cap/12
+    // Coupon = annual cap / 12 = 13.25% / 12 = 1.104% (matches the reset engine).
+    expect(h.couponRate, closeTo(0.1325 / 12, 1e-12));
+    expect(h.projGain, closeTo(0.1325 / 12, 1e-12));
+    // (initial + realized) * (1 + cap/12) = 101.10 * 1.0110417.
+    expect(h.projValueK, closeTo(102.2163, 1e-3));
     expect(h.initial + h.realized + h.projGainDollarsK,
         closeTo(h.projValueK, 1e-6));
+  });
+
+  test('Income note without a cap falls back to stored couponProj', () {
+    final h = _h(
+        cap: null,
+        floor: -0.30,
+        strike: 6583,
+        currentLevel: 7140,
+        isIncomeNote: true,
+        couponProj: 0.0112);
+    expect(h.couponRate, closeTo(0.0112, 1e-12));
   });
 
   test('Axa 100%: -15% within -20% buffer -> 0% -> \$100k', () {

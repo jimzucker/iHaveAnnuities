@@ -187,6 +187,14 @@ class PortfolioStore extends ChangeNotifier {
         _key, jsonEncode(_holdings.map((h) => h.toJson()).toList()));
   }
 
+  /// Clear the reset-history log (audit trail only — holdings keep their
+  /// realized; the log can be rebuilt with Recompute-from-start).
+  Future<void> clearResetHistory() async {
+    _resetHistory = [];
+    await _persistResetHistory();
+    notifyListeners();
+  }
+
   Future<void> _persistResetHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
