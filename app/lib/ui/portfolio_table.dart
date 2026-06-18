@@ -36,11 +36,15 @@ Route<void> detailRoute(Holding h) => PageRouteBuilder(
 
 /// One sortable column: how to render it and how to sort by it.
 class _Col {
-  const _Col(this.label, this.numeric, this.key, this.cell);
+  const _Col(this.label, this.numeric, this.key, this.cell, {this.fixedWidth});
   final String label;
   final bool numeric;
   final Comparable Function(Holding h, DateTime asOf) key;
   final DataCell Function(Holding h, DateTime asOf, ColorScheme cs) cell;
+
+  /// When set, the column is exactly this wide (won't flex). Used to keep
+  /// short numeric/code columns tight so the slack goes to names/dates/money.
+  final double? fixedWidth;
 }
 
 class PortfolioTable extends StatelessWidget {
@@ -72,16 +76,19 @@ class PortfolioTable extends StatelessWidget {
                     decoration: TextDecoration.underline,
                     decorationColor: cs.primary)))),
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
-            DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer))),
+            DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
+            fixedWidth: 88),
         _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
         _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
           final c = protectionPalette(p, cs);
           return DataCell(_pill(p, c.bg, c.fg));
-        }),
+        }, fixedWidth: 84),
         // Inputs
-        _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial))),
-        _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized))),
+        _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial)),
+            fixedWidth: 92),
+        _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
+            fixedWidth: 92),
         // Outcome
         _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
@@ -113,19 +120,27 @@ class PortfolioTable extends StatelessWidget {
             overflow: TextOverflow.clip,
           );
           return DataCell(tip != null ? Tooltip(message: tip, child: text) : text);
-        }),
-        _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs)),
+        }, fixedWidth: 104),
+        _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
+            fixedWidth: 92),
         // Timing (monitor)
         _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
-        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}')),
+        _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}'),
+            fixedWidth: 84),
         _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
-        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}')),
+        _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}'),
+            fixedWidth: 96),
         // Terms (static)
-        _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap))),
-        _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation))),
-        _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor))),
-        _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike))),
-        _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label)),
+        _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap)),
+            fixedWidth: 72),
+        _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation)),
+            fixedWidth: 80),
+        _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor)),
+            fixedWidth: 84),
+        _Col('Strike', true, (h, _) => h.strike, (h, _, _) => _t(level(h.strike)),
+            fixedWidth: 92),
+        _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label),
+            fixedWidth: 100),
         _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),
         _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
       ];
@@ -173,7 +188,9 @@ class PortfolioTable extends StatelessWidget {
       final frozen = shown.takeWhile((c) => _identityLabels.contains(c.label)).length;
       // minWidth scales with the column count: when the viewport is wider the
       // flexible columns fill it (no gap); when narrower the table scrolls.
-      final minW = 132.0 * shown.length + 130 /*actions + margins*/;
+      // Narrow numeric/code columns are fixedWidth, so the per-column factor is
+      // smaller now (the slack lands on the few flexible name/date/money cols).
+      final minW = 116.0 * shown.length + 130 /*actions + margins*/;
 
       return DataTable2(
         columnSpacing: 16,
@@ -195,6 +212,7 @@ class PortfolioTable extends StatelessWidget {
               label: Text(c.label, softWrap: true),
               numeric: c.numeric,
               size: _colSize(c),
+              fixedWidth: c.fixedWidth,
               onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
             ),
           const DataColumn2(label: Text('Actions'), size: ColumnSize.S, fixedWidth: 104),
@@ -234,15 +252,10 @@ class PortfolioTable extends StatelessWidget {
   }
 
   /// Relative column width (flexible, so columns fill the viewport width).
+  // Only the flexible (non-fixedWidth) columns consult this — names/money/dates.
+  // Issuer gets the most slack; the rest share evenly.
   static ColumnSize _colSize(_Col c) => switch (c.label) {
-        'Issuer' ||
-        'Index' ||
-        'Projected Value' ||
-        'Unrealized \$' ||
-        'Next Reset' ||
-        'Maturity' =>
-          ColumnSize.L,
-        'Type' || 'Floor Type' || 'CAP' || 'Part.' || 'Floor' => ColumnSize.S,
+        'Issuer' => ColumnSize.L,
         _ => ColumnSize.M,
       };
 
