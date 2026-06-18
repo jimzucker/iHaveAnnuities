@@ -87,20 +87,16 @@ class PortfolioTable extends StatelessWidget {
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs))))),
-        // Projected payoff %, highlighted by status: red loss / green gain /
-        // amber when the cap is reached. A lock (cap reached) or open-lock
-        // (room left) icon — each with a tooltip — flags capped products.
+        // Projected payoff %, highlighted by status: red loss / amber when the
+        // cap is reached. A single amber lock (with a tooltip) flags ONLY a
+        // capped-out product — below-cap and uncapped show no icon, so the lock
+        // unambiguously means "maxed out".
         _Col('Unrealized %', true, (h, _) => h.projGain, (h, _, cs) {
           final st = h.gainStatus;
           final color = gainStatusColor(st, cs);
           final capped = st == GainStatus.capped;
-          final roomLeft = st == GainStatus.gain && h.hasCap;
-          final icon = capped
-              ? Icons.lock
-              : (roomLeft ? Icons.lock_open : null);
-          final tip = capped
-              ? '${capLabel(h.cap)} cap reached'
-              : (roomLeft ? 'Below the ${capLabel(h.cap)} cap' : null);
+          final icon = capped ? Icons.lock : null;
+          final tip = capped ? '${capLabel(h.cap)} cap reached' : null;
           // Text.rich (not a Row) so it clips rather than overflowing the
           // fixed-width column.
           final text = Text.rich(

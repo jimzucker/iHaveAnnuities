@@ -245,12 +245,11 @@ class _KeyFigures extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 8, runSpacing: 6, children: [
             chip(h.protectionType, prot.bg, prot.fg),
+            // Only flag the cap when it's actually reached (matches the table's
+            // single amber lock); below-cap shows nothing.
             if (h.gainStatus == GainStatus.capped)
               chip('${capLabel(h.cap)} cap reached',
                   const Color(0xFFFFF3E0), capAmber),
-            if (h.gainStatus == GainStatus.gain && h.hasCap)
-              chip('Below the ${capLabel(h.cap)} cap',
-                  const Color(0xFFEAF7EC), gainGreen),
           ]),
           const SizedBox(height: 14),
           LayoutBuilder(builder: (context, c) {
