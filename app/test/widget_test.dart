@@ -324,7 +324,7 @@ void main() {
   testWidgets('info page renders the protection types', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InfoPage()));
     expect(find.textContaining('What it does'), findsOneWidget);
-    expect(find.textContaining('Protected (0% floor)', findRichText: true),
+    expect(find.textContaining('Floor (max-loss)', findRichText: true),
         findsOneWidget);
     await tester.scrollUntilVisible(
         find.textContaining('claims-paying ability'), 300);

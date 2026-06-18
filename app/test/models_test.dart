@@ -155,15 +155,16 @@ void main() {
         GainStatus.loss);
   });
 
-  test('protectionType: Protected / Hard / Soft (v1.0)', () {
+  test('protectionType: Floor / Hard-buffer / Soft-buffer', () {
+    // 0% floor folds into "Floor".
     expect(_h(cap: null, floor: 0, strike: 100, currentLevel: 100).protectionType,
-        'Protected');
+        'Floor');
     expect(_h(cap: null, floor: -0.10, strike: 100, currentLevel: 100).protectionType,
-        'Hard');
+        'Hard-buffer');
     expect(
         _h(cap: null, floor: -0.30, floorType: FloorType.soft, strike: 100, currentLevel: 100)
             .protectionType,
-        'Soft');
+        'Soft-buffer');
     expect(
         _h(cap: null, floor: -0.15, floorType: FloorType.floor, strike: 100, currentLevel: 100)
             .protectionType,

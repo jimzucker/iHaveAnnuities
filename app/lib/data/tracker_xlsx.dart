@@ -94,13 +94,14 @@ AccountType _account(String? s) => switch ((s ?? '').toLowerCase()) {
       _ => AccountType.nonQual,
     };
 
-/// v1.0 + legacy: `Soft` → soft (barrier); `Floor`/`Floored` → floor (max-loss);
-/// anything else → hard (buffer). The `Protected` value is derived in the model
-/// when `floor == 0`, so it never needs its own FloorType enum value.
-FloorType _floorType(String? s) => switch ((s ?? 'Hard').toLowerCase()) {
-      'soft' => FloorType.soft,
-      'floor' || 'floored' => FloorType.floor,
-      _ => FloorType.hard,
+/// Current vocab `{Soft-buffer, Hard-buffer, Floor}` plus legacy
+/// `{Soft, Hard, Protected, Floored, Barrier, Buffer}`. `Soft-buffer`/`Soft` →
+/// soft (barrier); `Floor`/`Protected` → floor (max-loss; a 0% floor reads as
+/// "Floor"); anything else → hard (buffer). Case-insensitive.
+FloorType _floorType(String? s) => switch ((s ?? 'hard').toLowerCase()) {
+      'soft-buffer' || 'soft' || 'barrier' => FloorType.soft,
+      'floor' || 'floored' || 'protected' => FloorType.floor,
+      _ => FloorType.hard, // 'hard-buffer', 'hard', 'buffer', anything else
     };
 
 /// CAP read: numeric `9.99` (v1.0 sentinel) OR string containing `uncap`
@@ -201,9 +202,9 @@ List<int> writeTracker(
         '(prices: SPX ${prices['SPX']}  NDX ${prices['NDX']}  RUT ${prices['RUT']})'),
   ]);
   s.appendRow([
-    TextCellValue('Floor Type: Protected (0% floor), Hard (buffer — '
-        'absorbs first |floor|), Soft (barrier — full loss if breached), '
-        'Floor (max loss — lose only down to the floor) | '
+    TextCellValue('Floor Type: Floor (max loss — lose only down to the floor; '
+        '0% floor = no loss), Hard-buffer (absorbs first |floor|, lose beyond), '
+        'Soft-buffer (barrier — full loss if breached) | '
         'CAP 9.99 = uncapped | \$ columns in \$000s'),
   ]);
   s.appendRow([for (final hd in headers) TextCellValue(hd)]);

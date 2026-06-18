@@ -11,9 +11,10 @@
 # a monthly-coupon income note.
 #
 # Downside mechanic (see README):
-#   floor == 0   -> true floor: no period loss (and gains capped/participated up)
-#   floor < 0, Hard -> buffer: absorbs first |floor|%, lose 1:1 beyond
-#   floor < 0, Soft -> barrier: protected unless breached, then full 1:1 loss
+#   floor == 0        -> Floor at 0%: no period loss (gains capped/participated up)
+#   floor < 0, floor  -> Floor (max-loss): lose only down to |floor|%
+#   floor < 0, Hard   -> Hard-buffer: absorbs first |floor|%, lose 1:1 beyond
+#   floor < 0, Soft   -> Soft-buffer (barrier): protected unless breached, then full loss
 #   credited gain = uncapped ? part*idx : min(cap, part*idx)
 #
 # Regenerate:
@@ -118,12 +119,12 @@ def credited(idx, cap, part, floor, soft, floortype=None):
 # Soft (barrier), or Hard (buffer). Single source for the HTML pill + xlsx cell.
 def prot_of(r):
     if r["floor"] == 0:
-        return "abs", "Protected"
+        return "abs", "Floor"      # 0% floor = no loss (blue pill)
     if r.get("floortype") == "floor":
-        return "floor", "Floor"
+        return "floor", "Floor"    # negative max-loss floor (red pill)
     if r["soft"]:
-        return "soft", "Soft"
-    return "hard", "Hard"
+        return "soft", "Soft-buffer"
+    return "hard", "Hard-buffer"
 
 def pct(x, plus=True):
     s = f"{x*100:,.2f}%"
@@ -148,7 +149,8 @@ for r in ROWS:
     # Position is computed (matches the app): {ISSUER}-{|floor|%}-{maturity ddMMMyy}
     r["pos"] = f"{r['issuer']}-{abs(r['floor']) * 100:g}%-{r['mat']:%d%b%y}"
     if r.get("note"):
-        r["proj_gain"] = r["proj"]
+        # Income-note coupon = annual cap / 12 (matches the app's couponRate).
+        r["proj_gain"] = (r["cap"] or 0) / 12
         r["realized_v"] = r["realized"]
     else:
         r["proj_gain"] = credited(
@@ -238,7 +240,7 @@ HTML = f"""<!--
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft) / max-loss (Floor). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard-buffer</b> (absorbs first |floor|, lose beyond), <b>Soft-buffer</b> (barrier — full loss if breached). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -296,7 +298,7 @@ HEADERS = [
     "Issuer",                      # B — identity
     "Type",                        # C
     "Index",                       # D
-    "Floor Type",                  # E — Protected | Hard | Soft | Floor
+    "Floor Type",                  # E — Floor | Hard-buffer | Soft-buffer
     "Initial ($000)",              # F — inputs
     "Realized ($000)",             # G
     "Proj Value @ Reset ($000)",   # H — outcome
@@ -381,8 +383,9 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
     ws.title = "Annuity Tracker"
     ws.append([f"ZUCKER ANNUITY TRACKER — Updated {TODAY:%d-%b-%y} "
                f"(prices: SPX {PRICES['SPX']:,.2f}  NDX {PRICES['NDX']:,.0f}  RUT {PRICES['RUT']:,.2f})"])
-    ws.append(["Floor Type: Protected (0% floor), Hard (buffer — absorbs first |floor|), "
-               "Soft (barrier — full loss if breached), Floor (max loss — lose only down to the floor) "
+    ws.append(["Floor Type: Floor (max loss — lose only down to the floor; 0% floor = no loss), "
+               "Hard-buffer (absorbs first |floor|, lose beyond), "
+               "Soft-buffer (barrier — full loss if breached) "
                "| CAP 9.99 = uncapped | $ columns in $000s"])
     ws.append(HEADERS)
     for cell in ws[3]:
@@ -419,8 +422,8 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
             ["Proj Gain @ Reset", "derived", "Recomputed payoff for the period"],
             ["CAP", "input", "Fraction, e.g. 0.1125 = 11.25%. 9.99 = uncapped sentinel"],
             ["Part.", "input", "Participation rate, e.g. 1.00 = 100% (or 0.9225, 1.05)"],
-            ["Floor", "input", "<= 0. 0 = Protected; negative = buffer (Hard) / barrier (Soft) / max-loss (Floor) amount"],
-            ["Floor Type", "input", "'Protected' (floor=0), 'Hard' (buffer), 'Soft' (barrier), or 'Floor' (max loss)"],
+            ["Floor", "input", "<= 0. 0 = no loss (a Floor at 0%); negative = the protection level"],
+            ["Floor Type", "input", "'Floor' (max loss), 'Hard-buffer' (absorbs first |floor|), or 'Soft-buffer' (barrier)"],
             ["Strike", "input", "Index level at open / last reset (SPX strike for worst-of)"],
             ["Open / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
             ["Days to Maturity", "derived", "Recomputed from Maturity"],

@@ -192,11 +192,11 @@ class Holding {
   /// Display label for the downside protection (v1.0 vocab):
   /// `Protected` (floor=0), `Hard` (buffer), `Soft` (barrier).
   String get protectionType => floor == 0
-      ? 'Protected'
+      ? 'Floor' // a 0% floor is just a Floor at 0% (was "Protected")
       : switch (floorType) {
-          FloorType.soft => 'Soft',
+          FloorType.soft => 'Soft-buffer',
           FloorType.floor => 'Floor',
-          FloorType.hard => 'Hard',
+          FloorType.hard => 'Hard-buffer',
         };
 
   /// Stable identity across re-imports (issuer/index/account/maturity don't

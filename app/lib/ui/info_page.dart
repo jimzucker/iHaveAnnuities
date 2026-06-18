@@ -43,22 +43,22 @@ class InfoPage extends StatelessWidget {
 
               _Section(title: 'How the downside protection works', children: [
                 _Bullet(
-                    label: 'Protected (0% floor)',
-                    color: protectionPalette('Protected', cs).accent,
+                    label: 'Floor (max-loss)',
+                    color: protectionPalette('Floor', cs).accent,
                     text:
-                        'No loss for the period — your principal is protected at '
-                        'each reset. Upside still applies (subject to cap and '
-                        'participation).'),
+                        'You lose only down to the floor, never worse. A 0% floor '
+                        'means no loss at all; a −10% floor caps the loss at 10%. '
+                        'Upside still applies (subject to cap and participation).'),
                 _Bullet(
-                    label: 'Hard (buffer)',
-                    color: protectionPalette('Hard', cs).accent,
+                    label: 'Hard-buffer',
+                    color: protectionPalette('Hard-buffer', cs).accent,
                     text:
                         'A buffer absorbs the first portion of a decline. If the '
                         'index falls 22% with a 15% buffer, you absorb only the '
                         '7% beyond it.'),
                 _Bullet(
-                    label: 'Soft (barrier)',
-                    color: protectionPalette('Soft', cs).accent,
+                    label: 'Soft-buffer (barrier)',
+                    color: protectionPalette('Soft-buffer', cs).accent,
                     text:
                         'Fully protected unless the index falls past the barrier. '
                         'Cross it and the entire decline applies — a 35% drop '

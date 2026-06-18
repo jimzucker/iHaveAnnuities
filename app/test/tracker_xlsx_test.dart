@@ -22,8 +22,10 @@ void main() {
     final aspida = holdings.firstWhere((h) => h.issuer == 'ASPIDA');
     expect(aspida.cap, closeTo(0.1225, 1e-9));
     expect(aspida.floor, 0.0);
-    expect(aspida.floorType, FloorType.hard);
-    expect(aspida.protectionType, 'Protected');
+    // 0% floor now exports as "Floor" and re-imports as FloorType.floor;
+    // either way protectionType is "Floor" because floor == 0.
+    expect(aspida.floorType, FloorType.floor);
+    expect(aspida.protectionType, 'Floor');
 
     // The max-loss Floor example imports as FloorType.floor.
     final marex = holdings.firstWhere((h) => h.issuer == 'MAREX');

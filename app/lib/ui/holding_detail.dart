@@ -170,7 +170,7 @@ class HoldingDetail extends StatelessWidget {
   /// table view) so the critical info is visible without scrolling.
   Widget _keyStrip(BuildContext context, Holding h, DateTime asOf) {
     final cs = Theme.of(context).colorScheme;
-    final prot = h.floor == 0 ? 'Protected' : '${h.protectionType} ${pct(h.floor)}';
+    final prot = h.floor == 0 ? 'Floor' : '${h.protectionType} ${pct(h.floor)}';
     Widget kv(String k, String v, {Color? color}) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor 0% = true floor; negative Floor = buffer (Hard) / barrier (Soft) / max-loss (Floor). Updated 14-Jun-26 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard-buffer</b> (absorbs first |floor|, lose beyond), <b>Soft-buffer</b> (barrier — full loss if breached). Updated 14-Jun-26 &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -71,7 +71,7 @@
         <td class="l">ASPIDA</td>
         <td class="c"><span class="pill nq">Non-Qual</span></td>
         <td class="c">^GSPC</td>
-        <td class="c"><span class="pill abs">Protected</span></td>
+        <td class="c"><span class="pill abs">Floor</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$112.25</td><td class="pos">$12.25</td>
         <td class="pos">+12.25%</td><td class="pos">+18.00%</td>
@@ -86,7 +86,7 @@
         <td class="l">AXA</td>
         <td class="c"><span class="pill nq">Non-Qual</span></td>
         <td class="c">^GSPC</td>
-        <td class="c"><span class="pill hard">Hard</span></td>
+        <td class="c"><span class="pill hard">Hard-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$93.00</td><td class="neg">-$7.00</td>
         <td class="neg">-7.00%</td><td class="neg">-22.00%</td>
@@ -101,7 +101,7 @@
         <td class="l">CITI</td>
         <td class="c"><span class="pill ira">IRA</span></td>
         <td class="c">^GSPC</td>
-        <td class="c"><span class="pill hard">Hard</span></td>
+        <td class="c"><span class="pill hard">Hard-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$130.60</td><td class="pos">$30.60</td>
         <td class="pos">+30.60%</td><td class="pos">+30.00%</td>
@@ -116,7 +116,7 @@
         <td class="l">HSBC</td>
         <td class="c"><span class="pill ira">IRA</span></td>
         <td class="c">^NDX</td>
-        <td class="c"><span class="pill hard">Hard</span></td>
+        <td class="c"><span class="pill hard">Hard-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$136.90</td><td class="pos">$36.90</td>
         <td class="pos">+36.90%</td><td class="pos">+40.00%</td>
@@ -131,7 +131,7 @@
         <td class="l">BNP</td>
         <td class="c"><span class="pill roth">ROTH</span></td>
         <td class="c">^GSPC</td>
-        <td class="c"><span class="pill soft">Soft</span></td>
+        <td class="c"><span class="pill soft">Soft-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$65.00</td><td class="neg">-$35.00</td>
         <td class="neg">-35.00%</td><td class="neg">-35.00%</td>
@@ -146,10 +146,10 @@
         <td class="l">NATBANK</td>
         <td class="c"><span class="pill nq">Non-Qual</span></td>
         <td class="c">SPX/NDX/RUT</td>
-        <td class="c"><span class="pill soft">Soft</span></td>
+        <td class="c"><span class="pill soft">Soft-buffer</span></td>
         <td>$100.00</td><td>$1.10</td>
-        <td>$102.23</td><td class="pos">$1.13</td>
-        <td class="pos">+1.12%</td><td class="pos">+8.47%</td>
+        <td>$102.22</td><td class="pos">$1.12</td>
+        <td class="pos">+1.10%</td><td class="pos">+8.47%</td>
         <td class="c">16-Jun-26</td><td>2</td>
         <td class="c">16-Apr-29</td><td>1,037</td>
         <td>13.25% cpn</td><td>100.00%</td><td>-30.00%</td>
@@ -161,7 +161,7 @@
         <td class="l">AXA</td>
         <td class="c"><span class="pill ira">IRA</span></td>
         <td class="c">^NDX</td>
-        <td class="c"><span class="pill hard">Hard</span></td>
+        <td class="c"><span class="pill hard">Hard-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$100.00</td><td class="">$0.00</td>
         <td class="">0.00%</td><td class="neg">-15.00%</td>
@@ -176,7 +176,7 @@
         <td class="l">CITI</td>
         <td class="c"><span class="pill roth">ROTH</span></td>
         <td class="c">^GSPC</td>
-        <td class="c"><span class="pill hard">Hard</span></td>
+        <td class="c"><span class="pill hard">Hard-buffer</span></td>
         <td>$100.00</td><td>$0.00</td>
         <td>$112.00</td><td class="pos">$12.00</td>
         <td class="pos">+12.00%</td><td class="pos">+12.00%</td>
@@ -206,7 +206,7 @@
     <tfoot>
       <tr>
         <td class="l" colspan="4">Totals &mdash; 9 contracts</td>
-        <td>$900.00</td><td>$1.10</td><td>$941.98</td><td>$40.88</td>
+        <td>$900.00</td><td>$1.10</td><td>$941.97</td><td>$40.87</td>
         <td colspan="13"></td>
       </tr>
     </tfoot>
