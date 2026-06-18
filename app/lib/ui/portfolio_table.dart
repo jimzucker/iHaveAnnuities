@@ -78,7 +78,8 @@ class PortfolioTable extends StatelessWidget {
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
             DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
             fixedWidth: 88),
-        _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index)),
+        _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index),
+            fixedWidth: 104),
         _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
           final c = protectionPalette(p, cs);
@@ -124,15 +125,17 @@ class PortfolioTable extends StatelessWidget {
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
             fixedWidth: 92),
         // Timing (monitor)
-        _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset))),
+        _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset)),
+            fixedWidth: 92),
         _Col('Days to Reset', true, (h, a) => h.daysToReset(a), (h, a, _) => _t('${h.daysToReset(a)}'),
             fixedWidth: 84),
-        _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity))),
+        _Col('Maturity', false, (h, _) => h.maturity, (h, _, _) => _t(date(h.maturity)),
+            fixedWidth: 92),
         _Col('Days to Maturity', true, (h, a) => h.daysToMaturity(a), (h, a, _) => _t('${h.daysToMaturity(a)}'),
             fixedWidth: 96),
         // Terms (static)
         _Col('CAP', true, (h, _) => h.cap ?? double.infinity, (h, _, _) => _t(capLabel(h.cap)),
-            fixedWidth: 72),
+            fixedWidth: 88), // fits "Uncapped" on one line
         _Col('Part.', true, (h, _) => h.participation, (h, _, _) => _t(pct(h.participation)),
             fixedWidth: 80),
         _Col('Floor', true, (h, _) => h.floor, (h, _, _) => _t(h.floor == 0 ? '0.00%' : pct(h.floor)),
@@ -141,8 +144,10 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 92),
         _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label),
             fixedWidth: 100),
-        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate))),
-        _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset))),
+        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate)),
+            fixedWidth: 92),
+        _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset)),
+            fixedWidth: 92),
       ];
 
   /// Columns shown in the compact "core" view (identity + key inputs/outcome
@@ -186,11 +191,14 @@ class PortfolioTable extends StatelessWidget {
       // so they fill the width — fixed widths left a gap on wide screens in the
       // compact view (fewer columns than the viewport could hold).
       final frozen = shown.takeWhile((c) => _identityLabels.contains(c.label)).length;
-      // minWidth scales with the column count: when the viewport is wider the
-      // flexible columns fill it (no gap); when narrower the table scrolls.
-      // Narrow numeric/code columns are fixedWidth, so the per-column factor is
-      // smaller now (the slack lands on the few flexible name/date/money cols).
-      final minW = 116.0 * shown.length + 130 /*actions + margins*/;
+      // minWidth = the sum of each column's natural width (its fixedWidth, or a
+      // sensible floor for the few flexible ones — Issuer + the money columns).
+      // The table scrolls only when the viewport is narrower than this; when
+      // wider, the slack flows to the flexible columns (money is right-aligned,
+      // so the extra reads as alignment, not a gap).
+      final minW = shown.fold<double>(
+          104 + 28 /*actions + margins*/,
+          (s, c) => s + (c.fixedWidth ?? (c.label == 'Issuer' ? 160 : 124)));
 
       return DataTable2(
         columnSpacing: 16,
