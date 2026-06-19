@@ -228,16 +228,22 @@ class _KeyFigures extends StatelessWidget {
                   const Color(0xFFFFF3E0), capAmber),
           ]),
           const SizedBox(height: 14),
+          // Equal-width columns (not spaceBetween, which flings the first/last
+          // items to the edges with uneven gaps); content left-aligns at evenly
+          // spaced column starts, reading as a tidy stat grid.
           LayoutBuilder(builder: (context, c) {
             return c.maxWidth >= 700
-                ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: figs)
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [for (final f in figs) Expanded(child: f)])
                 : Wrap(spacing: 28, runSpacing: 12, children: figs);
           }),
           Divider(height: 26, color: onC.withValues(alpha: 0.20)),
-          // Align the terms into an even row (a grid feel) on wide screens.
           LayoutBuilder(builder: (context, c) {
             return c.maxWidth >= 700
-                ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: terms)
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [for (final t in terms) Expanded(child: t)])
                 : Wrap(spacing: 24, runSpacing: 14, children: terms);
           }),
         ]),
