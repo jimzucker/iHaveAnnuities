@@ -127,7 +127,7 @@ class PortfolioTable extends StatelessWidget {
             overflow: TextOverflow.clip,
           );
           return DataCell(tip != null ? Tooltip(message: tip, child: text) : text);
-        }, fixedWidth: 104),
+        }, fixedWidth: 112), // match "Unrealized $" so the headers wrap alike
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
             fixedWidth: 92),
         // Timing (monitor)
