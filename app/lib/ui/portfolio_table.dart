@@ -91,9 +91,9 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 104),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
             fixedWidth: 104),
-        // Outcome
-        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
-            fixedWidth: 120),
+        // Outcome — the addends (Unrealized $/%) come before the resulting
+        // Projected Value, so each row reads left-to-right as the sum:
+        // Initial + Realized + Unrealized $ = Projected Value.
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
@@ -125,6 +125,8 @@ class PortfolioTable extends StatelessWidget {
           );
           return DataCell(tip != null ? Tooltip(message: tip, child: text) : text);
         }, fixedWidth: 104),
+        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
+            fixedWidth: 120),
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
             fixedWidth: 92),
         // Timing (monitor)
