@@ -40,7 +40,7 @@ class PayoffChart extends StatelessWidget {
           ]),
         ),
         SizedBox(
-          height: 240,
+          height: 300,
           child: CustomPaint(
             painter: _PayoffPainter(h, range, cs),
             child: const SizedBox.expand(),
@@ -53,11 +53,14 @@ class PayoffChart extends StatelessWidget {
   Widget _legend(Color c, String label, {required bool solid}) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Container(
-            width: 16,
-            height: 3,
-            color: solid ? c : c.withValues(alpha: 0.5)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11)),
+            width: 22,
+            height: 4,
+            decoration: BoxDecoration(
+                color: solid ? c : c.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 6),
+        Text(label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
       ]);
 }
 
@@ -77,7 +80,7 @@ class _PayoffPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padL = 44.0, padR = 16.0, padT = 12.0, padB = 22.0;
+    const padL = 56.0, padR = 18.0, padT = 14.0, padB = 32.0;
     final w = size.width - padL - padR;
     final ht = size.height - padT - padB;
     final idxLo = -range, idxHi = range;
@@ -147,18 +150,18 @@ class _PayoffPainter extends CustomPainter {
 
     // 1:1 index reference
     canvas.drawLine(Offset(sx(idxLo), sy(idxLo)), Offset(sx(idxHi), sy(idxHi)),
-        Paint()..color = cs.outline.withValues(alpha: 0.5)..strokeWidth = 1.2);
+        Paint()..color = cs.outline.withValues(alpha: 0.6)..strokeWidth = 1.6);
 
     // cap ceiling (dashed amber)
     if (h.cap != null) {
       _dashed(canvas, Offset(padL, sy(h.cap!)), Offset(padL + w, sy(h.cap!)),
-          Paint()..color = capAmber.withValues(alpha: 0.8)..strokeWidth = 1.2);
+          Paint()..color = capAmber.withValues(alpha: 0.85)..strokeWidth = 1.6);
     }
     // barrier / buffer knee (dashed vertical at index = floor)
     if (h.floor < 0 && h.floor > idxLo) {
       final c = h.floorType == FloorType.soft ? capAmber : gainGreen;
       _dashed(canvas, Offset(sx(h.floor), padT), Offset(sx(h.floor), padT + ht),
-          Paint()..color = c.withValues(alpha: 0.7)..strokeWidth = 1.2);
+          Paint()..color = c.withValues(alpha: 0.75)..strokeWidth = 1.6);
     }
 
     // payoff curve
@@ -172,18 +175,18 @@ class _PayoffPainter extends CustomPainter {
         path,
         Paint()
           ..color = cs.primary
-          ..strokeWidth = 2.5
+          ..strokeWidth = 3.0
           ..style = PaintingStyle.stroke);
 
     // current position
     final gi = h.indexGain.clamp(idxLo, idxHi);
     final pt = Offset(sx(gi), sy(_payoff(h.indexGain).clamp(yMin, yMax)));
-    canvas.drawCircle(pt, 4.5, Paint()..color = cs.secondary);
+    canvas.drawCircle(pt, 5.5, Paint()..color = cs.secondary);
     canvas.restore();
 
     // marker label (outside the clip so it isn't cut off)
     _label(canvas, '${pctSigned(h.indexGain)} → ${pctSigned(h.projGain)}',
-        Offset((pt.dx + 8).clamp(padL, padL + w - 90), pt.dy - 16), accent: true);
+        Offset((pt.dx + 10).clamp(padL, padL + w - 170), pt.dy - 20), accent: true);
 
     _label(canvas, 'index →', Offset(padL + w - 4, padT + ht + 4), right: true);
   }
@@ -195,8 +198,8 @@ class _PayoffPainter extends CustomPainter {
           text: t,
           style: TextStyle(
               color: accent ? cs.secondary : cs.onSurfaceVariant,
-              fontWeight: accent ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 10)),
+              fontWeight: accent ? FontWeight.w700 : FontWeight.w500,
+              fontSize: accent ? 14 : 13)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
