@@ -207,7 +207,7 @@ class _KeyFigures extends StatelessWidget {
     // Same font size as the figures row (the smaller size read as too subtle).
     final terms = <Widget>[
       cell('Account', h.account.label, big: true),
-      cell('Index', h.index, big: true),
+      cell('Index', indexLabel(h.index), big: true),
       cell('Cap', capLabel(h.cap), big: true),
       cell('Participation', pct(h.participation), big: true),
       cell('Protection', protLabel, big: true),

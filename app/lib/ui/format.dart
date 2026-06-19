@@ -26,6 +26,12 @@ String relDays(int d) =>
     d == 0 ? 'today' : (d > 0 ? 'in $d days' : '${-d} days ago');
 String capLabel(double? cap) => cap == null ? 'Uncapped' : pct(cap);
 
+/// Compact index label for tables/headers: drops a leading "worst-of " (the
+/// worst-of nature is conveyed in the summary), so the basket fits a column
+/// instead of ballooning it. e.g. "worst-of SPX/NDX/RUT" → "SPX/NDX/RUT".
+String indexLabel(String index) =>
+    index.replaceFirst(RegExp(r'^\s*worst[- ]of\s+', caseSensitive: false), '');
+
 // Semantic gain/loss colors — reference these everywhere instead of ad-hoc hex.
 const gainGreen = Color(0xFF0A7D28);
 const lossRed = Color(0xFFB00020);

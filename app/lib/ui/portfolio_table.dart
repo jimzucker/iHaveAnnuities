@@ -79,7 +79,8 @@ class PortfolioTable extends StatelessWidget {
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
             DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
             fixedWidth: 88),
-        _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index),
+        _Col('Index', false, (h, _) => h.index.toLowerCase(),
+            (h, _, _) => _t(indexLabel(h.index)),
             fixedWidth: 104),
         _Col('Protection', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
