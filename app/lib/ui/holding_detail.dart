@@ -82,7 +82,7 @@ class HoldingDetail extends StatelessWidget {
             child: Text(_summary(h, asOf),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.4)),
           ),
-          _KeyFigures(h: h, cs: cs, asOf: asOf),
+          _KeyFigures(h: h, cs: cs),
           const SizedBox(height: 12),
           // Wide screens: chart and the fact cards side by side (everything
           // above the fold). Narrow: stacked.
@@ -158,34 +158,30 @@ class HoldingDetail extends StatelessWidget {
 /// contract terms/levels (folded in from the former grey strip), so everything
 /// lives in one card with no duplicated figures.
 class _KeyFigures extends StatelessWidget {
-  const _KeyFigures({required this.h, required this.cs, required this.asOf});
+  const _KeyFigures({required this.h, required this.cs});
   final Holding h;
   final ColorScheme cs;
-  final DateTime asOf;
 
   @override
   Widget build(BuildContext context) {
     final onC = cs.onPrimaryContainer;
     final muted = onC.withValues(alpha: 0.75);
-    // Tier 1: big outcome figures (dollars read as a sum, then the percentages).
-    Widget fig(String label, String value, Color color) => Column(
+    // A right-aligned stat cell (label over value); `big` = headline figures.
+    Widget cell(String label, String value, {Color? color, required bool big}) =>
+        Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: muted)),
+            Text(label,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: big ? 12 : 11, color: muted)),
+            const SizedBox(height: 2),
             Text(value,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-          ],
-        );
-    // Tier 2: contract terms/levels (a notch smaller than the figures).
-    Widget term(String label, String value, {Color? color}) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 12, color: muted)),
-            Text(value,
+                textAlign: TextAlign.right,
                 style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600, color: color ?? onC)),
+                    fontSize: big ? 20 : 15,
+                    fontWeight: big ? FontWeight.bold : FontWeight.w600,
+                    color: color ?? onC)),
           ],
         );
     Widget chip(String text, Color bg, Color fg) => Container(
@@ -196,25 +192,62 @@ class _KeyFigures extends StatelessWidget {
         );
     final prot = protectionPalette(h.protectionType, cs);
     final figs = <Widget>[
-      fig('Initial', moneyK(h.initial), onC),
-      fig('Realized', moneyK(h.realized), onC),
-      fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-      fig('Projected Value', moneyK(h.projValueK), onC),
-      fig('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-      fig('Index Gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
+      cell('Initial', moneyK(h.initial), big: true),
+      cell('Realized', moneyK(h.realized), big: true),
+      cell('Unrealized \$', moneyK(h.projGainDollarsK),
+          color: gainColor(h.projGainDollarsK, cs), big: true),
+      cell('Projected Value', moneyK(h.projValueK), big: true),
+      cell('Unrealized %', pctSigned(h.projGain),
+          color: gainColor(h.projGain, cs), big: true),
+      cell('Index Gain', pctSigned(h.indexGain),
+          color: gainColor(h.indexGain, cs), big: true),
     ];
     // Always show the floor level alongside the type (e.g. "Floor 0.00%").
     final protLabel = '${h.protectionType} ${pct(h.floor)}';
     final terms = <Widget>[
-      term('Account', h.account.label),
-      term('Index', h.index),
-      term('Cap', capLabel(h.cap)),
-      term('Participation', pct(h.participation)),
-      term('Protection', protLabel),
-      term('Strike', level(h.strike)),
-      term('Current', level(h.currentLevel)),
-      if (h.isIncomeNote) term('Coupon', pct(h.couponRate)),
+      cell('Account', h.account.label, big: false),
+      cell('Index', h.index, big: false),
+      cell('Cap', capLabel(h.cap), big: false),
+      cell('Participation', pct(h.participation), big: false),
+      cell('Protection', protLabel, big: false),
+      cell('Strike', level(h.strike), big: false),
+      cell('Current', level(h.currentLevel), big: false),
+      if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: false),
     ];
+
+    // Both tiers share ONE table so their columns line up; intrinsic widths keep
+    // it tight and cells right-align so the numbers stack into clean columns. A
+    // subtle border under the last figure row separates figures from terms.
+    Widget grid(int cols) {
+      final divider = BoxDecoration(
+          border: Border(bottom: BorderSide(color: onC.withValues(alpha: 0.20))));
+      List<TableRow> chunk(List<Widget> cells, {bool dividerOnLast = false}) {
+        final rows = <TableRow>[];
+        for (var i = 0; i < cells.length; i += cols) {
+          final last = i + cols >= cells.length;
+          rows.add(TableRow(
+            decoration: (dividerOnLast && last) ? divider : null,
+            children: [
+              for (var k = 0; k < cols; k++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 26, top: 8, bottom: 8),
+                  child: (i + k) < cells.length ? cells[i + k] : const SizedBox(),
+                ),
+            ],
+          ));
+        }
+        return rows;
+      }
+
+      return Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        children: [
+          ...chunk(figs, dividerOnLast: true),
+          ...chunk(terms),
+        ],
+      );
+    }
+
     return Card(
       color: cs.primaryContainer,
       child: Padding(
@@ -227,24 +260,10 @@ class _KeyFigures extends StatelessWidget {
               chip('${capLabel(h.cap)} cap reached',
                   const Color(0xFFFFF3E0), capAmber),
           ]),
-          const SizedBox(height: 14),
-          // Equal-width columns (not spaceBetween, which flings the first/last
-          // items to the edges with uneven gaps); content left-aligns at evenly
-          // spaced column starts, reading as a tidy stat grid.
+          const SizedBox(height: 12),
           LayoutBuilder(builder: (context, c) {
-            return c.maxWidth >= 700
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [for (final f in figs) Expanded(child: f)])
-                : Wrap(spacing: 28, runSpacing: 12, children: figs);
-          }),
-          Divider(height: 26, color: onC.withValues(alpha: 0.20)),
-          LayoutBuilder(builder: (context, c) {
-            return c.maxWidth >= 700
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [for (final t in terms) Expanded(child: t)])
-                : Wrap(spacing: 24, runSpacing: 14, children: terms);
+            final cols = c.maxWidth >= 760 ? 6 : (c.maxWidth >= 440 ? 3 : 2);
+            return grid(cols);
           }),
         ]),
       ),
