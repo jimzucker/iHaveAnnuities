@@ -81,7 +81,7 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 88),
         _Col('Index', false, (h, _) => h.index.toLowerCase(), (h, _, _) => _t(h.index),
             fixedWidth: 104),
-        _Col('Floor Type', false, (h, _) => h.protectionType, (h, _, cs) {
+        _Col('Protection', false, (h, _) => h.protectionType, (h, _, cs) {
           final p = h.protectionType;
           final c = protectionPalette(p, cs);
           return DataCell(_pill(p, c.bg, c.fg));
@@ -158,13 +158,13 @@ class PortfolioTable extends StatelessWidget {
   /// Columns shown in the compact "core" view (identity + key inputs/outcome
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
-    'Issuer', 'Type', 'Index', 'Floor Type',
+    'Issuer', 'Type', 'Index', 'Protection',
     'Initial', 'Realized', 'Projected Value', 'Unrealized \$', 'Unrealized %',
     'Index Gain', 'Next Reset', 'Days to Reset',
   };
 
   /// The leading identity columns, frozen when scrolling horizontally.
-  static const _identityLabels = <String>{'Issuer', 'Type', 'Index', 'Floor Type'};
+  static const _identityLabels = <String>{'Issuer', 'Type', 'Index', 'Protection'};
 
   @override
   Widget build(BuildContext context) {

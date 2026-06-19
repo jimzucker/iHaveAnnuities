@@ -339,7 +339,7 @@ void main() {
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
     await tester.pumpWidget(_wrap(store));
-    expect(find.text('Protection'), findsOneWidget); // hero donut legend
+    expect(find.text('Protection'), findsWidgets); // hero donut + table column
     expect(find.text('Next resets'), findsOneWidget); // hero upcoming resets
     expect(find.textContaining('contracts'), findsWidgets); // hero summary line
     expect(find.text('ASPIDA'), findsOneWidget); // issuer column (canonical uppercase)
@@ -351,7 +351,7 @@ void main() {
     final store = PortfolioStore()..debugSeed(holdings, _market);
     await tester.pumpWidget(_wrap(store));
     expect(find.text('Unrealized %'), findsOneWidget);
-    expect(find.text('Floor Type'), findsOneWidget);
+    expect(find.text('Protection'), findsWidgets); // table column (also the hero donut label)
     expect(find.text('Days to Reset'), findsOneWidget);
     expect(find.text('TOTAL'), findsOneWidget); // totals row
     expect(find.byTooltip('Edit'), findsWidgets);
@@ -380,14 +380,14 @@ void main() {
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
     await tester.pumpWidget(_wrap(store));
-    expect(find.text('Protection'), findsOneWidget); // hero visible
+    expect(find.text('Next resets'), findsOneWidget); // hero visible (hero-only text)
     expect(find.textContaining('S&P 500'), findsOneWidget); // quotes visible
 
     await tester.tap(find.text('Hide summary')); // collapsible strip
     await tester.pumpAndSettle();
     expect(store.hideSummary, isTrue);
     expect(find.text('Show summary'), findsOneWidget); // strip flips label
-    expect(find.text('Protection'), findsNothing);
+    expect(find.text('Next resets'), findsNothing); // hero collapsed
     expect(find.textContaining('S&P 500'), findsNothing);
   });
 

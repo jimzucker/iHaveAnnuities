@@ -177,15 +177,15 @@ class _KeyFigures extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
           ],
         );
-    // Tier 2: small contract terms/levels.
+    // Tier 2: contract terms/levels (a notch smaller than the figures).
     Widget term(String label, String value, {Color? color}) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 11, color: muted)),
+            Text(label, style: TextStyle(fontSize: 12, color: muted)),
             Text(value,
                 style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: color ?? onC)),
+                    fontSize: 15, fontWeight: FontWeight.w600, color: color ?? onC)),
           ],
         );
     Widget chip(String text, Color bg, Color fg) => Container(
@@ -203,7 +203,8 @@ class _KeyFigures extends StatelessWidget {
       fig('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
       fig('Index Gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
     ];
-    final protLabel = h.floor == 0 ? 'Floor' : '${h.protectionType} ${pct(h.floor)}';
+    // Always show the floor level alongside the type (e.g. "Floor 0.00%").
+    final protLabel = '${h.protectionType} ${pct(h.floor)}';
     final terms = <Widget>[
       term('Account', h.account.label),
       term('Index', h.index),
@@ -233,7 +234,12 @@ class _KeyFigures extends StatelessWidget {
                 : Wrap(spacing: 28, runSpacing: 12, children: figs);
           }),
           Divider(height: 26, color: onC.withValues(alpha: 0.20)),
-          Wrap(spacing: 24, runSpacing: 12, children: terms),
+          // Align the terms into an even row (a grid feel) on wide screens.
+          LayoutBuilder(builder: (context, c) {
+            return c.maxWidth >= 700
+                ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: terms)
+                : Wrap(spacing: 24, runSpacing: 14, children: terms);
+          }),
         ]),
       ),
     );
