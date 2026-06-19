@@ -28,8 +28,12 @@ DateTime advanceReset(DateTime from, ResetFreq freq) => switch (freq) {
     };
 
 /// Whether [h] has a reset on or before [asOf] that hasn't been processed yet.
+/// Accrual stops at maturity — a reset dated after the maturity date is never
+/// processed (the contract has ended), so a matured note can't keep crediting.
 bool resetDue(Holding h, DateTime asOf) =>
-    h.resetFreq != ResetFreq.inception && !h.nextReset.isAfter(asOf);
+    h.resetFreq != ResetFreq.inception &&
+    !h.nextReset.isAfter(asOf) &&
+    !h.nextReset.isAfter(h.maturity);
 
 /// Apply ONE reset to [h] (the one at `h.nextReset`), using [levelAt] for the
 /// index level(s) on the reset date. Returns the updated holding and the logged

@@ -82,9 +82,7 @@ class HoldingDetail extends StatelessWidget {
             child: Text(_summary(h, asOf),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.4)),
           ),
-          _KeyFigures(h: h, cs: cs),
-          const SizedBox(height: 10),
-          _keyStrip(context, h, asOf), // compact scannable line of key facts
+          _KeyFigures(h: h, cs: cs, asOf: asOf),
           const SizedBox(height: 12),
           // Wide screens: chart and the fact cards side by side (everything
           // above the fold). Narrow: stacked.
@@ -144,81 +142,50 @@ class HoldingDetail extends StatelessWidget {
         ),
       );
 
+  // Only the Schedule (dates) lives beside the chart now — the figures and the
+  // contract terms moved into the unified header, so nothing is duplicated.
   Widget _sections(BuildContext context, Holding h, DateTime asOf, ColorScheme cs) =>
-      LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth >= 540 ? (c.maxWidth - 12) / 2 : c.maxWidth;
-        return Wrap(spacing: 12, runSpacing: 12, children: [
-          _Section(width: w, title: 'Schedule', rows: [
-            ('Open', date(h.openDate), null),
-            ('Last Reset', date(h.lastReset), null),
-            ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
-            ('Reset Freq', h.resetFreq.label, null),
-            ('Next Reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
-          ]),
-          _Section(width: w, title: 'Values', rows: [
-            ('Initial', moneyK(h.initial), null),
-            ('Realized', moneyK(h.realized), null),
-            ('Projected Value', moneyK(h.projValueK), cs.primary),
-            ('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-            ('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-            if (h.isIncomeNote) ('Income note', 'coupon ${pct(h.couponRate)}', null),
-          ]),
-        ]);
-      });
-
-  /// Compact, scannable strip of the key terms/levels (mirrors the compact
-  /// table view) so the critical info is visible without scrolling.
-  Widget _keyStrip(BuildContext context, Holding h, DateTime asOf) {
-    final cs = Theme.of(context).colorScheme;
-    final prot = h.floor == 0 ? 'Floor' : '${h.protectionType} ${pct(h.floor)}';
-    Widget kv(String k, String v, {Color? color}) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(k, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-            Text(v,
-                style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600, color: color)),
-          ],
-        );
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10)),
-      child: Wrap(spacing: 24, runSpacing: 10, children: [
-        kv('Account', h.account.label),
-        kv('Index', h.index),
-        kv('Cap', capLabel(h.cap)),
-        kv('Participation', pct(h.participation)),
-        kv('Protection', prot),
-        kv('Strike', level(h.strike)),
-        kv('Current', level(h.currentLevel)),
-        kv('Index Gain', pctSigned(h.indexGain), color: gainColor(h.indexGain, cs)),
-        kv('Next Reset', '${date(h.nextReset)} · ${relDays(h.daysToReset(asOf))}'),
-      ]),
-    );
-  }
+      _Section(width: double.infinity, title: 'Schedule', rows: [
+        ('Open', date(h.openDate), null),
+        ('Last Reset', date(h.lastReset), null),
+        ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
+        ('Reset Freq', h.resetFreq.label, null),
+        ('Next Reset', '${date(h.nextReset)}  ·  ${relDays(h.daysToReset(asOf))}', null),
+      ]);
 }
 
-/// Big highlighted key figures.
+/// Unified header: a top tier of big outcome figures and a second tier of the
+/// contract terms/levels (folded in from the former grey strip), so everything
+/// lives in one card with no duplicated figures.
 class _KeyFigures extends StatelessWidget {
-  const _KeyFigures({required this.h, required this.cs});
+  const _KeyFigures({required this.h, required this.cs, required this.asOf});
   final Holding h;
   final ColorScheme cs;
+  final DateTime asOf;
 
   @override
   Widget build(BuildContext context) {
     final onC = cs.onPrimaryContainer;
+    final muted = onC.withValues(alpha: 0.75);
+    // Tier 1: big outcome figures (dollars read as a sum, then the percentages).
     Widget fig(String label, String value, Color color) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: TextStyle(fontSize: 12, color: onC.withValues(alpha: 0.85))),
+            Text(label, style: TextStyle(fontSize: 12, color: muted)),
             Text(value,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          ],
+        );
+    // Tier 2: small contract terms/levels.
+    Widget term(String label, String value, {Color? color}) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 11, color: muted)),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: color ?? onC)),
           ],
         );
     Widget chip(String text, Color bg, Color fg) => Container(
@@ -228,15 +195,24 @@ class _KeyFigures extends StatelessWidget {
               style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
         );
     final prot = protectionPalette(h.protectionType, cs);
-    // Consistent grid labels (no ad-hoc "Payoff return"); spread across the
-    // width so the banner reads like a stat row in the main grid.
     final figs = <Widget>[
-      fig('Projected Value', moneyK(h.projValueK), onC),
-      fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
-      fig('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
-      fig('Index Gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
       fig('Initial', moneyK(h.initial), onC),
       fig('Realized', moneyK(h.realized), onC),
+      fig('Unrealized \$', moneyK(h.projGainDollarsK), gainColor(h.projGainDollarsK, cs)),
+      fig('Projected Value', moneyK(h.projValueK), onC),
+      fig('Unrealized %', pctSigned(h.projGain), gainColor(h.projGain, cs)),
+      fig('Index Gain', pctSigned(h.indexGain), gainColor(h.indexGain, cs)),
+    ];
+    final protLabel = h.floor == 0 ? 'Floor' : '${h.protectionType} ${pct(h.floor)}';
+    final terms = <Widget>[
+      term('Account', h.account.label),
+      term('Index', h.index),
+      term('Cap', capLabel(h.cap)),
+      term('Participation', pct(h.participation)),
+      term('Protection', protLabel),
+      term('Strike', level(h.strike)),
+      term('Current', level(h.currentLevel)),
+      if (h.isIncomeNote) term('Coupon', pct(h.couponRate)),
     ];
     return Card(
       color: cs.primaryContainer,
@@ -245,8 +221,7 @@ class _KeyFigures extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 8, runSpacing: 6, children: [
             chip(h.protectionType, prot.bg, prot.fg),
-            // Only flag the cap when it's actually reached (matches the table's
-            // single amber lock); below-cap shows nothing.
+            // Flag the cap only when it's actually reached (matches the table).
             if (h.gainStatus == GainStatus.capped)
               chip('${capLabel(h.cap)} cap reached',
                   const Color(0xFFFFF3E0), capAmber),
@@ -257,6 +232,8 @@ class _KeyFigures extends StatelessWidget {
                 ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: figs)
                 : Wrap(spacing: 28, runSpacing: 12, children: figs);
           }),
+          Divider(height: 26, color: onC.withValues(alpha: 0.20)),
+          Wrap(spacing: 24, runSpacing: 12, children: terms),
         ]),
       ),
     );

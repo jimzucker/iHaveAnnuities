@@ -91,13 +91,15 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 104),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
             fixedWidth: 104),
-        // Outcome — the addends (Unrealized $/%) come before the resulting
-        // Projected Value, so each row reads left-to-right as the sum:
-        // Initial + Realized + Unrealized $ = Projected Value.
+        // Outcome — the dollar columns read as a running sum
+        // (Initial + Realized + Unrealized $ = Projected Value), then the two
+        // percentages (Unrealized %, Index Gain) sit together for comparison.
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
             fixedWidth: 112),
+        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
+            fixedWidth: 120),
         // Projected payoff %, highlighted by status: red loss / amber when the
         // cap is reached. A single amber lock (with a tooltip) flags ONLY a
         // capped-out product — below-cap and uncapped show no icon, so the lock
@@ -125,8 +127,6 @@ class PortfolioTable extends StatelessWidget {
           );
           return DataCell(tip != null ? Tooltip(message: tip, child: text) : text);
         }, fixedWidth: 104),
-        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
-            fixedWidth: 120),
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
             fixedWidth: 92),
         // Timing (monitor)

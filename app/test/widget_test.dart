@@ -124,11 +124,14 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull); // chart painter didn't throw
-    expect(find.text('Projected Value'), findsWidgets);
-    expect(find.text('Unrealized \$'), findsWidgets);
-    expect(find.text('Cap'), findsOneWidget); // compact key strip
-    expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('Values'), findsOneWidget);
+    expect(find.text('Projected Value'), findsOneWidget); // unified header (no dup card)
+    expect(find.text('Unrealized \$'), findsOneWidget);
+    // Contract terms folded into the header (former grey strip).
+    expect(find.text('Cap'), findsOneWidget);
+    expect(find.text('Account'), findsOneWidget);
+    expect(find.text('Strike'), findsOneWidget);
+    expect(find.text('Schedule'), findsOneWidget); // dates card beside the chart
+    expect(find.text('Values'), findsNothing); // redundant card removed
     expect(find.byType(CustomPaint), findsWidgets); // payoff chart
     expect(find.text('12.25% cap reached'), findsOneWidget); // status chip
     expect(find.textContaining('Return at reset vs. the index move'),

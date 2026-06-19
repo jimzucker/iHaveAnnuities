@@ -78,6 +78,41 @@ void main() {
               asOf),
           isFalse);
     });
+    test('a reset past maturity is not due (accrual stops at maturity)', () {
+      final h = _h(
+        isIncomeNote: true,
+        cap: 0.12,
+        lastReset: DateTime(2026, 5, 16),
+        nextReset: DateTime(2026, 6, 16),
+      ); // _h maturity is 2029-04-16
+      // Due before maturity.
+      expect(resetDue(h, DateTime(2026, 6, 17)), isTrue);
+      // A note whose next reset is after its maturity never accrues again.
+      final matured = _h(
+        isIncomeNote: true,
+        cap: 0.12,
+        lastReset: DateTime(2029, 4, 16),
+        nextReset: DateTime(2029, 5, 16), // past the 2029-04-16 maturity
+      );
+      expect(resetDue(matured, DateTime(2030, 1, 1)), isFalse);
+    });
+
+    test('catchUp stops at maturity instead of accruing forever', () {
+      // Monthly note maturing 2029-04-16; far-future asOf would otherwise roll
+      // dozens of coupons. It must stop at the maturity reset.
+      final h = _h(
+        isIncomeNote: true,
+        cap: 0.12,
+        lastReset: DateTime(2029, 2, 16),
+        nextReset: DateTime(2029, 3, 16),
+      ); // maturity 2029-04-16
+      final r = catchUp(h, DateTime(2031, 1, 1), _flat(110.0));
+      // Only the 16-Mar and 16-Apr (maturity) coupons; nothing past maturity.
+      expect(r.events.length, 2);
+      expect(r.holding.lastReset, DateTime(2029, 4, 16));
+      expect(resetDue(r.holding, DateTime(2031, 1, 1)), isFalse);
+    });
+
     test('inception never resets', () {
       expect(
           resetDue(
