@@ -14,7 +14,7 @@ import 'format.dart';
 import 'payoff_chart.dart';
 
 // Plot padding — shared so the cursor gesture and the painter agree on geometry.
-const _padL = 58.0, _padR = 12.0, _padT = 14.0, _padB = 22.0;
+const _padL = 70.0, _padR = 14.0, _padT = 16.0, _padB = 30.0;
 
 class IndexPeriodChart extends StatefulWidget {
   const IndexPeriodChart({super.key, required this.holding, this.base = '', this.client});
@@ -52,7 +52,7 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
     final h = widget.holding;
     final cs = Theme.of(context).colorScheme;
     if (!_failed && _hist == null) {
-      return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator()));
+      return const SizedBox(height: 290, child: Center(child: CircularProgressIndicator()));
     }
     final series = _hist?.series(h.baseIndex, HistoryRange.max) ?? const [];
     final pts = series.where((p) => !p.$1.isBefore(h.lastReset)).toList();
@@ -84,7 +84,7 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
       ]),
       const SizedBox(height: 8),
       SizedBox(
-        height: 250,
+        height: 290,
         child: LayoutBuilder(builder: (context, box) {
           void setCursor(double dx) {
             final w = box.maxWidth - _padL - _padR;
@@ -128,9 +128,13 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
       ]);
 
   Widget _leg(Color c, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 16, height: 3, color: c),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11)),
+        Container(
+            width: 22,
+            height: 4,
+            decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 6),
+        Text(label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
       ]);
 }
 
@@ -213,7 +217,7 @@ class _IndexPeriodPainter extends CustomPainter {
         path,
         Paint()
           ..color = cs.primary
-          ..strokeWidth = 2.2
+          ..strokeWidth = 2.6
           ..style = PaintingStyle.stroke);
 
     // current marker
@@ -279,10 +283,10 @@ class _IndexPeriodPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w600)),
+          style: TextStyle(color: fg, fontSize: 13, fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
-    const padX = 5.0, padY = 2.0;
+    const padX = 6.0, padY = 3.0;
     final boxW = tp.width + padX * 2, boxH = tp.height + padY * 2;
     var left = flip ? at.dx - 8 - boxW : at.dx + 8;
     left = left.clamp(_padL, (plotR - boxW).clamp(_padL, plotR));
@@ -298,8 +302,8 @@ class _IndexPeriodPainter extends CustomPainter {
           text: s,
           style: TextStyle(
               color: color ?? cs.onSurfaceVariant,
-              fontSize: 10,
-              fontWeight: color == null ? FontWeight.normal : FontWeight.w600)),
+              fontSize: 13,
+              fontWeight: color == null ? FontWeight.w500 : FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
