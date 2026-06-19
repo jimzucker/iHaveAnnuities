@@ -62,8 +62,8 @@ class _ProtectionDonut extends StatelessWidget {
     final entries = mix.entries.where((e) => e.value > 0).toList();
     return Row(mainAxisSize: MainAxisSize.min, children: [
       SizedBox(
-        width: 64,
-        height: 64,
+        width: 72,
+        height: 72,
         child: CustomPaint(
           painter: _DonutPainter(
             [for (final e in entries) (protectionPalette(e.key, cs).accent, e.value)],
@@ -77,7 +77,7 @@ class _ProtectionDonut extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Protection',
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
           for (final e in entries)
             _legend(e.key, e.value, total, protectionPalette(e.key, cs).accent),
         ],
@@ -88,11 +88,12 @@ class _ProtectionDonut extends StatelessWidget {
   Widget _legend(String label, double v, double total, Color c) {
     final pctText = total <= 0 ? '' : '  ${(v / total * 100).round()}%';
     return Padding(
-      padding: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.only(top: 3),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 9, height: 9, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text('$label$pctText', style: const TextStyle(fontSize: 12)),
+        Container(width: 11, height: 11, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+        const SizedBox(width: 7),
+        Text('$label$pctText',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       ]),
     );
   }
@@ -141,16 +142,16 @@ class _ProjectedBlock extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             value,
-            Text(label, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            Text(label, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
           ],
         );
-    const big = TextStyle(fontSize: 22, fontWeight: FontWeight.bold);
+    const big = TextStyle(fontSize: 24, fontWeight: FontWeight.bold);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('${store.holdings.length} contracts',
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         const SizedBox(height: 6),
         // The two headline totals, large and meaningfully colored.
         Wrap(spacing: 32, runSpacing: 8, children: [
@@ -175,7 +176,7 @@ class _ProjectedBlock extends StatelessWidget {
         Text(
             'Principal ${moneyK(store.totalInitial)}   ·   '
             'Realized ${moneyK(store.totalRealized)}',
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       ],
     );
   }
@@ -223,7 +224,7 @@ class _NextResets extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Next resets', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        Text('Next resets', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         const SizedBox(height: 2),
         for (final h in top)
           Padding(
@@ -233,7 +234,7 @@ class _NextResets extends StatelessWidget {
                   text: '${h.daysToReset(asOf)}d ',
                   style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary)),
               TextSpan(text: '${store.labelFor(h)} · ${date(h.nextReset)}'),
-            ]), style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+            ]), style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
           ),
       ],
     );
