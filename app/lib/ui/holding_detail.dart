@@ -216,21 +216,27 @@ class _KeyFigures extends StatelessWidget {
       if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: true),
     ];
 
-    // Wide layout: each tier on a single line (figures, then ALL terms — the
-    // terms line can have more columns than the figures line). Intrinsic widths
-    // keep it tight; cells right-align so each number sits under its label.
-    Widget rowTable(List<Widget> cells) => Table(
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          children: [
-            TableRow(children: [
-              for (final c in cells)
-                Padding(
-                  padding: const EdgeInsets.only(right: 22, top: 8, bottom: 8),
-                  child: c,
-                ),
-            ]),
-          ],
-        );
+    // Wide layout: ONE table so columns 1..N line up between the two rows. The
+    // figures row is padded with empty cells so the terms row can carry extra
+    // columns on the right (instead of wrapping to a third line). Intrinsic
+    // widths + right-aligned cells keep the numbers stacked in clean columns.
+    Widget alignedTwoRow() {
+      final n = terms.length; // wider of the two rows
+      Widget pad(Widget w) => Padding(
+          padding: const EdgeInsets.only(right: 22, top: 8, bottom: 8), child: w);
+      final divider = BoxDecoration(
+          border: Border(bottom: BorderSide(color: onC.withValues(alpha: 0.20))));
+      return Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        children: [
+          TableRow(decoration: divider, children: [
+            for (var i = 0; i < n; i++)
+              pad(i < figs.length ? figs[i] : const SizedBox()),
+          ]),
+          TableRow(children: [for (final t in terms) pad(t)]),
+        ],
+      );
+    }
 
     // Narrow fallback: chunk into `cols` columns (may exceed two lines on a
     // phone, where two lines can't fit). Divider under the last figure row.
@@ -280,13 +286,7 @@ class _KeyFigures extends StatelessWidget {
           LayoutBuilder(builder: (context, c) {
             // Two lines when there's room for all the terms on one row; below
             // that, fall back to the wrapping grid (phones / narrow windows).
-            if (c.maxWidth >= 900) {
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                rowTable(figs),
-                Divider(height: 24, color: onC.withValues(alpha: 0.20)),
-                rowTable(terms),
-              ]);
-            }
+            if (c.maxWidth >= 900) return alignedTwoRow();
             return grid(c.maxWidth >= 440 ? 3 : 2);
           }),
         ]),
