@@ -204,15 +204,16 @@ class _KeyFigures extends StatelessWidget {
     ];
     // Always show the floor level alongside the type (e.g. "Floor 0.00%").
     final protLabel = '${h.protectionType} ${pct(h.floor)}';
+    // Same font size as the figures row (the smaller size read as too subtle).
     final terms = <Widget>[
-      cell('Account', h.account.label, big: false),
-      cell('Index', h.index, big: false),
-      cell('Cap', capLabel(h.cap), big: false),
-      cell('Participation', pct(h.participation), big: false),
-      cell('Protection', protLabel, big: false),
-      cell('Strike', level(h.strike), big: false),
-      cell('Current', level(h.currentLevel), big: false),
-      if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: false),
+      cell('Account', h.account.label, big: true),
+      cell('Index', h.index, big: true),
+      cell('Cap', capLabel(h.cap), big: true),
+      cell('Participation', pct(h.participation), big: true),
+      cell('Protection', protLabel, big: true),
+      cell('Strike', level(h.strike), big: true),
+      cell('Current', level(h.currentLevel), big: true),
+      if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: true),
     ];
 
     // Wide layout: each tier on a single line (figures, then ALL terms — the
@@ -224,7 +225,7 @@ class _KeyFigures extends StatelessWidget {
             TableRow(children: [
               for (final c in cells)
                 Padding(
-                  padding: const EdgeInsets.only(right: 26, top: 8, bottom: 8),
+                  padding: const EdgeInsets.only(right: 22, top: 8, bottom: 8),
                   child: c,
                 ),
             ]),
@@ -278,7 +279,7 @@ class _KeyFigures extends StatelessWidget {
           const SizedBox(height: 12),
           LayoutBuilder(builder: (context, c) {
             // Two lines when there's room for all the terms on one row; below
-            // that, fall back to the wrapping grid (phones).
+            // that, fall back to the wrapping grid (phones / narrow windows).
             if (c.maxWidth >= 900) {
               return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 rowTable(figs),
