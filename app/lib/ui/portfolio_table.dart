@@ -86,7 +86,7 @@ class PortfolioTable extends StatelessWidget {
           final p = h.protectionType;
           final c = protectionPalette(p, cs);
           return DataCell(_pill(p, c.bg, c.fg));
-        }, fixedWidth: 84),
+        }, fixedWidth: 104), // fits the "Protection" header on one line
         // Inputs
         _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial)),
             fixedWidth: 104),
@@ -212,13 +212,16 @@ class PortfolioTable extends StatelessWidget {
         sortAscending: store.sortAscending,
         headingRowColor: WidgetStatePropertyAll(cs.primary),
         headingTextStyle: TextStyle(
-            color: cs.onPrimary, fontWeight: FontWeight.w600, fontSize: 11.5),
+            color: cs.onPrimary, fontWeight: FontWeight.w600, fontSize: 12.5),
         headingRowHeight: 52,
         dataRowHeight: 44,
         columns: [
           for (final c in shown)
             DataColumn2(
-              label: Text(c.label, softWrap: true),
+              // Wrapped headers align with their data: numeric right, text left.
+              label: Text(c.label,
+                  softWrap: true,
+                  textAlign: c.numeric ? TextAlign.right : TextAlign.left),
               numeric: c.numeric,
               size: _colSize(c),
               fixedWidth: c.fixedWidth,
