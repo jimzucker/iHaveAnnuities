@@ -197,14 +197,24 @@ class _PayoffPainter extends CustomPainter {
       text: TextSpan(
           text: t,
           style: TextStyle(
-              color: accent ? cs.secondary : cs.onSurface,
+              // The accent (marker) label sits on a filled chip, so use the
+              // high-contrast tooltip foreground; plain labels use onSurface.
+              color: accent ? cs.onInverseSurface : cs.onSurface,
               fontWeight: accent ? FontWeight.w700 : FontWeight.w600,
-              fontSize: accent ? 16 : 15)),
+              fontSize: accent ? 15 : 15)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
     if (center) dx -= tp.width / 2;
     if (right) dx -= tp.width;
+    // Solid chip behind the marker label so the payoff line doesn't cut through it.
+    if (accent) {
+      const px = 7.0, py = 4.0;
+      final rect = Rect.fromLTWH(dx - px, at.dy - py, tp.width + px * 2, tp.height + py * 2);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+          Paint()..color = cs.inverseSurface);
+    }
     tp.paint(canvas, Offset(dx, at.dy));
   }
 
