@@ -102,7 +102,7 @@ class _PayoffPainter extends CustomPainter {
     double sy(double v) => padT + (yMax - v) / (yMax - yMin) * ht;
 
     final grid = Paint()
-      ..color = cs.outlineVariant.withValues(alpha: 0.4)
+      ..color = cs.outlineVariant.withValues(alpha: 0.55)
       ..strokeWidth = 1;
     final axis = Paint()
       ..color = cs.outlineVariant
@@ -197,8 +197,8 @@ class _PayoffPainter extends CustomPainter {
       text: TextSpan(
           text: t,
           style: TextStyle(
-              color: accent ? cs.secondary : cs.onSurfaceVariant,
-              fontWeight: accent ? FontWeight.w700 : FontWeight.w500,
+              color: accent ? cs.secondary : cs.onSurface,
+              fontWeight: accent ? FontWeight.w700 : FontWeight.w600,
               fontSize: accent ? 14 : 13)),
       textDirection: TextDirection.ltr,
     )..layout();

@@ -185,7 +185,7 @@ class _IndexPeriodPainter extends CustomPainter {
 
     // y gridlines + level labels
     final grid = Paint()
-      ..color = cs.outlineVariant.withValues(alpha: 0.35)
+      ..color = cs.outlineVariant.withValues(alpha: 0.55)
       ..strokeWidth = 1;
     for (var i = 0; i <= 4; i++) {
       final v = yLo + (yHi - yLo) * i / 4;
@@ -301,9 +301,9 @@ class _IndexPeriodPainter extends CustomPainter {
       text: TextSpan(
           text: s,
           style: TextStyle(
-              color: color ?? cs.onSurfaceVariant,
+              color: color ?? cs.onSurface,
               fontSize: 13,
-              fontWeight: color == null ? FontWeight.w500 : FontWeight.w700)),
+              fontWeight: color == null ? FontWeight.w600 : FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
