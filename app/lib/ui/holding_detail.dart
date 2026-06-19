@@ -215,9 +215,24 @@ class _KeyFigures extends StatelessWidget {
       if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: false),
     ];
 
-    // Both tiers share ONE table so their columns line up; intrinsic widths keep
-    // it tight and cells right-align so the numbers stack into clean columns. A
-    // subtle border under the last figure row separates figures from terms.
+    // Wide layout: each tier on a single line (figures, then ALL terms — the
+    // terms line can have more columns than the figures line). Intrinsic widths
+    // keep it tight; cells right-align so each number sits under its label.
+    Widget rowTable(List<Widget> cells) => Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          children: [
+            TableRow(children: [
+              for (final c in cells)
+                Padding(
+                  padding: const EdgeInsets.only(right: 26, top: 8, bottom: 8),
+                  child: c,
+                ),
+            ]),
+          ],
+        );
+
+    // Narrow fallback: chunk into `cols` columns (may exceed two lines on a
+    // phone, where two lines can't fit). Divider under the last figure row.
     Widget grid(int cols) {
       final divider = BoxDecoration(
           border: Border(bottom: BorderSide(color: onC.withValues(alpha: 0.20))));
@@ -262,8 +277,16 @@ class _KeyFigures extends StatelessWidget {
           ]),
           const SizedBox(height: 12),
           LayoutBuilder(builder: (context, c) {
-            final cols = c.maxWidth >= 760 ? 6 : (c.maxWidth >= 440 ? 3 : 2);
-            return grid(cols);
+            // Two lines when there's room for all the terms on one row; below
+            // that, fall back to the wrapping grid (phones).
+            if (c.maxWidth >= 900) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                rowTable(figs),
+                Divider(height: 24, color: onC.withValues(alpha: 0.20)),
+                rowTable(terms),
+              ]);
+            }
+            return grid(c.maxWidth >= 440 ? 3 : 2);
           }),
         ]),
       ),
