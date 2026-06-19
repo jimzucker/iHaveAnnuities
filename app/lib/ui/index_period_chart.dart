@@ -14,7 +14,7 @@ import 'format.dart';
 import 'payoff_chart.dart';
 
 // Plot padding — shared so the cursor gesture and the painter agree on geometry.
-const _padL = 70.0, _padR = 14.0, _padT = 16.0, _padB = 30.0;
+const _padL = 80.0, _padR = 14.0, _padT = 18.0, _padB = 36.0;
 
 class IndexPeriodChart extends StatefulWidget {
   const IndexPeriodChart({super.key, required this.holding, this.base = '', this.client});
@@ -134,7 +134,7 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
             decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
       ]);
 }
 
@@ -283,7 +283,7 @@ class _IndexPeriodPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: fg, fontSize: 13, fontWeight: FontWeight.w700)),
+          style: TextStyle(color: fg, fontSize: 15, fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
     const padX = 6.0, padY = 3.0;
@@ -302,7 +302,7 @@ class _IndexPeriodPainter extends CustomPainter {
           text: s,
           style: TextStyle(
               color: color ?? cs.onSurface,
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: color == null ? FontWeight.w600 : FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();

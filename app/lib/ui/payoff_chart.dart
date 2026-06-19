@@ -60,7 +60,7 @@ class PayoffChart extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
       ]);
 }
 
@@ -80,7 +80,7 @@ class _PayoffPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padL = 56.0, padR = 18.0, padT = 14.0, padB = 32.0;
+    const padL = 64.0, padR = 18.0, padT = 16.0, padB = 38.0;
     final w = size.width - padL - padR;
     final ht = size.height - padT - padB;
     final idxLo = -range, idxHi = range;
@@ -199,7 +199,7 @@ class _PayoffPainter extends CustomPainter {
           style: TextStyle(
               color: accent ? cs.secondary : cs.onSurface,
               fontWeight: accent ? FontWeight.w700 : FontWeight.w600,
-              fontSize: accent ? 14 : 13)),
+              fontSize: accent ? 16 : 15)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
