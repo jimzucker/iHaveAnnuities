@@ -74,7 +74,8 @@ class PortfolioTable extends StatelessWidget {
                     color: cs.primary,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
-                    decorationColor: cs.primary)))),
+                    decorationColor: cs.primary))),
+            fixedWidth: 150),
         _Col('Type', false, (h, _) => h.account.label, (h, _, cs) =>
             DataCell(_pill(h.account.label, cs.secondaryContainer, cs.onSecondaryContainer)),
             fixedWidth: 88),
@@ -87,14 +88,16 @@ class PortfolioTable extends StatelessWidget {
         }, fixedWidth: 84),
         // Inputs
         _Col('Initial', true, (h, _) => h.initial, (h, _, _) => _t(moneyK(h.initial)),
-            fixedWidth: 92),
+            fixedWidth: 104),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
-            fixedWidth: 92),
+            fixedWidth: 104),
         // Outcome
-        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK))),
+        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
+            fixedWidth: 120),
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
-                style: TextStyle(color: lossColor(h.projGainDollarsK, cs))))),
+                style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
+            fixedWidth: 112),
         // Projected payoff %, highlighted by status: red loss / amber when the
         // cap is reached. A single amber lock (with a tooltip) flags ONLY a
         // capped-out product — below-cap and uncapped show no icon, so the lock
@@ -154,7 +157,7 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Floor Type',
-    'Initial', 'Projected Value', 'Unrealized \$', 'Unrealized %',
+    'Initial', 'Realized', 'Projected Value', 'Unrealized \$', 'Unrealized %',
     'Index Gain', 'Next Reset', 'Days to Reset',
   };
 
@@ -187,18 +190,13 @@ class PortfolioTable extends StatelessWidget {
         return _cardList(context, store, items, asOf, cs);
       }
       // Freeze the leading identity columns (and the header row) so they stay
-      // put while scrolling a large portfolio. Columns are FLEXIBLE (ColumnSize)
-      // so they fill the width — fixed widths left a gap on wide screens in the
-      // compact view (fewer columns than the viewport could hold).
+      // put while scrolling a large portfolio. Every column is fixedWidth, so it
+      // packs tight (no per-column gaps / lopsided distribution in compact view);
+      // any leftover viewport width is a single trailing margin, and the table
+      // scrolls when narrower than the total.
       final frozen = shown.takeWhile((c) => _identityLabels.contains(c.label)).length;
-      // minWidth = the sum of each column's natural width (its fixedWidth, or a
-      // sensible floor for the few flexible ones — Issuer + the money columns).
-      // The table scrolls only when the viewport is narrower than this; when
-      // wider, the slack flows to the flexible columns (money is right-aligned,
-      // so the extra reads as alignment, not a gap).
       final minW = shown.fold<double>(
-          104 + 28 /*actions + margins*/,
-          (s, c) => s + (c.fixedWidth ?? (c.label == 'Issuer' ? 160 : 124)));
+          104 + 28 /*actions + margins*/, (s, c) => s + (c.fixedWidth ?? 124));
 
       return DataTable2(
         columnSpacing: 16,
@@ -224,6 +222,10 @@ class PortfolioTable extends StatelessWidget {
               onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
             ),
           const DataColumn2(label: Text('Actions'), size: ColumnSize.S, fixedWidth: 104),
+          // Flexible blank spacer: absorbs any leftover viewport width as a
+          // single trailing margin so every data column stays tight (instead of
+          // the slack spreading into per-column gaps).
+          const DataColumn2(label: Text(''), size: ColumnSize.L),
         ],
         rows: [
           for (final (i, x) in items.indexed)
@@ -251,6 +253,7 @@ class PortfolioTable extends StatelessWidget {
                     onPressed: () => _delete(context, store, x),
                   ),
                 ])),
+                const DataCell(SizedBox.shrink()), // spacer
               ],
             ),
           _totalsRow(shown, store, cs),
@@ -273,7 +276,8 @@ class PortfolioTable extends StatelessWidget {
         color: WidgetStatePropertyAll(cs.surfaceContainerHigh),
         cells: [
           for (final c in shown) _totalCell(c.label, store, cs),
-          const DataCell(Text('')),
+          const DataCell(Text('')), // Actions
+          const DataCell(SizedBox.shrink()), // spacer
         ],
       );
 
