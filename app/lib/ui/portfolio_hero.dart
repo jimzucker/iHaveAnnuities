@@ -36,27 +36,15 @@ class PortfolioHero extends StatelessWidget {
       width: double.infinity,
       color: cs.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        spacing: 24,
+        runSpacing: 12,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Wrap(
-            spacing: 24,
-            runSpacing: 12,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _ProtectionDonut(mix: mix, total: store.totalInitial, cs: cs),
-              _ProjectedBlock(store: store, cs: cs),
-              _NextResets(upcoming: upcoming, asOf: asOf, store: store, cs: cs),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Components footer (full width): how Total Value breaks down.
-          Text(
-              'Principal ${moneyK(store.totalInitial)}   ·   '
-              'Realized ${moneyK(store.totalRealized)}   ·   '
-              'Unrealized ${moneyK(store.totalProjGain)}',
-              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+          _ProtectionDonut(mix: mix, total: store.totalInitial, cs: cs),
+          _ProjectedBlock(store: store, cs: cs),
+          _NextResets(upcoming: upcoming, asOf: asOf, store: store, cs: cs),
         ],
       ),
     );
@@ -149,10 +137,6 @@ class _ProjectedBlock extends StatelessWidget {
     final gain = store.totalProjGain;
     final pct = store.totalInitial <= 0 ? 0.0 : gain / store.totalInitial;
     final gc = gainColor(gain, cs);
-    // All-in return: realized + unrealized vs principal.
-    final totalGain = store.totalProjValue - store.totalInitial;
-    final totalPct = store.totalInitial <= 0 ? 0.0 : totalGain / store.totalInitial;
-    final tgc = gainColor(totalGain, cs);
     Widget kpi(String label, Widget value) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,15 +169,42 @@ class _ProjectedBlock extends StatelessWidget {
             Text('${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})',
                 style: big.copyWith(color: gc)),
           ),
-          kpi(
-            'Total Return',
-            Text(
-                '${totalGain >= 0 ? '▲' : '▼'} ${moneyK(totalGain)}  '
-                '(${pctSigned(totalPct)})',
-                style: big.copyWith(color: tgc)),
-          ),
         ]),
+        const SizedBox(height: 8),
+        SizedBox(width: 240, child: _GainBar(pct: pct, color: gc)),
+        const SizedBox(height: 6),
+        Text(
+            'Principal ${moneyK(store.totalInitial)}   ·   '
+            'Realized ${moneyK(store.totalRealized)}',
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       ],
+    );
+  }
+}
+
+class _GainBar extends StatelessWidget {
+  const _GainBar({required this.pct, required this.color});
+  final double pct;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Map gain% onto a bar around a center baseline (±50% full scale).
+    final frac = (pct.abs() / 0.5).clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        height: 8,
+        color: cs.surfaceContainerLow,
+        child: Align(
+          alignment: pct >= 0 ? Alignment.centerLeft : Alignment.centerRight,
+          child: FractionallySizedBox(
+            widthFactor: frac == 0 ? 0.02 : frac,
+            child: Container(color: color),
+          ),
+        ),
+      ),
     );
   }
 }
