@@ -32,11 +32,6 @@ class PortfolioHero extends StatelessWidget {
     final upcoming = [...store.holdings]
       ..sort((a, b) => a.daysToReset(asOf).compareTo(b.daysToReset(asOf)));
 
-    // All-in return drives the full-width gauge + the components summary line
-    // below the KPI row, so the lower half of the card stays balanced.
-    final totalGain = store.totalProjValue - store.totalInitial;
-    final totalPct = store.totalInitial <= 0 ? 0.0 : totalGain / store.totalInitial;
-    final tgc = gainColor(totalGain, cs);
     return Container(
       width: double.infinity,
       color: cs.surfaceContainerHighest,
@@ -55,10 +50,8 @@ class PortfolioHero extends StatelessWidget {
               _NextResets(upcoming: upcoming, asOf: asOf, store: store, cs: cs),
             ],
           ),
-          const SizedBox(height: 12),
-          // Full-width total-return gauge spanning the whole card.
-          SizedBox(width: double.infinity, child: _GainBar(pct: totalPct, color: tgc)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
+          // Components footer (full width): how Total Value breaks down.
           Text(
               'Principal ${moneyK(store.totalInitial)}   ·   '
               'Realized ${moneyK(store.totalRealized)}   ·   '
@@ -201,33 +194,6 @@ class _ProjectedBlock extends StatelessWidget {
           ),
         ]),
       ],
-    );
-  }
-}
-
-class _GainBar extends StatelessWidget {
-  const _GainBar({required this.pct, required this.color});
-  final double pct;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    // Map gain% onto a bar around a center baseline (±50% full scale).
-    final frac = (pct.abs() / 0.5).clamp(0.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        height: 8,
-        color: cs.surfaceContainerLow,
-        child: Align(
-          alignment: pct >= 0 ? Alignment.centerLeft : Alignment.centerRight,
-          child: FractionallySizedBox(
-            widthFactor: frac == 0 ? 0.02 : frac,
-            child: Container(color: color),
-          ),
-        ),
-      ),
     );
   }
 }
