@@ -32,19 +32,38 @@ class PortfolioHero extends StatelessWidget {
     final upcoming = [...store.holdings]
       ..sort((a, b) => a.daysToReset(asOf).compareTo(b.daysToReset(asOf)));
 
+    // All-in return drives the full-width gauge + the components summary line
+    // below the KPI row, so the lower half of the card stays balanced.
+    final totalGain = store.totalProjValue - store.totalInitial;
+    final totalPct = store.totalInitial <= 0 ? 0.0 : totalGain / store.totalInitial;
+    final tgc = gainColor(totalGain, cs);
     return Container(
       width: double.infinity,
       color: cs.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Wrap(
-        spacing: 24,
-        runSpacing: 12,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ProtectionDonut(mix: mix, total: store.totalInitial, cs: cs),
-          _ProjectedBlock(store: store, cs: cs),
-          _NextResets(upcoming: upcoming, asOf: asOf, store: store, cs: cs),
+          Wrap(
+            spacing: 24,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _ProtectionDonut(mix: mix, total: store.totalInitial, cs: cs),
+              _ProjectedBlock(store: store, cs: cs),
+              _NextResets(upcoming: upcoming, asOf: asOf, store: store, cs: cs),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Full-width total-return gauge spanning the whole card.
+          SizedBox(width: double.infinity, child: _GainBar(pct: totalPct, color: tgc)),
+          const SizedBox(height: 6),
+          Text(
+              'Principal ${moneyK(store.totalInitial)}   ·   '
+              'Realized ${moneyK(store.totalRealized)}   ·   '
+              'Unrealized ${moneyK(store.totalProjGain)}',
+              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -175,17 +194,12 @@ class _ProjectedBlock extends StatelessWidget {
           ),
           kpi(
             'Total Return',
-            Text('${moneyK(totalGain)}  (${pctSigned(totalPct)})',
+            Text(
+                '${totalGain >= 0 ? '▲' : '▼'} ${moneyK(totalGain)}  '
+                '(${pctSigned(totalPct)})',
                 style: big.copyWith(color: tgc)),
           ),
         ]),
-        const SizedBox(height: 8),
-        SizedBox(width: 240, child: _GainBar(pct: pct, color: gc)),
-        const SizedBox(height: 6),
-        Text(
-            'Principal ${moneyK(store.totalInitial)}   ·   '
-            'Realized ${moneyK(store.totalRealized)}',
-            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       ],
     );
   }
