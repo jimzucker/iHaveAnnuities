@@ -131,6 +131,14 @@ class Holding {
   /// the reinvested base. By construction: projValue = initial + realized + this.
   double get projGainDollarsK => (initial + realized) * projGain;
 
+  /// Realized return to date as a fraction of principal (income banked /
+  /// initial). Always ≥ 0; 0 when there is no principal.
+  double get realizedPct => initial == 0 ? 0 : realized / initial;
+
+  /// All-in projected return: (projected value − principal) / principal =
+  /// realized% + unrealized%. 0 when there is no principal.
+  double get totalReturnPct => initial == 0 ? 0 : (projValueK - initial) / initial;
+
   /// Upside status of the current period:
   ///  - `loss`     — projected payoff is negative
   ///  - `capped`   — a positive gain that has reached the cap (ceilinged)

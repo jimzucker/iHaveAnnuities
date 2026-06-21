@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ihaveannuities/core/models.dart';
+import 'package:ihaveannuities/core/payoff.dart';
 import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
@@ -77,6 +79,9 @@ void main() {
   });
 
   testWidgets('clear all data is gated by typing the phrase', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900); // desktop: hero + table fit
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
@@ -98,6 +103,9 @@ void main() {
   });
 
   testWidgets('load sample is disabled when a portfolio exists', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900); // desktop: hero + table fit
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
@@ -420,6 +428,9 @@ void main() {
   });
 
   testWidgets('tapping a column header changes the sort', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900); // desktop: hero + table fit
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
     final store = PortfolioStore()..debugSeed(holdings, _market);
@@ -491,5 +502,127 @@ void main() {
     await tester.tap(find.text('SAVE'));
     await tester.pumpAndSettle();
     expect(find.text('Must be ≤ 0'), findsOneWidget);
+  });
+
+  testWidgets('refresh fetches prices and shows a snackbar', (tester) async {
+    final client = MockClient((_) async => http.Response(
+        '{"asOf":"2026-06-18","spx":7500.0,"ndx":30000.0,"rut":3000.0,'
+        '"dow":44500.0,"comp":23800.0}',
+        200));
+    final store = PortfolioStore(client: client)..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Refresh prices'));
+    await tester.pumpAndSettle();
+    expect(store.status, isNull); // success clears any status
+    expect(store.market!.spx, 7500.0); // revalued to fetched prices
+    expect(find.textContaining('Prices updated'), findsOneWidget); // snackbar
+  });
+
+  testWidgets('refresh failure shows the status banner', (tester) async {
+    final client = MockClient((_) async => http.Response('nope', 500));
+    final store = PortfolioStore(client: client)..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Refresh prices'));
+    await tester.pumpAndSettle();
+    expect(store.status, isNotNull);
+    // The status shows in both the error banner and the snackbar.
+    expect(find.textContaining('Prices unavailable'), findsWidgets);
+  });
+
+  testWidgets('FAB add → fill form → SAVE upserts the holding', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1600); // build the whole form
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Add'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add holding'), findsOneWidget); // form opened
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Issuer'), 'TESTCO');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Cap %'), '10');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Strike'), '100');
+    // Flip on the income-note path so coupon handling is exercised on save.
+    await tester.tap(find.text('Income note (coupon)'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('SAVE'));
+    await tester.pumpAndSettle();
+    expect(store.holdings.length, 1); // upserted, back on the screen
+    expect(store.holdings.single.issuer, 'TESTCO');
+    expect(store.holdings.single.isIncomeNote, isTrue);
+    expect(store.holdings.single.cap, closeTo(0.10, 1e-9));
+  });
+
+  testWidgets('form: uncapped + dropdown + date picker returns a holding',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    Holding? result;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (ctx) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () async => result = await Navigator.of(ctx)
+                  .push<Holding>(MaterialPageRoute(builder: (_) => const HoldingForm())),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Issuer'), 'UNCAP');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Strike'), '4200');
+    // Uncapped: the Cap field disappears and save uses cap == null.
+    await tester.tap(find.text('Uncapped'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, 'Cap %'), findsNothing);
+    // Change the floor-type dropdown to Soft (barrier).
+    await tester.tap(find.text('Hard (floor/buffer)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Soft (barrier)').last);
+    await tester.pumpAndSettle();
+    // Open the date picker for "Open" and confirm the initial date.
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('SAVE'));
+    await tester.pumpAndSettle();
+    expect(result, isNotNull);
+    expect(result!.issuer, 'UNCAP');
+    expect(result!.cap, isNull); // uncapped
+    expect(result!.floorType, FloorType.soft);
+  });
+
+  testWidgets('menu → Load sample populates an empty portfolio', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Load sample'));
+    await tester.pumpAndSettle();
+    expect(store.holdings, isNotEmpty); // loaded from the bundled asset
+    expect(find.textContaining('sample holdings'), findsOneWidget); // snackbar
+  });
+
+  testWidgets('menu → Reset history opens the log screen', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reset history'));
+    await tester.pumpAndSettle();
+    expect(find.text('No resets recorded yet'), findsOneWidget);
   });
 }

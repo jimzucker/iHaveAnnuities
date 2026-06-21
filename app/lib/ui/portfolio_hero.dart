@@ -137,6 +137,10 @@ class _ProjectedBlock extends StatelessWidget {
     final gain = store.totalProjGain;
     final pct = store.totalInitial <= 0 ? 0.0 : gain / store.totalInitial;
     final gc = gainColor(gain, cs);
+    // All-in return: realized + unrealized vs principal.
+    final totalGain = store.totalProjValue - store.totalInitial;
+    final totalPct = store.totalInitial <= 0 ? 0.0 : totalGain / store.totalInitial;
+    final tgc = gainColor(totalGain, cs);
     Widget kpi(String label, Widget value) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,6 +172,11 @@ class _ProjectedBlock extends StatelessWidget {
             'Total Unrealized G/L',
             Text('${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})',
                 style: big.copyWith(color: gc)),
+          ),
+          kpi(
+            'Total Return',
+            Text('${moneyK(totalGain)}  (${pctSigned(totalPct)})',
+                style: big.copyWith(color: tgc)),
           ),
         ]),
         const SizedBox(height: 8),

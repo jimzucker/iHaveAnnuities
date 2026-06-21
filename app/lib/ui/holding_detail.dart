@@ -167,7 +167,9 @@ class _KeyFigures extends StatelessWidget {
     final onC = cs.onPrimaryContainer;
     final muted = onC.withValues(alpha: 0.75);
     // A right-aligned stat cell (label over value); `big` = headline figures.
-    Widget cell(String label, String value, {Color? color, required bool big}) =>
+    // An optional [sub] adds a small percentage line under the value.
+    Widget cell(String label, String value,
+            {Color? color, required bool big, String? sub, Color? subColor}) =>
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -182,6 +184,13 @@ class _KeyFigures extends StatelessWidget {
                     fontSize: big ? 20 : 15,
                     fontWeight: big ? FontWeight.bold : FontWeight.w600,
                     color: color ?? onC)),
+            if (sub != null)
+              Text(sub,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: subColor ?? muted)),
           ],
         );
     Widget chip(String text, Color bg, Color fg) => Container(
@@ -193,10 +202,14 @@ class _KeyFigures extends StatelessWidget {
     final prot = protectionPalette(h.protectionType, cs);
     final figs = <Widget>[
       cell('Initial', moneyK(h.initial), big: true),
-      cell('Realized', moneyK(h.realized), big: true),
+      cell('Realized', moneyK(h.realized), big: true,
+          sub: h.initial <= 0 ? null : pctSigned(h.realizedPct),
+          subColor: gainColor(h.realizedPct, cs)),
       cell('Unrealized \$', moneyK(h.projGainDollarsK),
           color: gainColor(h.projGainDollarsK, cs), big: true),
-      cell('Projected Value', moneyK(h.projValueK), big: true),
+      cell('Projected Value', moneyK(h.projValueK), big: true,
+          sub: h.initial <= 0 ? null : pctSigned(h.totalReturnPct),
+          subColor: gainColor(h.totalReturnPct, cs)),
       cell('Unrealized %', pctSigned(h.projGain),
           color: gainColor(h.projGain, cs), big: true),
       cell('Index Gain', pctSigned(h.indexGain),

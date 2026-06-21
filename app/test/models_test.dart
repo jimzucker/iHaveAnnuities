@@ -131,6 +131,22 @@ void main() {
     expect(l.projGainDollarsK, closeTo(-7.70, 1e-9));
   });
 
+  test('realizedPct + totalReturnPct (== realized% + unrealized%)', () {
+    // (100 + 20) * (1 + 0.10) = 132.0; realized 20 on 100 principal.
+    final g = _h(cap: null, floor: 0, strike: 100, currentLevel: 110, realized: 20);
+    expect(g.realizedPct, closeTo(0.20, 1e-12)); // 20 / 100
+    expect(g.totalReturnPct, closeTo(0.32, 1e-9)); // (132 - 100) / 100
+    // By construction the all-in % is realized% + unrealized% (on principal).
+    expect(g.totalReturnPct,
+        closeTo(g.realizedPct + g.projGainDollarsK / g.initial, 1e-9));
+  });
+
+  test('realizedPct / totalReturnPct guard zero principal', () {
+    final z = _h(cap: null, floor: 0, strike: 100, currentLevel: 110, initial: 0);
+    expect(z.realizedPct, 0);
+    expect(z.totalReturnPct, 0);
+  });
+
   test('gainStatus + hasCap across loss / flat / gain / capped', () {
     // capped: +20% vs a 10% cap
     final capped = _h(cap: 0.10, floor: 0, strike: 100, currentLevel: 120);

@@ -92,6 +92,12 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 104),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
             fixedWidth: 104),
+        // Realized as a % of principal (yield banked to date). Never negative, so
+        // it reads green/neutral; blank for the degenerate zero-principal case.
+        _Col('Realized %', true, (h, _) => h.realizedPct, (h, _, cs) => DataCell(
+            Text(h.initial <= 0 ? '' : pctSigned(h.realizedPct),
+                style: TextStyle(color: gainColor(h.realizedPct, cs)))),
+            fixedWidth: 104),
         // Outcome — the dollar columns read as a running sum
         // (Initial + Realized + Unrealized $ = Projected Value), then the two
         // percentages (Unrealized %, Index Gain) sit together for comparison.
