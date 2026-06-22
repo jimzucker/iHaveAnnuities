@@ -1,7 +1,8 @@
 // Copyright 2026 Jim Zucker
 // SPDX-License-Identifier: Apache-2.0
 // A summary band above the table: a protection-mix donut (principal split
-// across Floor / Hard / Soft), a projected-gain bar, and the soonest
+// across Floor / Hard / Soft), the headline totals with a Total-Value
+// composition bar (Principal | Realized | Unrealized), and the soonest
 // upcoming resets. Replaces the plain stats row.
 
 import 'dart:math' as math;
@@ -134,8 +135,13 @@ class _ProjectedBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gain = store.totalProjGain;
+    final gain = store.totalProjGain; // unrealized $ (000)
     final pct = store.totalInitial <= 0 ? 0.0 : gain / store.totalInitial;
+    final retPct = store.totalInitial <= 0
+        ? 0.0
+        : (store.totalProjValue - store.totalInitial) / store.totalInitial;
+    final realPct =
+        store.totalInitial <= 0 ? 0.0 : store.totalRealized / store.totalInitial;
     final gc = gainColor(gain, cs);
     Widget kpi(String label, Widget value) => Column(
           mainAxisSize: MainAxisSize.min,
@@ -153,57 +159,88 @@ class _ProjectedBlock extends StatelessWidget {
         Text('${store.holdings.length} contracts',
             style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         const SizedBox(height: 6),
-        // The two headline totals, large and meaningfully colored.
+        // Total Value (with all-in return %, no decimals) + Unrealized (signed).
         Wrap(spacing: 32, runSpacing: 8, children: [
           kpi(
             'Total Value',
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: store.totalProjValue),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutCubic,
-              builder: (_, v, _) => Text(moneyK(v), style: big),
-            ),
+            Text.rich(TextSpan(children: [
+              TextSpan(text: moneyK(store.totalProjValue), style: big),
+              TextSpan(
+                  text: '  (${_pct0(retPct)})',
+                  style: big.copyWith(
+                      color: retPct < 0 ? lossColor(retPct, cs) : cs.onSurfaceVariant)),
+            ])),
           ),
           kpi(
-            'Total Unrealized G/L',
+            'Unrealized',
             Text('${gain >= 0 ? '▲' : '▼'} ${moneyK(gain)}  (${pctSigned(pct)})',
                 style: big.copyWith(color: gc)),
           ),
         ]),
+        const SizedBox(height: 10),
+        // Composition of Total Value: Principal | Realized | Unrealized.
+        SizedBox(
+          width: 320,
+          child: _CompositionBar(
+              principal: store.totalInitial,
+              realized: store.totalRealized,
+              unrealized: gain,
+              cs: cs),
+        ),
         const SizedBox(height: 8),
-        SizedBox(width: 240, child: _GainBar(pct: pct, color: gc)),
-        const SizedBox(height: 6),
-        Text(
-            'Principal ${moneyK(store.totalInitial)}   ·   '
-            'Realized ${moneyK(store.totalRealized)}',
-            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        // The bar's legend — dots match the segments.
+        Wrap(spacing: 18, runSpacing: 4, children: [
+          _legendDot(cs.primary, 'Principal ${moneyK(store.totalInitial)}', cs),
+          _legendDot(capAmber,
+              'Realized ${moneyK(store.totalRealized)}  (${pctSigned(realPct)})', cs),
+          _legendDot(gc, 'Unrealized ${moneyK(gain)}', cs),
+        ]),
       ],
     );
   }
+
+  static Widget _legendDot(Color c, String text, ColorScheme cs) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text(text, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+      ]);
 }
 
-class _GainBar extends StatelessWidget {
-  const _GainBar({required this.pct, required this.color});
-  final double pct;
-  final Color color;
+/// Signed percentage with no decimals (e.g. "+8%", "-10%").
+String _pct0(double v) => '${v >= 0 ? '+' : ''}${(v * 100).round()}%';
+
+/// Stacked bar showing how Total Value breaks down: Principal (base) +
+/// Realized (banked) + Unrealized (gain green / loss red, eating in when
+/// negative). Segment widths are proportional to the dollar amounts.
+class _CompositionBar extends StatelessWidget {
+  const _CompositionBar(
+      {required this.principal,
+      required this.realized,
+      required this.unrealized,
+      required this.cs});
+  final double principal, realized, unrealized;
+  final ColorScheme cs;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    // Map gain% onto a bar around a center baseline (±50% full scale).
-    final frac = (pct.abs() / 0.5).clamp(0.0, 1.0);
+    int f(double v) => (v.abs() * 1000).round().clamp(1, 1 << 30);
+    final segments = <(Color, int)>[
+      (cs.primary, f(principal)),
+      if (realized != 0) (capAmber, f(realized)),
+      (gainColor(unrealized, cs), f(unrealized)),
+    ];
     return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        height: 8,
-        color: cs.surfaceContainerLow,
-        child: Align(
-          alignment: pct >= 0 ? Alignment.centerLeft : Alignment.centerRight,
-          child: FractionallySizedBox(
-            widthFactor: frac == 0 ? 0.02 : frac,
-            child: Container(color: color),
-          ),
-        ),
+      borderRadius: BorderRadius.circular(5),
+      child: SizedBox(
+        height: 14,
+        child: Row(children: [
+          for (final (c, flex) in segments)
+            Expanded(flex: flex, child: Container(color: c)),
+        ]),
       ),
     );
   }
