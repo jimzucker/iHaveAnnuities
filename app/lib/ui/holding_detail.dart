@@ -207,7 +207,7 @@ class _KeyFigures extends StatelessWidget {
           subColor: gainColor(h.realizedPct, cs)),
       cell('Unrealized \$', moneyK(h.projGainDollarsK),
           color: gainColor(h.projGainDollarsK, cs), big: true),
-      cell('Projected Value', moneyK(h.projValueK), big: true,
+      cell('Total Value', moneyK(h.projValueK), big: true,
           sub: h.initial <= 0 ? null : pctSigned(h.totalReturnPct),
           subColor: gainColor(h.totalReturnPct, cs)),
       cell('Unrealized %', pctSigned(h.projGain),

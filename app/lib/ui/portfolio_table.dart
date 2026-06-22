@@ -36,7 +36,8 @@ Route<void> detailRoute(Holding h) => PageRouteBuilder(
 
 /// One sortable column: how to render it and how to sort by it.
 class _Col {
-  const _Col(this.label, this.numeric, this.key, this.cell, {this.fixedWidth});
+  const _Col(this.label, this.numeric, this.key, this.cell,
+      {this.fixedWidth, this.tooltip});
   final String label;
   final bool numeric;
   final Comparable Function(Holding h, DateTime asOf) key;
@@ -45,6 +46,10 @@ class _Col {
   /// When set, the column is exactly this wide (won't flex). Used to keep
   /// short numeric/code columns tight so the slack goes to names/dates/money.
   final double? fixedWidth;
+
+  /// Optional header tooltip (hover/long-press) for columns whose short label
+  /// drops nuance — e.g. "Total Value" is the value projected at the next reset.
+  final String? tooltip;
 }
 
 class PortfolioTable extends StatelessWidget {
@@ -92,21 +97,24 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 104),
         _Col('Realized', true, (h, _) => h.realized, (h, _, _) => _t(moneyK(h.realized)),
             fixedWidth: 104),
-        // Realized as a % of principal (yield banked to date). Never negative, so
-        // it reads green/neutral; blank for the degenerate zero-principal case.
-        _Col('Realized %', true, (h, _) => h.realizedPct, (h, _, cs) => DataCell(
-            Text(h.initial <= 0 ? '' : pctSigned(h.realizedPct),
-                style: TextStyle(color: gainColor(h.realizedPct, cs)))),
-            fixedWidth: 104),
         // Outcome — the dollar columns read as a running sum
-        // (Initial + Realized + Unrealized $ = Projected Value), then the two
-        // percentages (Unrealized %, Index Gain) sit together for comparison.
+        // (Initial + Realized + Unrealized $ = Total Value), then Total Value's
+        // all-in return %, with Unrealized % / Index Gain alongside it.
         _Col('Unrealized \$', true, (h, _) => h.projGainDollarsK,
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
             fixedWidth: 112),
-        _Col('Projected Value', true, (h, _) => h.projValueK, (h, _, _) => _t(moneyK(h.projValueK)),
-            fixedWidth: 120),
+        // "Total Value" = value projected at the next reset (today's levels);
+        // the export keeps the precise "Proj Value @ Reset" label.
+        _Col('Total Value', true, (h, _) => h.projValueK,
+            (h, _, _) => _t(moneyK(h.projValueK)),
+            fixedWidth: 120,
+            tooltip: 'Value projected at the next reset, using today\'s index levels'),
+        // All-in return on principal: (Total Value − Initial) / Initial.
+        _Col('Total Return %', true, (h, _) => h.totalReturnPct, (h, _, cs) => DataCell(
+            Text(h.initial <= 0 ? '' : pctSigned(h.totalReturnPct),
+                style: TextStyle(color: gainColor(h.totalReturnPct, cs)))),
+            fixedWidth: 112),
         // Projected payoff %, highlighted by status: red loss / amber when the
         // cap is reached. A single amber lock (with a tooltip) flags ONLY a
         // capped-out product — below-cap and uncapped show no icon, so the lock
@@ -166,8 +174,8 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Protection',
-    'Initial', 'Realized', 'Projected Value', 'Unrealized \$', 'Unrealized %',
-    'Index Gain', 'Next Reset', 'Days to Reset',
+    'Initial', 'Realized', 'Unrealized \$', 'Total Value', 'Total Return %',
+    'Unrealized %', 'Index Gain', 'Next Reset', 'Days to Reset',
   };
 
   /// The leading identity columns, frozen when scrolling horizontally.
@@ -229,6 +237,7 @@ class PortfolioTable extends StatelessWidget {
                   softWrap: true,
                   textAlign: c.numeric ? TextAlign.right : TextAlign.left),
               numeric: c.numeric,
+              tooltip: c.tooltip,
               size: _colSize(c),
               fixedWidth: c.fixedWidth,
               onSort: (i, asc) => store.setSort(all.indexOf(shown[i]), asc),
