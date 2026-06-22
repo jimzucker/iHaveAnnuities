@@ -111,9 +111,10 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 120,
             tooltip: 'Value projected at the next reset, using today\'s index levels'),
         // All-in return on principal: (Total Value − Initial) / Initial.
+        // Only losses are flagged red (matching Unrealized $ / Index Gain).
         _Col('Return %', true, (h, _) => h.totalReturnPct, (h, _, cs) => DataCell(
             Text(h.initial <= 0 ? '' : pctSigned(h.totalReturnPct),
-                style: TextStyle(color: gainColor(h.totalReturnPct, cs)))),
+                style: TextStyle(color: lossColor(h.totalReturnPct, cs)))),
             fixedWidth: 112,
             tooltip: 'All-in return on principal: (Total Value − Initial) / Initial'),
         // Projected payoff %, highlighted by status: red loss / amber when the
