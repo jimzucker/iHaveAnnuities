@@ -111,10 +111,11 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 120,
             tooltip: 'Value projected at the next reset, using today\'s index levels'),
         // All-in return on principal: (Total Value − Initial) / Initial.
-        _Col('Total Return %', true, (h, _) => h.totalReturnPct, (h, _, cs) => DataCell(
+        _Col('Return %', true, (h, _) => h.totalReturnPct, (h, _, cs) => DataCell(
             Text(h.initial <= 0 ? '' : pctSigned(h.totalReturnPct),
                 style: TextStyle(color: gainColor(h.totalReturnPct, cs)))),
-            fixedWidth: 112),
+            fixedWidth: 112,
+            tooltip: 'All-in return on principal: (Total Value − Initial) / Initial'),
         // Projected payoff %, highlighted by status: red loss / amber when the
         // cap is reached. A single amber lock (with a tooltip) flags ONLY a
         // capped-out product — below-cap and uncapped show no icon, so the lock
@@ -174,7 +175,7 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Protection',
-    'Initial', 'Realized', 'Unrealized \$', 'Total Value', 'Total Return %',
+    'Initial', 'Realized', 'Unrealized \$', 'Total Value', 'Return %',
     'Unrealized %', 'Index Gain', 'Next Reset', 'Days to Reset',
   };
 

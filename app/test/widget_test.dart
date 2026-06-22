@@ -360,7 +360,7 @@ void main() {
     await tester.pumpWidget(_wrap(store));
     expect(find.text('Unrealized %'), findsOneWidget);
     expect(find.text('Total Value'), findsWidgets); // renamed from Projected Value
-    expect(find.text('Total Return %'), findsOneWidget); // replaces Realized %
+    expect(find.text('Return %'), findsOneWidget); // replaces Realized %
     expect(find.text('Realized %'), findsNothing); // removed
     expect(find.text('Protection'), findsWidgets); // table column (also the hero donut label)
     expect(find.text('Days to Reset'), findsOneWidget);
