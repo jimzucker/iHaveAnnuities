@@ -297,6 +297,29 @@ void main() {
     expect(store.hiddenIndexes.contains('RUT'), isTrue);
   });
 
+  testWidgets('index chart shows a toggleable portfolio line', (tester) async {
+    const historyJson = '{"asOf":"2026-06-15","daily":{'
+        '"SPX":[[1700000000,100.0],[1718000000,120.0]],'
+        '"DJI":[[1700000000,40000.0],[1718000000,44000.0]],'
+        '"COMP":[[1700000000,15000.0],[1718000000,16000.0]],'
+        '"NDX":[[1700000000,18000.0],[1718000000,20000.0]],'
+        '"RUT":[[1700000000,2000.0],[1718000000,2200.0]]},"intraday":{}}';
+    final client = MockClient((_) async => http.Response(historyJson, 200));
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: store,
+      child: MaterialApp(home: IndexChartScreen(client: client)),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('My portfolio'), findsOneWidget); // portfolio legend chip
+    expect(tester.takeException(), isNull); // area-fill painter didn't throw
+    await tester.tap(find.text('My portfolio'));
+    await tester.pumpAndSettle();
+    expect(store.hiddenIndexes.contains('PORTFOLIO'), isTrue); // toggled off
+  });
+
   testWidgets('combined index chart in portrait fills a screen and scrolls',
       (tester) async {
     final overflows = <String>[];

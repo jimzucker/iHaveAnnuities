@@ -27,6 +27,16 @@ const _indexColor = <String, Color>{
   'NDX': Color(0xFFE0A030),
   'RUT': Color(0xFF2EA043),
 };
+// Your portfolio: a distinct rose, drawn thicker with a filled area so it reads
+// as "mine" vs. the thin index reference lines.
+const _portfolioColor = Color(0xFFEC407A);
+
+typedef _Series = ({
+  String sym,
+  Color color,
+  List<(DateTime, double)> pts,
+  bool area, // filled area + thicker line (the portfolio)
+});
 
 // Plot padding — shared so the cursor gesture and the painter agree on geometry.
 // _padB leaves room for the x-axis date labels under the plot.
@@ -64,9 +74,8 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
   }
 
   /// Rebased (% from range start) series per visible index.
-  List<({String sym, Color color, List<(DateTime, double)> pts})> _visible(
-      Set<String> hidden) {
-    final out = <({String sym, Color color, List<(DateTime, double)> pts})>[];
+  List<_Series> _visible(Set<String> hidden) {
+    final out = <_Series>[];
     for (final (sym, _) in _indexes) {
       if (hidden.contains(sym)) continue;
       final raw = _hist?.series(sym, _range) ?? const [];
@@ -77,9 +86,45 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
         sym: sym,
         color: _indexColor[sym]!,
         pts: [for (final p in raw) (p.$1, p.$2 / base - 1)],
+        area: false,
       ));
     }
     return out;
+  }
+
+  /// The portfolio line: a principal-weighted blend of its holdings' underlying
+  /// index returns over the range (income notes excluded — no index exposure).
+  /// Tracks the underlyings, before caps/floors. Empty when there's no data.
+  List<(DateTime, double)> _portfolioBlend(PortfolioStore store) {
+    final hist = _hist;
+    if (hist == null) return const [];
+    final holdings = store.holdings.where((h) => !h.isIncomeNote).toList();
+    final total = holdings.fold(0.0, (s, h) => s + h.initial);
+    if (total <= 0) return const [];
+    final weight = <String, double>{};
+    for (final h in holdings) {
+      weight[h.baseIndex] = (weight[h.baseIndex] ?? 0) + h.initial / total;
+    }
+    final rebased = <String, List<(DateTime, double)>>{};
+    for (final sym in weight.keys) {
+      final raw = hist.series(sym, _range);
+      if (raw.isEmpty || raw.first.$2 == 0) return const []; // missing data
+      final b = raw.first.$2;
+      rebased[sym] = [for (final p in raw) (p.$1, p.$2 / b - 1)];
+    }
+    // All index series for a range share dates; blend index-by-index along the
+    // longest one as the spine.
+    final spine = rebased.values.reduce((a, b) => a.length >= b.length ? a : b);
+    return [
+      for (var i = 0; i < spine.length; i++)
+        (
+          spine[i].$1,
+          [
+            for (final e in rebased.entries)
+              weight[e.key]! * (i < e.value.length ? e.value[i].$2 : e.value.last.$2)
+          ].fold(0.0, (s, x) => s + x),
+        ),
+    ];
   }
 
   double? _change(String sym) {
@@ -94,6 +139,17 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
     final cs = Theme.of(context).colorScheme;
     final hidden = store.hiddenIndexes;
     final series = _visible(hidden);
+    // Append the portfolio blend (toggled via the 'PORTFOLIO' key, default on).
+    final showPortfolio = !hidden.contains('PORTFOLIO');
+    final blend = _portfolioBlend(store);
+    if (showPortfolio && blend.isNotEmpty) {
+      series.add((
+        sym: 'PORTFOLIO',
+        color: _portfolioColor,
+        pts: blend,
+        area: true,
+      ));
+    }
 
     final size = MediaQuery.of(context).size;
     // Portrait phones: a chart that fills the viewport stays cramped, so give it
@@ -118,8 +174,16 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      // Tappable legend — tap to hide/show an index (remembered).
+      // Tappable legend — tap to hide/show a series (remembered).
       Wrap(spacing: 8, runSpacing: 6, children: [
+        if (blend.isNotEmpty)
+          _LegendChip(
+            label: 'My portfolio',
+            color: _portfolioColor,
+            change: blend.last.$2,
+            off: !showPortfolio,
+            onTap: () => store.toggleIndex('PORTFOLIO'),
+          ),
         for (final (sym, label) in _indexes)
           _LegendChip(
             label: label,
@@ -242,7 +306,7 @@ enum _Anchor { left, center, right }
 
 class _MultiLinePainter extends CustomPainter {
   _MultiLinePainter(this.series, this.cs, this.rangeLabel, this.cursorFrac);
-  final List<({String sym, Color color, List<(DateTime, double)> pts})> series;
+  final List<_Series> series;
   final ColorScheme cs;
   final String rangeLabel;
   final double? cursorFrac;
@@ -298,6 +362,28 @@ class _MultiLinePainter extends CustomPainter {
           anchor: i == 0 ? _Anchor.left : (i == xTicks ? _Anchor.right : _Anchor.center));
     }
 
+    // Area fills first (under every line) — the portfolio's filled band.
+    final plot = Rect.fromLTWH(_padL, _padT, w, ht);
+    for (final s in series) {
+      if (!s.area || s.pts.isEmpty) continue;
+      final fill = Path()..moveTo(sx(s.pts.first.$1), _padT + ht);
+      for (final p in s.pts) {
+        fill.lineTo(sx(p.$1), sy(p.$2));
+      }
+      fill
+        ..lineTo(sx(s.pts.last.$1), _padT + ht)
+        ..close();
+      final shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [s.color.withValues(alpha: 0.32), s.color.withValues(alpha: 0.0)],
+      ).createShader(plot);
+      canvas.save();
+      canvas.clipRect(plot);
+      canvas.drawPath(fill, Paint()..shader = shader);
+      canvas.restore();
+    }
+
     for (final s in series) {
       final path = Path();
       for (var i = 0; i < s.pts.length; i++) {
@@ -308,7 +394,7 @@ class _MultiLinePainter extends CustomPainter {
           path,
           Paint()
             ..color = s.color
-            ..strokeWidth = 2
+            ..strokeWidth = s.area ? 3 : 2
             ..style = PaintingStyle.stroke);
     }
 
