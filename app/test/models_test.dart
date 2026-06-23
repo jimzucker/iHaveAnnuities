@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Holding derived-value coverage, mirroring the eight example contracts.
 
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ihaveannuities/core/models.dart';
 import 'package:ihaveannuities/core/payoff.dart';
@@ -145,6 +147,30 @@ void main() {
     final z = _h(cap: null, floor: 0, strike: 100, currentLevel: 110, initial: 0);
     expect(z.realizedPct, 0);
     expect(z.totalReturnPct, 0);
+  });
+
+  test('lifeToDateYield: cumulative <1yr, CAGR ≥1yr, guards', () {
+    // +10% projected (uncapped, 0 floor). openDate fixed at 2026-01-01 (see _h).
+    final h = _h(cap: null, floor: 0, strike: 100, currentLevel: 110);
+    expect(h.totalReturnPct, closeTo(0.10, 1e-9));
+
+    // Held ~6 months → cumulative (un-annualized) return.
+    expect(h.lifeToDateYield(DateTime(2026, 7, 1)), closeTo(0.10, 1e-6));
+
+    // Held ~2 years (730 days) → CAGR: 1.10^(1/years) − 1, well under 10%.
+    final twoYr = h.lifeToDateYield(DateTime(2028, 1, 1));
+    expect(twoYr, closeTo(math.pow(1.10, 1 / (730 / 365.25)).toDouble() - 1, 1e-6));
+    expect(twoYr, lessThan(0.10)); // annualizing a multi-year gain shrinks it
+
+    // Guards: zero principal, and asOf before/at open.
+    final z = _h(cap: null, floor: 0, strike: 100, currentLevel: 110, initial: 0);
+    expect(z.lifeToDateYield(DateTime(2027, 1, 1)), 0);
+    expect(h.lifeToDateYield(DateTime(2025, 1, 1)), 0); // before open
+
+    // Total wipeout (soft barrier breached to 0) → −100%, no pow() of base ≤ 0.
+    final wipeout = _h(
+        cap: null, floor: -0.30, floorType: FloorType.soft, strike: 100, currentLevel: 0);
+    expect(wipeout.lifeToDateYield(DateTime(2028, 1, 1)), -1);
   });
 
   test('gainStatus + hasCap across loss / flat / gain / capped', () {

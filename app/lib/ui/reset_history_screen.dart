@@ -26,6 +26,10 @@ class ResetHistoryScreen extends StatelessWidget {
       phrase: 'clear',
       confirmLabel: 'Clear history',
       destructive: true,
+      verifyPassphrase: store.encryptionEnabled ? store.verifyPassphrase : null,
+      verifyBiometric: store.biometricEnabled ? store.verifyBiometric : null,
+      verifyRecoveryCode:
+          store.encryptionEnabled ? store.verifyRecoveryCode : null,
     );
     if (!ok) return;
     await store.clearResetHistory();

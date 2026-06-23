@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,12 +15,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models.dart';
 import '../core/reset_event.dart';
 import '../core/reset_rollover.dart';
+import 'biometric.dart';
 import 'index_history.dart';
 import 'market.dart';
 import 'tracker_xlsx.dart';
+import 'vault.dart';
+import 'xirr.dart';
+
+/// Encryption status: [disabled] = plaintext (default); [locked] = encrypted,
+/// awaiting a passphrase/biometric; [unlocked] = key in memory, data readable.
+enum VaultState { disabled, locked, unlocked }
 
 class PortfolioStore extends ChangeNotifier {
-  PortfolioStore({this.base = '', this.client});
+  PortfolioStore({this.base = '', this.client, Vault? vault, BiometricAuthenticator? biometric})
+      : _vault = vault ?? Vault(),
+        biometric = biometric ?? defaultBiometric();
 
   static const _key = 'portfolio.v1';
   static const _sortKey = 'sortColumn.v1';
@@ -28,6 +38,11 @@ class PortfolioStore extends ChangeNotifier {
   static const _hideSummaryKey = 'hideSummary.v1';
   static const _hiddenIdxKey = 'hiddenIndexes.v1';
   static const _resetHistKey = 'resetHistory.v1';
+  static const _vaultMetaKey = 'vault.meta.v1';
+  static const _vaultSessionKey = 'vault.session.v1';
+  static const _stayDaysKey = 'vault.stayDays.v1';
+  static const _onboardedKey = 'onboarded.v1';
+  static const _nudgedKey = 'nudgedEncryption.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
   static const defaultSortColumn = 10;
@@ -53,6 +68,18 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Optional injected HTTP client (tests).
   final http.Client? client;
+
+  /// Crypto core + biometric authenticator (injectable for tests).
+  final Vault _vault;
+  final BiometricAuthenticator biometric;
+
+  VaultState _vaultState = VaultState.disabled;
+  VaultMeta? _vaultMeta;
+  Uint8List? _dek; // in-memory Data Encryption Key; null unless unlocked
+  int _stayUnlockedDays = 30;
+  bool _ready = false; // true once init() has read local storage
+  bool _onboarded = false; // first-run security wizard completed/seen
+  bool _nudged = false; // one-time "encrypt your data?" nudge shown
 
   List<Holding> _holdings = [];
   Market? _market;
@@ -83,6 +110,25 @@ class PortfolioStore extends ChangeNotifier {
   /// True while a market refresh is in flight (drives the app-bar spinner).
   bool get refreshing => _refreshing;
 
+  /// Encryption status (drives the unlock gate).
+  VaultState get vaultState => _vaultState;
+  bool get encryptionEnabled => _vaultMeta != null;
+  bool get isLocked => _vaultState == VaultState.locked;
+  bool get biometricEnabled => _vaultMeta?.biometric != null;
+  int get stayUnlockedDays => _stayUnlockedDays;
+
+  /// True once init() has read local storage (gates a brief splash so the
+  /// onboarding wizard doesn't flash for returning users).
+  bool get ready => _ready;
+
+  /// Show the first-run security wizard (brand-new, empty install only).
+  bool get needsOnboarding => !_onboarded;
+
+  /// One-time prompt to consider encryption after the user adds data on the
+  /// skip path (only when they've onboarded, have data, and aren't encrypted).
+  bool get shouldNudgeEncryption =>
+      _onboarded && !encryptionEnabled && _holdings.isNotEmpty && !_nudged;
+
   List<Holding> get holdings => List.unmodifiable(_holdings);
   Market? get market => _market;
   String? get status => _status;
@@ -97,6 +143,20 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Total UNREALIZED gain (excludes realized): projValue = initial + realized + gain.
   double get totalProjGain => totalProjValue - totalInitial - totalRealized;
+
+  /// Money-weighted annualized return (XIRR) for the whole book: each holding's
+  /// principal is an outflow at its open date, today's total value the inflow.
+  /// Correctly handles contracts opened on different dates. Null when it can't
+  /// be solved (no holdings / no market date / degenerate flows).
+  double? get portfolioXirr {
+    final asOf = _market?.asOf;
+    if (asOf == null || _holdings.isEmpty) return null;
+    final flows = <(DateTime, double)>[
+      for (final h in _holdings) (h.openDate, -h.initial),
+      (asOf, totalProjValue),
+    ];
+    return xirr(flows);
+  }
 
   /// Load persisted holdings, then fetch + apply market prices.
   Future<void> setSort(int column, bool ascending) async {
@@ -140,31 +200,69 @@ class PortfolioStore extends ChangeNotifier {
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
     _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
-    final histRaw = prefs.getString(_resetHistKey);
-    if (histRaw != null) {
+    _stayUnlockedDays = prefs.getInt(_stayDaysKey) ?? 30;
+    _onboarded = prefs.getBool(_onboardedKey) ?? false;
+    _nudged = prefs.getBool(_nudgedKey) ?? false;
+
+    final metaRaw = prefs.getString(_vaultMetaKey);
+    if (metaRaw != null) {
       try {
-        _resetHistory = (jsonDecode(histRaw) as List)
-            .map((e) => ResetEvent.fromJson(e as Map<String, dynamic>))
-            .toList();
-      } catch (_) {/* ignore corrupt cache */}
+        _vaultMeta = VaultMeta.fromJson(jsonDecode(metaRaw) as Map<String, dynamic>);
+      } catch (_) {/* ignore corrupt meta */}
     }
-    final raw = prefs.getString(_key);
-    if (raw != null) {
-      try {
-        final list = (jsonDecode(raw) as List)
-            .map((e) => Holding.fromJson(e as Map<String, dynamic>))
-            .toList();
-        _holdings = list;
-      } catch (_) {/* ignore corrupt cache */}
+    if (_vaultMeta != null) {
+      // Encrypted: stay locked unless a still-valid "stay unlocked" session
+      // restores the key (which also loads + decrypts the data).
+      _vaultState = VaultState.locked;
+      await _tryRestoreSession(prefs);
+    } else {
+      _vaultState = VaultState.disabled;
+      await _loadData(prefs); // plaintext
     }
+    // Returning users (existing data or a vault) skip the first-run wizard.
+    if (!_onboarded && (_holdings.isNotEmpty || encryptionEnabled)) {
+      _onboarded = true;
+      await prefs.setBool(_onboardedKey, true);
+    }
+    _ready = true;
     notifyListeners();
     await refreshMarket();
-    // Apply any resets that fell due since the data was last current.
-    await _catchUpResets();
+    // Apply any resets that fell due since the data was last current (only when
+    // we can actually read the holdings).
+    if (_vaultState != VaultState.locked) await _catchUpResets();
     // While the app stays open, re-pull market.json once per day shortly after
     // the publish time — so a kept-open tab appears to update on its own.
     _autoTimer ??= Timer.periodic(
         const Duration(minutes: 20), (_) => _maybeAutoRefresh());
+  }
+
+  /// Read holdings + reset-history from prefs, decrypting with the in-memory DEK
+  /// when the vault is unlocked. Safe to call repeatedly.
+  Future<void> _loadData(SharedPreferences prefs) async {
+    var histJson = prefs.getString(_resetHistKey);
+    var dataJson = prefs.getString(_key);
+    if (_dek != null) {
+      try {
+        if (histJson != null) histJson = await _vault.decryptString(histJson, _dek!);
+        if (dataJson != null) dataJson = await _vault.decryptString(dataJson, _dek!);
+      } catch (_) {
+        return; // can't decrypt — leave data empty
+      }
+    }
+    if (histJson != null) {
+      try {
+        _resetHistory = (jsonDecode(histJson) as List)
+            .map((e) => ResetEvent.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {/* ignore corrupt cache */}
+    }
+    if (dataJson != null) {
+      try {
+        _holdings = (jsonDecode(dataJson) as List)
+            .map((e) => Holding.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {/* ignore corrupt cache */}
+    }
   }
 
   Future<void> _maybeAutoRefresh() async {
@@ -183,8 +281,63 @@ class PortfolioStore extends ChangeNotifier {
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
+    final json = jsonEncode(_holdings.map((h) => h.toJson()).toList());
     await prefs.setString(
-        _key, jsonEncode(_holdings.map((h) => h.toJson()).toList()));
+        _key, _dek != null ? await _vault.encryptString(json, _dek!) : json);
+  }
+
+  // ---- Vault: session + meta persistence -----------------------------------
+
+  Future<void> _saveMeta() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_vaultMetaKey, jsonEncode(_vaultMeta!.toJson()));
+  }
+
+  /// Persist the "stay unlocked" session (DEK + expiry). Accepted trade-off:
+  /// the key sits in storage for the window so the app re-opens without a prompt.
+  Future<void> _startSession() async {
+    if (_dek == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final expires = DateTime.now().add(Duration(days: _stayUnlockedDays));
+    await prefs.setString(
+        _vaultSessionKey,
+        jsonEncode({'dek': base64Encode(_dek!), 'expiresAt': expires.toIso8601String()}));
+  }
+
+  /// Restore an unexpired session → sets the DEK, flips to unlocked, loads data.
+  Future<bool> _tryRestoreSession(SharedPreferences prefs) async {
+    final raw = prefs.getString(_vaultSessionKey);
+    if (raw == null) return false;
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      final expires = DateTime.parse(j['expiresAt'] as String);
+      if (!expires.isAfter(DateTime.now())) {
+        await prefs.remove(_vaultSessionKey);
+        return false;
+      }
+      _dek = base64Decode(j['dek'] as String);
+      _vaultState = VaultState.unlocked;
+      await _loadData(prefs);
+      return true;
+    } catch (_) {
+      await prefs.remove(_vaultSessionKey);
+      return false;
+    }
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_vaultSessionKey);
+  }
+
+  Future<void> _afterUnlock() async {
+    _vaultState = VaultState.unlocked;
+    final prefs = await SharedPreferences.getInstance();
+    await _loadData(prefs);
+    await _startSession();
+    _revalue();
+    notifyListeners();
+    await _catchUpResets();
   }
 
   /// Clear the reset-history log (audit trail only — holdings keep their
@@ -197,8 +350,243 @@ class PortfolioStore extends ChangeNotifier {
 
   Future<void> _persistResetHistory() async {
     final prefs = await SharedPreferences.getInstance();
+    final json = jsonEncode(_resetHistory.map((e) => e.toJson()).toList());
     await prefs.setString(
-        _resetHistKey, jsonEncode(_resetHistory.map((e) => e.toJson()).toList()));
+        _resetHistKey, _dek != null ? await _vault.encryptString(json, _dek!) : json);
+  }
+
+  // ---- Vault: enable / unlock / recover / manage ---------------------------
+
+  /// Turn on encryption: generate a DEK, wrap it by the passphrase and a fresh
+  /// recovery code, and re-write the existing data encrypted in place. Returns
+  /// the recovery code to show the user once.
+  Future<String> enableEncryption(String passphrase) async {
+    final dek = _vault.newDek();
+    final saltPp = _vault.newSalt(), saltRc = _vault.newSalt();
+    final code = _vault.newRecoveryCode();
+    _vaultMeta = VaultMeta(
+      kdfIterations: _vault.kdfIterations,
+      saltPp: base64Encode(saltPp),
+      wrapPp: await _vault.wrap(dek, await _vault.deriveKek(passphrase, saltPp)),
+      saltRc: base64Encode(saltRc),
+      wrapRc: await _vault.wrap(
+          dek, await _vault.deriveKek(Vault.normalizeRecoveryCode(code), saltRc)),
+    );
+    _dek = dek;
+    _vaultState = VaultState.unlocked;
+    await _persist(); // re-writes the data as ciphertext
+    await _persistResetHistory();
+    await _saveMeta();
+    await _startSession();
+    notifyListeners();
+    return code;
+  }
+
+  /// Unlock with the passphrase. Returns false on a wrong passphrase.
+  Future<bool> unlock(String passphrase) async {
+    final meta = _vaultMeta;
+    if (meta == null) return false;
+    try {
+      final kek = await _vault.deriveKek(passphrase, base64Decode(meta.saltPp),
+          iterations: meta.kdfIterations);
+      _dek = await _vault.unwrap(meta.wrapPp, kek);
+    } catch (_) {
+      _dek = null;
+      return false;
+    }
+    await _afterUnlock();
+    return true;
+  }
+
+  /// Verify a passphrase WITHOUT changing state — used to gate destructive
+  /// actions when encryption is on. Returns true when encryption is off (no
+  /// passphrase to check) or the passphrase is correct.
+  Future<bool> verifyPassphrase(String passphrase) async {
+    final meta = _vaultMeta;
+    if (meta == null) return true;
+    try {
+      final kek = await _vault.deriveKek(passphrase, base64Decode(meta.saltPp),
+          iterations: meta.kdfIterations);
+      await _vault.unwrap(meta.wrapPp, kek);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Verify the recovery code WITHOUT changing state — the "forgot passphrase"
+  /// fallback for re-authentication gates.
+  Future<bool> verifyRecoveryCode(String code) async {
+    final meta = _vaultMeta;
+    if (meta == null) return true;
+    try {
+      final kek = await _vault.deriveKek(
+          Vault.normalizeRecoveryCode(code), base64Decode(meta.saltRc),
+          iterations: meta.kdfIterations);
+      await _vault.unwrap(meta.wrapRc, kek);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Verify identity via Touch ID WITHOUT changing state — the biometric
+  /// equivalent of [verifyPassphrase] for gating destructive actions/Security.
+  Future<bool> verifyBiometric() async {
+    final bio = _vaultMeta?.biometric;
+    if (bio == null) return false;
+    final secret = await biometric.authenticate(bio.credentialId);
+    if (secret == null) return false;
+    try {
+      await _vault.unwrap(bio.wrap, SecretKey(secret));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Unlock via the platform biometric (Touch ID). Returns false if cancelled.
+  Future<bool> biometricUnlock() async {
+    final bio = _vaultMeta?.biometric;
+    if (bio == null) return false;
+    final secret = await biometric.authenticate(bio.credentialId);
+    if (secret == null) return false;
+    try {
+      _dek = await _vault.unwrap(bio.wrap, SecretKey(secret));
+    } catch (_) {
+      _dek = null;
+      return false;
+    }
+    await _afterUnlock();
+    return true;
+  }
+
+  /// Unlock with the recovery code (when the passphrase is forgotten). The
+  /// caller should immediately set a new passphrase via [changePassphrase].
+  Future<bool> recoverWithCode(String code) async {
+    final meta = _vaultMeta;
+    if (meta == null) return false;
+    try {
+      final kek = await _vault.deriveKek(
+          Vault.normalizeRecoveryCode(code), base64Decode(meta.saltRc),
+          iterations: meta.kdfIterations);
+      _dek = await _vault.unwrap(meta.wrapRc, kek);
+    } catch (_) {
+      _dek = null;
+      return false;
+    }
+    await _afterUnlock();
+    return true;
+  }
+
+  /// Re-wrap the DEK under a new passphrase (must be unlocked).
+  Future<void> changePassphrase(String newPassphrase) async {
+    final meta = _vaultMeta, dek = _dek;
+    if (meta == null || dek == null) return;
+    final salt = _vault.newSalt();
+    _vaultMeta = meta.copyWith(
+      saltPp: base64Encode(salt),
+      wrapPp: await _vault.wrap(dek, await _vault.deriveKek(newPassphrase, salt)),
+    );
+    await _saveMeta();
+    notifyListeners();
+  }
+
+  /// Generate a fresh recovery code, re-wrapping the DEK (must be unlocked).
+  Future<String?> regenerateRecoveryCode() async {
+    final meta = _vaultMeta, dek = _dek;
+    if (meta == null || dek == null) return null;
+    final code = _vault.newRecoveryCode();
+    final salt = _vault.newSalt();
+    _vaultMeta = meta.copyWith(
+      saltRc: base64Encode(salt),
+      wrapRc: await _vault.wrap(
+          dek, await _vault.deriveKek(Vault.normalizeRecoveryCode(code), salt)),
+    );
+    await _saveMeta();
+    notifyListeners();
+    return code;
+  }
+
+  /// Enroll the platform biometric as an additional unlock method (must be
+  /// unlocked). Returns false if unsupported or cancelled.
+  Future<bool> enableBiometric() async {
+    final meta = _vaultMeta, dek = _dek;
+    if (meta == null || dek == null) return false;
+    if (!await biometric.isSupported()) return false;
+    final enr = await biometric.enroll();
+    if (enr == null) return false;
+    // Prefer the secret returned at create (one prompt); otherwise derive it via
+    // a single follow-up assertion. Either way it's the deterministic PRF key
+    // that unlock will reproduce, so saving it is safe.
+    final secret = enr.prfSecret ?? await biometric.authenticate(enr.credentialId);
+    if (secret == null) return false;
+    _vaultMeta = meta.copyWith(
+      biometric: BiometricWrap(
+          credentialId: enr.credentialId,
+          wrap: await _vault.wrap(dek, SecretKey(secret))),
+    );
+    await _saveMeta();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> disableBiometric() async {
+    final meta = _vaultMeta;
+    if (meta == null) return;
+    _vaultMeta = meta.copyWith(clearBiometric: true);
+    await _saveMeta();
+    notifyListeners();
+  }
+
+  /// Turn encryption off, writing the data back as plaintext (must be unlocked).
+  Future<void> disableEncryption() async {
+    if (_dek == null) return;
+    _vaultMeta = null;
+    _dek = null;
+    _vaultState = VaultState.disabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_vaultMetaKey);
+    await prefs.remove(_vaultSessionKey);
+    await _persist(); // now plaintext
+    await _persistResetHistory();
+    notifyListeners();
+  }
+
+  /// Lock now: wipe the in-memory key + data and end the session.
+  Future<void> lock() async {
+    _dek = null;
+    _holdings = [];
+    _resetHistory = [];
+    _vaultState = _vaultMeta != null ? VaultState.locked : VaultState.disabled;
+    await _clearSession();
+    notifyListeners();
+  }
+
+  /// Mark the first-run security wizard as completed/skipped.
+  Future<void> markOnboarded() async {
+    _onboarded = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardedKey, true);
+    notifyListeners();
+  }
+
+  /// Dismiss the one-time "encrypt your data?" nudge (chosen Set up or Not now).
+  Future<void> dismissEncryptionNudge() async {
+    _nudged = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_nudgedKey, true);
+    notifyListeners();
+  }
+
+  /// Days a device stays unlocked before re-prompting. Refreshes the live
+  /// session's expiry when changed while unlocked.
+  Future<void> setStayUnlockedDays(int days) async {
+    _stayUnlockedDays = days;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_stayDaysKey, days);
+    if (_dek != null) await _startSession();
+    notifyListeners();
   }
 
   /// Roll every holding forward through any reset dates that have passed (income
@@ -345,9 +733,14 @@ class PortfolioStore extends ChangeNotifier {
   Future<void> clearLocal() async {
     _holdings = [];
     _resetHistory = [];
+    _vaultMeta = null;
+    _dek = null;
+    _vaultState = VaultState.disabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
     await prefs.remove(_resetHistKey);
+    await prefs.remove(_vaultMetaKey);
+    await prefs.remove(_vaultSessionKey);
     notifyListeners();
   }
 
@@ -365,6 +758,8 @@ class PortfolioStore extends ChangeNotifier {
     _holdings = List.of(holdings);
     _resetHistory = List.of(resetHistory);
     _market = market;
+    _onboarded = true; // tests pump screens directly, past the wizard
+    _ready = true;
     _revalue();
     notifyListeners();
   }

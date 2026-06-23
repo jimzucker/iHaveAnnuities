@@ -4,6 +4,8 @@
 // Zucker Annuity Tracker schema v1.0. Derived values are computed via the
 // payoff engine in payoff.dart, never stored.
 
+import 'dart:math' as math;
+
 import 'payoff.dart';
 
 /// Account / tax treatment.
@@ -138,6 +140,22 @@ class Holding {
   /// All-in projected return: (projected value − principal) / principal =
   /// realized% + unrealized%. 0 when there is no principal.
   double get totalReturnPct => initial == 0 ? 0 : (projValueK - initial) / initial;
+
+  /// Life-to-date yield as of [asOf]: the annualized return since the open date
+  /// using the current projected value (so it counts realized income + the
+  /// current unrealized mark). For holdings under a year it returns the plain
+  /// cumulative return, since annualizing a partial year overstates wildly.
+  double lifeToDateYield(DateTime asOf) {
+    if (initial <= 0) return 0;
+    final days = asOf.difference(openDate).inDays;
+    if (days <= 0) return 0;
+    final ratio = projValueK / initial;
+    if (ratio <= 0) return -1; // total loss — avoid pow() of a non-positive base
+    final cumulative = ratio - 1;
+    final years = days / 365.25;
+    if (years < 1) return cumulative; // cumulative until a full year elapses
+    return math.pow(ratio, 1 / years).toDouble() - 1; // CAGR
+  }
 
   /// Upside status of the current period:
   ///  - `loss`     — projected payoff is negative

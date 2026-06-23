@@ -146,6 +146,14 @@ class PortfolioTable extends StatelessWidget {
         }, fixedWidth: 112), // match "Unrealized $" so the headers wrap alike
         _Col('Index Gain', true, (h, _) => h.indexGain, (h, _, cs) => _signed(h.indexGain, cs),
             fixedWidth: 92),
+        // Life-to-date yield: annualized (CAGR) return since the open date using
+        // the current projected value; cumulative (un-annualized) under 1 year.
+        _Col('Yield', true, (h, a) => h.lifeToDateYield(a), (h, a, cs) => DataCell(
+            Text(h.initial <= 0 ? '' : pctSigned(h.lifeToDateYield(a)),
+                style: TextStyle(color: lossColor(h.lifeToDateYield(a), cs)))),
+            fixedWidth: 92,
+            tooltip: 'Annualized return since inception (life-to-date, current '
+                'value); under 1 year shows cumulative return'),
         // Timing (monitor)
         _Col('Next Reset', false, (h, _) => h.nextReset, (h, _, _) => _t(date(h.nextReset)),
             fixedWidth: 92),
@@ -177,7 +185,7 @@ class PortfolioTable extends StatelessWidget {
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Protection',
     'Initial', 'Realized', 'Unrealized \$', 'Total Value', 'Return %',
-    'Unrealized %', 'Index Gain', 'Next Reset', 'Days to Reset',
+    'Unrealized %', 'Index Gain', 'Yield', 'Next Reset', 'Days to Reset',
   };
 
   /// The leading identity columns, frozen when scrolling horizontally.
@@ -423,6 +431,10 @@ class PortfolioTable extends StatelessWidget {
       phrase: 'delete',
       confirmLabel: 'Delete',
       destructive: true,
+      verifyPassphrase: store.encryptionEnabled ? store.verifyPassphrase : null,
+      verifyBiometric: store.biometricEnabled ? store.verifyBiometric : null,
+      verifyRecoveryCode:
+          store.encryptionEnabled ? store.verifyRecoveryCode : null,
       onBackup: () async {
         await exportBackup(store);
         messenger.showSnackBar(const SnackBar(content: Text('Backup exported')));

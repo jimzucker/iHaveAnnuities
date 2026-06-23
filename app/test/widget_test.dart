@@ -16,6 +16,7 @@ import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:ihaveannuities/data/vault.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ihaveannuities/ui/holding_detail.dart';
@@ -100,6 +101,99 @@ void main() {
     await tester.tap(confirm);
     await tester.pumpAndSettle();
     expect(store.holdings, isEmpty);
+  });
+
+  testWidgets('clear all requires the passphrase when encrypted', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore(vault: Vault(kdfIterations: 1000))
+      ..debugSeed(holdings, _market);
+    await store.enableEncryption('mypass');
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear all data'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Type "clear all data" to confirm'),
+        'clear all data');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Confirm with your passphrase'), 'wrong');
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear all data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Incorrect passphrase'), findsOneWidget);
+    expect(store.holdings, isNotEmpty); // wrong passphrase → nothing happened
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Confirm with your passphrase'), 'mypass');
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear all data'));
+    await tester.pumpAndSettle();
+    expect(store.holdings, isEmpty);
+  });
+
+  testWidgets('export requires re-auth when encrypted', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore(vault: Vault(kdfIterations: 1000))
+      ..debugSeed(holdings, _market);
+    await store.enableEncryption('mypass');
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Export .xlsx'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm it\'s you'), findsOneWidget); // gated
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('lock icon locks the app when encrypted', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore(vault: Vault(kdfIterations: 1000))
+      ..debugSeed(holdings, _market);
+    await store.enableEncryption('mypass');
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Lock now'));
+    await tester.pumpAndSettle();
+    expect(store.vaultState, VaultState.locked);
+  });
+
+  testWidgets('Security requires re-auth when encrypted', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore(vault: Vault(kdfIterations: 1000))
+      ..debugSeed(holdings, _market);
+    await store.enableEncryption('mypass');
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Security'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm it\'s you'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Passphrase'), 'wrong');
+    await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Incorrect passphrase'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Passphrase'), 'mypass');
+    await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Encrypt my portfolio'), findsOneWidget); // SecurityScreen
   });
 
   testWidgets('load sample is disabled when a portfolio exists', (tester) async {
@@ -361,6 +455,7 @@ void main() {
     expect(find.text('Unrealized %'), findsOneWidget);
     expect(find.text('Total Value'), findsWidgets); // renamed from Projected Value
     expect(find.text('Return %'), findsOneWidget); // replaces Realized %
+    expect(find.text('Yield'), findsOneWidget); // life-to-date CAGR column
     expect(find.text('Realized %'), findsNothing); // removed
     expect(find.text('Protection'), findsWidgets); // table column (also the hero donut label)
     expect(find.text('Days to Reset'), findsOneWidget);

@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/portfolio_store.dart';
+import 'ui/onboarding_screen.dart';
 import 'ui/portfolio_screen.dart';
+import 'ui/unlock_screen.dart';
 
 void main() {
   runApp(const IHaveAnnuitiesApp());
@@ -33,7 +35,18 @@ class IHaveAnnuitiesApp extends StatelessWidget {
           useMaterial3: true,
         ),
         themeMode: ThemeMode.system, // follows the OS light/dark setting
-        home: const PortfolioScreen(),
+        // Startup gate: splash until storage is read, then unlock (if locked),
+        // first-run onboarding (brand-new install), else the portfolio.
+        home: Consumer<PortfolioStore>(
+          builder: (_, store, _) {
+            if (!store.ready) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (store.isLocked) return const UnlockScreen();
+            if (store.needsOnboarding) return const OnboardingScreen();
+            return const PortfolioScreen();
+          },
+        ),
       ),
     );
   }

@@ -82,7 +82,7 @@ class HoldingDetail extends StatelessWidget {
             child: Text(_summary(h, asOf),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.4)),
           ),
-          _KeyFigures(h: h, cs: cs),
+          _KeyFigures(h: h, cs: cs, asOf: asOf),
           const SizedBox(height: 12),
           // Wide screens: chart and the fact cards side by side (everything
           // above the fold). Narrow: stacked.
@@ -158,7 +158,8 @@ class HoldingDetail extends StatelessWidget {
 /// contract terms/levels (folded in from the former grey strip), so everything
 /// lives in one card with no duplicated figures.
 class _KeyFigures extends StatelessWidget {
-  const _KeyFigures({required this.h, required this.cs});
+  const _KeyFigures({required this.h, required this.cs, required this.asOf});
+  final DateTime asOf;
   final Holding h;
   final ColorScheme cs;
 
@@ -214,6 +215,8 @@ class _KeyFigures extends StatelessWidget {
           color: gainColor(h.projGain, cs), big: true),
       cell('Index Gain', pctSigned(h.indexGain),
           color: gainColor(h.indexGain, cs), big: true),
+      cell('Yield', h.initial <= 0 ? '—' : pctSigned(h.lifeToDateYield(asOf)),
+          color: lossColor(h.lifeToDateYield(asOf), cs), big: true),
     ];
     // Always show the floor level alongside the type (e.g. "Floor 0.00%").
     final protLabel = '${h.protectionType} ${pct(h.floor)}';

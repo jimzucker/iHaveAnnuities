@@ -18,7 +18,9 @@ import 'index_chart_screen.dart';
 import 'info_page.dart';
 import 'portfolio_hero.dart';
 import 'portfolio_table.dart';
+import 'reauth.dart';
 import 'reset_history_screen.dart';
+import 'security_screen.dart';
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
@@ -55,6 +57,14 @@ class PortfolioScreen extends StatelessWidget {
                   : Icons.view_column_outlined),
               onPressed: () => store.setFullColumns(!store.fullColumns),
             ),
+          // Only shown when encrypted — a closed lock that locks the app now.
+          // (Encryption setup lives in the overflow "Security" menu.)
+          if (store.encryptionEnabled)
+            IconButton(
+              tooltip: 'Lock now',
+              icon: const Icon(Icons.lock),
+              onPressed: () => store.lock(),
+            ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
             itemBuilder: (_) => [
@@ -69,6 +79,9 @@ class PortfolioScreen extends StatelessWidget {
               ),
               const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
               const PopupMenuDivider(),
+              const PopupMenuItem(value: 'security', child: Text('Security')),
+              if (store.encryptionEnabled)
+                const PopupMenuItem(value: 'lock', child: Text('Lock now')),
               const PopupMenuItem(value: 'resets', child: Text('Reset history')),
               const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
             ],
@@ -124,10 +137,37 @@ class PortfolioScreen extends StatelessWidget {
     ));
   }
 
+  /// Open Security, re-authenticating first when encryption is on (so an
+  /// unlocked session can't change/disable protection without the passphrase).
+  Future<void> _openSecurity(BuildContext context, PortfolioStore store) async {
+    if (!await requireReauth(context, store)) return;
+    if (!context.mounted) return;
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SecurityScreen()));
+  }
+
   Future<void> _add(BuildContext context, PortfolioStore store) async {
     final h = await Navigator.of(context)
         .push<Holding>(MaterialPageRoute(builder: (_) => const HoldingForm()));
-    if (h != null) await store.upsert(h);
+    if (h != null) {
+      await store.upsert(h);
+      if (context.mounted) _maybeNudge(context, store);
+    }
+  }
+
+  /// One-time prompt to consider encryption after data lands on the skip path.
+  void _maybeNudge(BuildContext context, PortfolioStore store) {
+    if (!store.shouldNudgeEncryption) return;
+    store.dismissEncryptionNudge();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      content: const Text('Your portfolio is stored unencrypted on this device.'),
+      action: SnackBarAction(
+        label: 'Set up',
+        onPressed: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const SecurityScreen())),
+      ),
+    ));
   }
 
   Future<void> _menu(BuildContext context, PortfolioStore store, String v) async {
@@ -141,7 +181,13 @@ class PortfolioScreen extends StatelessWidget {
                 message: 'Importing a spreadsheet replaces all your current '
                     'holdings. This can\'t be undone.',
                 phrase: 'load',
-                confirmLabel: 'Load')) {
+                confirmLabel: 'Load',
+                verifyPassphrase:
+                    store.encryptionEnabled ? store.verifyPassphrase : null,
+                verifyBiometric:
+                    store.biometricEnabled ? store.verifyBiometric : null,
+                verifyRecoveryCode:
+                    store.encryptionEnabled ? store.verifyRecoveryCode : null)) {
           return;
         }
         final res = await FilePicker.pickFiles(
@@ -156,6 +202,9 @@ class PortfolioScreen extends StatelessWidget {
           }
         }
       case 'export':
+        // Exporting writes the whole portfolio as plaintext — re-verify identity
+        // when encrypted so an unlocked session can't quietly exfiltrate it.
+        if (!await requireReauth(context, store)) return;
         await _save('iHaveAnnuities.xlsx', Uint8List.fromList(store.exportXlsx()));
         messenger.showSnackBar(const SnackBar(content: Text('Exported .xlsx')));
       case 'template':
@@ -180,6 +229,12 @@ class PortfolioScreen extends StatelessWidget {
             phrase: 'clear all data',
             confirmLabel: 'Clear all data',
             destructive: true,
+            verifyPassphrase:
+                store.encryptionEnabled ? store.verifyPassphrase : null,
+            verifyBiometric:
+                store.biometricEnabled ? store.verifyBiometric : null,
+            verifyRecoveryCode:
+                store.encryptionEnabled ? store.verifyRecoveryCode : null,
             onBackup: () async {
               await exportBackup(store);
               messenger.showSnackBar(
@@ -189,6 +244,10 @@ class PortfolioScreen extends StatelessWidget {
         }
         await store.clearLocal();
         messenger.showSnackBar(const SnackBar(content: Text('All data cleared')));
+      case 'security':
+        await _openSecurity(context, store);
+      case 'lock':
+        await store.lock();
       case 'resets':
         await Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const ResetHistoryScreen()));

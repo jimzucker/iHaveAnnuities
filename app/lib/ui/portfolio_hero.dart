@@ -142,6 +142,11 @@ class _ProjectedBlock extends StatelessWidget {
         : (store.totalProjValue - store.totalInitial) / store.totalInitial;
     final realPct =
         store.totalInitial <= 0 ? 0.0 : store.totalRealized / store.totalInitial;
+    // Money-weighted annualized return (XIRR); fall back to cumulative when it
+    // can't be solved (e.g. everything opened today).
+    final xirr = store.portfolioXirr;
+    final rate = xirr ?? retPct;
+    final rateLabel = '${_pct0(rate)}${xirr != null ? '/yr' : ''}';
     final gc = gainColor(gain, cs);
     Widget kpi(String label, Widget value) => Column(
           mainAxisSize: MainAxisSize.min,
@@ -166,9 +171,9 @@ class _ProjectedBlock extends StatelessWidget {
             Text.rich(TextSpan(children: [
               TextSpan(text: moneyK(store.totalProjValue), style: big),
               TextSpan(
-                  text: '  (${_pct0(retPct)})',
+                  text: '  ($rateLabel)',
                   style: big.copyWith(
-                      color: retPct < 0 ? lossColor(retPct, cs) : cs.onSurfaceVariant)),
+                      color: rate < 0 ? lossColor(rate, cs) : cs.onSurfaceVariant)),
             ])),
           ),
           kpi(
