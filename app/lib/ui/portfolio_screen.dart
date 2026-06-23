@@ -205,7 +205,7 @@ class PortfolioScreen extends StatelessWidget {
         // Exporting writes the whole portfolio as plaintext — re-verify identity
         // when encrypted so an unlocked session can't quietly exfiltrate it.
         if (!await requireReauth(context, store)) return;
-        await _save('iHaveAnnuities.xlsx', Uint8List.fromList(store.exportXlsx()));
+        await _save('${exportFileName()}.xlsx', Uint8List.fromList(store.exportXlsx()));
         messenger.showSnackBar(const SnackBar(content: Text('Exported .xlsx')));
       case 'template':
         final data = await rootBundle.load('assets/template.xlsx');

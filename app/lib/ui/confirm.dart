@@ -10,10 +10,11 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 
 import '../data/portfolio_store.dart';
+import 'format.dart';
 
-/// Export the whole portfolio as a timestamp-free `.xlsx` backup download.
+/// Export the whole portfolio as a dated `.xlsx` backup download.
 Future<void> exportBackup(PortfolioStore store) => FileSaver.instance.saveFile(
-      name: 'iHaveAnnuities-backup',
+      name: exportFileName(),
       bytes: Uint8List.fromList(store.exportXlsx()),
       fileExtension: 'xlsx',
       mimeType: MimeType.microsoftExcel,

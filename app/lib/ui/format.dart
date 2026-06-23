@@ -8,7 +8,13 @@ import '../core/models.dart';
 
 final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 final _date = DateFormat('dd-MMM-yy');
+final _stamp = DateFormat('yyyyMMdd');
 final _level = NumberFormat('#,##0.00');
+
+/// Filename (no extension) for a data export, dated so copies don't clobber and
+/// sort chronologically: `export_ihaveannuities_YYYYMMDD`. [on] defaults to today.
+String exportFileName({DateTime? on}) =>
+    'export_ihaveannuities_${_stamp.format(on ?? DateTime.now())}';
 
 /// $000 value → full-dollar currency string.
 String moneyK(double thousands) => _money.format(thousands * 1000);
