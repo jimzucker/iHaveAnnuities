@@ -11,27 +11,48 @@ types (the tracker's *Floor Type* column):
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
-tracker `.xlsx`; index prices (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100,
-Russell 2000) refresh daily at 5 PM ET on trading days, and a kept‑open tab
-re‑checks once a day after the close. Light/dark, with a responsive card layout
-on phones.
+tracker `.xlsx` (exports download as `export_ihaveannuities_YYYYMMDD.xlsx`); index
+prices (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100, Russell 2000) refresh daily at
+5 PM ET on trading days, and a kept‑open tab re‑checks once a day after the close.
+Light/dark, with a responsive card layout on phones.
+
+Per‑contract performance shows a **Yield** (life‑to‑date CAGR) and the portfolio a
+money‑weighted **XIRR**; your data stays in your browser and can be **encrypted at
+rest** (see *Privacy & security*). A combined index chart can overlay **your
+portfolio** (a principal‑weighted blend of its underlyings) against the indexes.
 
 ![Overview](docs/overview.png)
 
 ## Screens
 
-Portfolio summary — protection mix, projected value, and upcoming resets:
+Portfolio summary — protection mix, total value with money‑weighted **XIRR**, the
+Principal / Realized / Unrealized composition bar, and upcoming resets:
 
 ![Hero](docs/screenshots/hero.png)
 
 Drill-down for one contract — payoff chart (cap / buffer / barrier reference
-lines), key figures, and terms:
+lines), key figures including life‑to‑date **Yield (CAGR)**, and terms:
 
 ![Drill-down](docs/screenshots/drilldown.png)
 
 On a phone, holdings render as cards:
 
 <img src="docs/screenshots/phone-cards.png" width="320" alt="Phone card layout">
+
+## Privacy & security (optional)
+
+Your portfolio lives only in this browser — no account, no server. You can turn on
+**at‑rest encryption** (AES‑256‑GCM behind a passphrase) so the data is unreadable
+without it, even via DevTools. Unlock with the **passphrase**, **Touch ID / Face ID**
+(WebAuthn PRF), or a one‑time **recovery code**; a configurable "stay unlocked"
+window (default 30 days) avoids re‑prompting. The Security screen and every
+destructive action re‑verify identity (passphrase · Touch ID · recovery code), and
+a first‑run wizard walks you through setup. It's **opt‑in** (default off) and fully
+reversible.
+
+There's **no email reset** — with no server, a lost passphrase *and* lost recovery
+code means the encrypted local data can't be recovered, so keep an exported `.xlsx`
+as your backup.
 
 ## Payoff math
 
@@ -121,14 +142,15 @@ and export; on web it persists in the browser between visits.
 ```bash
 cd app
 flutter pub get
-flutter test            # 77 tests; core 100% / data ≥95% coverage gate
-flutter run -d chrome   # run the web app locally
+flutter test --exclude-tags golden   # core 100% / data ≥95% coverage gate
+flutter run -d chrome                # run the web app locally
 ```
 
 - **Core** (`lib/core`): payoff engine + model (floor / Hard buffer / Soft barrier,
-  participation, capped/uncapped, income notes).
+  participation, capped/uncapped, income notes; per‑contract Yield/CAGR).
 - **Data** (`lib/data`): robust `.xlsx` reader/writer (the tracker schema), market
-  feed, and browser-persisted store.
+  feed, browser-persisted store, the **encrypted vault** (AES‑256‑GCM + WebAuthn
+  biometric), and a money‑weighted **XIRR** solver.
 - **Prices**: `data/market.json` (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100,
   Russell 2000) is refreshed by a GitHub Action at 5 PM ET on trading days
   (Yahoo Finance, no API key); a kept‑open tab also re‑pulls once a day after the
