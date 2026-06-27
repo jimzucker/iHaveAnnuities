@@ -44,16 +44,15 @@ def canonical_issuer(raw):
     key = "".join(ch for ch in raw.lower() if ch.isalnum())
     return ISSUER_CANON.get(key, raw.upper())
 
-# Reset freq v1.0 vocab: {Inception, Annual, Monthly}. Multi-year point-to-point
-# resets collapse to Inception (the strike is set at inception and held to
-# maturity).
+# Reset freq vocab: {Once, Annual, Monthly}. Multi-year point-to-point resets
+# collapse to "Once" (the strike is set at inception and held to maturity).
 def canonical_freq(raw):
     r = raw.strip().lower()
     if r == "monthly": return "Monthly"
     if r == "annual": return "Annual"
-    if r == "inception": return "Inception"
-    # Legacy "4-Year"/"5-Year"/"6-Year"/"N-Year" -> Inception
-    return "Inception"
+    if r in ("once", "inception", "point to point"): return "Once"
+    # Legacy "4-Year"/"5-Year"/"6-Year"/"N-Year" -> Once
+    return "Once"
 
 def d(y, m, day): return datetime.date(y, m, day)
 def mdy(dt): return dt.strftime("%d-%b-%y")
@@ -144,7 +143,7 @@ def base_index(idx_name):
 for r in ROWS:
     # Issuer canonicalized to the v1.0 uppercase short form.
     r["issuer"] = canonical_issuer(r["issuer"])
-    # Reset Freq canonicalized to v1.0 vocab {Inception, Annual, Monthly}.
+    # Reset Freq canonicalized to {Once, Annual, Monthly}.
     r["freq"] = canonical_freq(r["freq"])
     # Position is computed (matches the app): {ISSUER}-{|floor|%}-{maturity ddMMMyy}
     r["pos"] = f"{r['issuer']}-{abs(r['floor']) * 100:g}%-{r['mat']:%d%b%y}"
@@ -263,7 +262,7 @@ HTML = f"""<!--
         <th>Floor</th>
         <th>Strike</th>
         <th class="c">Reset<br>Freq</th>
-        <th class="c">Open</th>
+        <th class="c">Start<br>Date</th>
         <th class="c">Last<br>Reset</th>
       </tr>
     </thead>
@@ -313,11 +312,12 @@ HEADERS = [
     "Part.",                       # Q
     "Floor",                       # R
     "Strike",                      # S
-    "Reset Freq",                  # T — Inception | Annual | Monthly
-    "Open",                        # U
+    "Reset Freq",                  # T — Once | Annual | Monthly
+    "Start Date",                  # U — was "Open"
     "Last Reset",                  # V
     "NDX_Strike",                  # W — worst-of only
     "RUT_Strike",                  # X — worst-of only
+    "Inception",                   # Y — original investment date (rolled); optional
 ]
 PCT = "0.00%"; MONEY = "$#,##0.00"; DATE = "mm/dd/yyyy"; NUM = "#,##0.00"
 HEAD_FILL = PatternFill("solid", fgColor="1F3A5F")
@@ -350,10 +350,11 @@ def _row_values(r):
         r["floor"],                                        # R Floor
         round(r["strike"], 2),                             # S Strike
         r["freq"],                                         # T Reset Freq
-        r["open"],                                         # U Open
+        r["open"],                                         # U Start Date
         r["last"],                                         # V Last Reset
         r.get("ndx_strike"),                               # W NDX_Strike (worst-of only)
         r.get("rut_strike"),                               # X RUT_Strike (worst-of only)
+        r.get("inception"),                                # Y Inception (rolled only)
     ]
 
 
@@ -361,12 +362,12 @@ def _style_sheet(ws, header_row):
     # 1-indexed v1.2 columns:
     #   J,K,P,Q,R = pct (Proj Gain @ Reset, Index Gain %, CAP, Part., Floor)
     #   S,W,X = num (Strike, NDX/RUT strikes)
-    #   L,N,U,V = date (Next Reset, Maturity, Open, Last Reset)
+    #   L,N,U,V,Y = date (Next Reset, Maturity, Start Date, Last Reset, Inception)
     #   F,G,H,I = money (Initial, Realized, Proj Value, Proj $ Gain)
     for col in (10, 11, 16, 17, 18):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = PCT
-    for col in (12, 14, 21, 22):
+    for col in (12, 14, 21, 22, 25):
         for c in ws.iter_cols(min_col=col, max_col=col, min_row=header_row + 1):
             for cell in c: cell.number_format = DATE
     for col in (6, 7, 8, 9):
@@ -425,9 +426,10 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
             ["Floor", "input", "<= 0. 0 = no loss (a Floor at 0%); negative = the protection level"],
             ["Floor Type", "input", "'Floor' (max loss), 'Hard' (buffer — absorbs first |floor|), or 'Soft' (barrier)"],
             ["Strike", "input", "Index level at open / last reset (SPX strike for worst-of)"],
-            ["Open / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
+            ["Start Date / Last Reset / Maturity", "input", "Dates (mm/dd/yyyy)"],
+            ["Inception", "input", "Optional original investment date for a rolled contract; drives Yield/CAGR (blank = use Start Date)"],
             ["Days to Maturity", "derived", "Recomputed from Maturity"],
-            ["Reset Freq", "input", "'Inception' (point-to-point), 'Annual', or 'Monthly'"],
+            ["Reset Freq", "input", "'Once' (point-to-point), 'Annual', or 'Monthly'"],
             ["Next Reset", "input", "Date of next reset"],
             ["Days to Reset", "derived", "Recomputed from Next Reset"],
             ["Initial ($000)", "input", "Principal in thousands, e.g. 100 = $100,000"],
