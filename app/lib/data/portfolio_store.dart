@@ -27,7 +27,11 @@ import 'xirr.dart';
 enum VaultState { disabled, locked, unlocked }
 
 class PortfolioStore extends ChangeNotifier {
-  PortfolioStore({this.base = '', this.client, Vault? vault, BiometricAuthenticator? biometric})
+  PortfolioStore(
+      {this.base = marketDataBase,
+      this.client,
+      Vault? vault,
+      BiometricAuthenticator? biometric})
       : _vault = vault ?? Vault(),
         biometric = biometric ?? defaultBiometric();
 

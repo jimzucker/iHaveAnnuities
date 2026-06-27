@@ -1,4 +1,5 @@
-# market-update.yml — refresh data/market.json at 5pm ET on trading days.
+# market-update.yml — refresh prices at 5pm ET on trading days and publish them
+# to the orphan `market-data` branch (NOT main, so main's history stays clean).
 # Copyright 2026 Jim Zucker
 # SPDX-License-Identifier: Apache-2.0
 name: market-update
@@ -17,7 +18,11 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6           # main — has the fetch script + data/ snapshot
+      - uses: actions/checkout@v6           # the publish target branch, in a subdir
+        with:
+          ref: market-data
+          path: market-data
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -28,14 +33,19 @@ jobs:
           else
             python3 scripts/fetch_market.py
           fi
-      - name: commit if changed
+      - name: publish to market-data branch
         run: |
-          if ! git diff --quiet -- data/market.json data/history.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/market.json data/history.json
-            git commit -m "market: prices as of $(date -u +%F)"
-            git push
-          else
-            echo "no market change"
+          # The script only writes on a trading-day 5pm run; if nothing changed
+          # vs. main's snapshot it skipped, so don't overwrite the branch.
+          if git diff --quiet -- data/market.json data/history.json; then
+            echo "no fresh prices (skipped or unchanged)"
+            exit 0
           fi
+          cp data/market.json market-data/market.json
+          cp data/history.json market-data/history.json
+          cd market-data
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add market.json history.json
+          git commit -m "market: prices as of $(date -u +%F)"
+          git push

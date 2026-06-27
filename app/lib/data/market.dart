@@ -1,11 +1,17 @@
 // Copyright 2026 Jim Zucker
 // SPDX-License-Identifier: Apache-2.0
-// Published index prices (data/market.json), refreshed by the daily 5 PM
-// trading-day GitHub Action. The UI shows these as a header banner.
+// Published index prices (market.json), refreshed by the daily 5 PM trading-day
+// GitHub Action. The UI shows these as a header banner.
 
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+
+/// Base URL for the published market data. The daily Action commits `market.json`
+/// and `history.json` to the orphan `market-data` branch (keeping `main`'s
+/// history clean); raw.githubusercontent serves them CORS-enabled.
+const marketDataBase =
+    'https://raw.githubusercontent.com/jimzucker/iHaveAnnuities/market-data/';
 
 class Market {
   const Market({
