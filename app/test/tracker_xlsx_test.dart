@@ -125,6 +125,31 @@ void main() {
     }
   });
 
+  test('Inception column round-trips and is back-compatible', () {
+    final base = parseTracker(File(examplePath).readAsBytesSync());
+    // Existing files have no Inception column → null (falls back to Open).
+    expect(base.first.inceptionDate, isNull);
+
+    final h0 = base.first;
+    final seeded = [
+      Holding(
+        issuer: h0.issuer, index: h0.index, account: h0.account, cap: h0.cap,
+        participation: h0.participation, floor: h0.floor, floorType: h0.floorType,
+        strike: h0.strike, currentLevel: h0.currentLevel, openDate: h0.openDate,
+        lastReset: h0.lastReset, maturity: h0.maturity, nextReset: h0.nextReset,
+        resetFreq: h0.resetFreq, initial: h0.initial, realized: h0.realized,
+        inceptionDate: DateTime(2019, 5, 20),
+      ),
+      ...base.skip(1),
+    ];
+    final bytes = writeTracker(seeded,
+        asOf: DateTime(2026, 6, 14), prices: {'SPX': 7400, 'NDX': 29600, 'RUT': 2950});
+    final reparsed = parseTracker(bytes);
+    final back = reparsed.first.inceptionDate!;
+    expect([back.year, back.month, back.day], [2019, 5, 20]); // same calendar day
+    expect(reparsed[1].inceptionDate, isNull); // others stay null
+  });
+
   test('imports the real Zucker-Annuity-Tracker.xlsx', () {
     final f = File(realPath);
     if (!f.existsSync()) {

@@ -19,9 +19,11 @@ Holding _h({
   double realized = 0.0,
   bool isIncomeNote = false,
   double couponProj = 0.0,
+  DateTime? inceptionDate,
 }) {
   final d = DateTime(2026, 1, 1);
   return Holding(
+    inceptionDate: inceptionDate,
     issuer: 'x',
     index: 'SPX',
     account: AccountType.nonQual,
@@ -171,6 +173,30 @@ void main() {
     final wipeout = _h(
         cap: null, floor: -0.30, floorType: FloorType.soft, strike: 100, currentLevel: 0);
     expect(wipeout.lifeToDateYield(DateTime(2028, 1, 1)), -1);
+  });
+
+  test('lifeToDateYield measures from inception (rolled contract)', () {
+    // +10% projected; opened 2026-01-01 but originally invested 2021-01-01.
+    final rolled = _h(
+        cap: null, floor: 0, strike: 100, currentLevel: 110,
+        inceptionDate: DateTime(2021, 1, 1));
+    expect(rolled.returnStart, DateTime(2021, 1, 1));
+    // From Open (6 months) it'd be cumulative 10%; from inception (~5.5 yr) it
+    // annualizes to a small CAGR instead.
+    final y = rolled.lifeToDateYield(DateTime(2026, 7, 1));
+    expect(y, lessThan(0.03));
+    expect(y, greaterThan(0)); // still a positive annualized return
+
+    // No inception → falls back to the open date (cumulative under a year).
+    final plain = _h(cap: null, floor: 0, strike: 100, currentLevel: 110);
+    expect(plain.returnStart, DateTime(2026, 1, 1));
+    expect(plain.lifeToDateYield(DateTime(2026, 7, 1)), closeTo(0.10, 1e-6));
+
+    // toJson/fromJson preserves the inception date (and omits it when null).
+    final back = Holding.fromJson(rolled.toJson());
+    expect(back.inceptionDate, DateTime(2021, 1, 1));
+    expect(plain.toJson().containsKey('inceptionDate'), isFalse);
+    expect(Holding.fromJson(plain.toJson()).inceptionDate, isNull);
   });
 
   test('gainStatus + hasCap across loss / flat / gain / capped', () {

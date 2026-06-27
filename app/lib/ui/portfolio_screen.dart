@@ -16,6 +16,7 @@ import 'format.dart';
 import 'holding_form.dart';
 import 'index_chart_screen.dart';
 import 'info_page.dart';
+import 'guide_screen.dart';
 import 'portfolio_hero.dart';
 import 'portfolio_table.dart';
 import 'reauth.dart';
@@ -67,6 +68,7 @@ class PortfolioScreen extends StatelessWidget {
             ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
+            // Grouped: Data · Security · Maintenance (destructive last) · Help.
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'import', child: Text('Import .xlsx…')),
               const PopupMenuItem(value: 'export', child: Text('Export .xlsx')),
@@ -77,12 +79,15 @@ class PortfolioScreen extends StatelessWidget {
                 enabled: store.isEmpty,
                 child: const Text('Load sample'),
               ),
-              const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'security', child: Text('Security')),
               if (store.encryptionEnabled)
                 const PopupMenuItem(value: 'lock', child: Text('Lock now')),
+              const PopupMenuDivider(),
               const PopupMenuItem(value: 'resets', child: Text('Reset history')),
+              const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'guide', child: Text('User Guide')),
               const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
             ],
           ),
@@ -244,6 +249,9 @@ class PortfolioScreen extends StatelessWidget {
         }
         await store.clearLocal();
         messenger.showSnackBar(const SnackBar(content: Text('All data cleared')));
+      case 'guide':
+        await Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const GuideScreen()));
       case 'security':
         await _openSecurity(context, store);
       case 'lock':

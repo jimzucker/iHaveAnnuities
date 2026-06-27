@@ -30,9 +30,13 @@ class HoldingDetail extends StatelessWidget {
     final upside = h.isIncomeNote
         ? '${pct(h.couponRate)} monthly coupon'
         : 'gains $cap$part';
-    return '${h.index}-linked — $upside, with $down. Resets '
-        '${h.resetFreq.label.toLowerCase()}; next reset ${date(h.nextReset)} '
-        '(${relDays(h.daysToReset(asOf))}).';
+    // Point-to-point ("Once") credits a single time; others reset periodically.
+    final timing = h.resetFreq == ResetFreq.inception
+        ? 'Point‑to‑point — credited once on ${date(h.nextReset)} '
+            '(${relDays(h.daysToReset(asOf))})'
+        : 'Resets ${h.resetFreq.label.toLowerCase()}; next reset '
+            '${date(h.nextReset)} (${relDays(h.daysToReset(asOf))})';
+    return '${h.index}-linked — $upside, with $down. $timing.';
   }
 
   /// Plain-English read of where it stands today.
@@ -146,7 +150,7 @@ class HoldingDetail extends StatelessWidget {
   // contract terms moved into the unified header, so nothing is duplicated.
   Widget _sections(BuildContext context, Holding h, DateTime asOf, ColorScheme cs) =>
       _Section(width: double.infinity, title: 'Schedule', rows: [
-        ('Open', date(h.openDate), null),
+        ('Start Date', date(h.openDate), null),
         ('Last Reset', date(h.lastReset), null),
         ('Maturity', '${date(h.maturity)}  ·  ${relDays(h.daysToMaturity(asOf))}', null),
         ('Reset Freq', h.resetFreq.label, null),

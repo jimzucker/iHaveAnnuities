@@ -20,6 +20,9 @@ Per‑contract performance shows a **Yield** (life‑to‑date CAGR) and the por
 money‑weighted **XIRR**; your data stays in your browser and can be **encrypted at
 rest** (see *Privacy & security*). A combined index chart can overlay **your
 portfolio** (a principal‑weighted blend of its underlyings) against the indexes.
+An in‑app **Guide** (menu) explains every column; rolled contracts can record an
+optional **Inception** date so Yield/CAGR measures from the original investment,
+not the latest roll (**Start Date**).
 
 ![Overview](docs/overview.png)
 
@@ -97,20 +100,20 @@ index returns/levels are illustrative (dates/days as of 14‑Jun‑26). The
 `Floor Type` column is the downside-protection mechanism — **Floor** (max loss —
 lose only down to the floor; 0% = no loss), **Hard** (first |floor|%
 absorbed), **Soft** (barrier — full loss if breached). `$` values are in
-$000s. Reset cadences collapse to **Inception** (point-to-point), **Annual**, or
+$000s. Reset cadences collapse to **Once** (point-to-point), **Annual**, or
 **Monthly**.
 
 | Issuer | Index | Cap | Part. | Floor | Floor Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ASPIDA | ^GSPC | 12.25% | 100% | 0% | Floor | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
-| AXA | ^GSPC | 65% | 100% | −15% | Hard | Inception | Non‑Qual | −22.00% → −7.00% | **$93.00** |
-| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Inception | IRA | +30.00% → +30.60% | **$130.60** |
-| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Inception | IRA | +40.00% → +36.90% | **$136.90** |
-| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Inception | ROTH | −35.00% → −35.00% | **$65.00** |
+| AXA | ^GSPC | 65% | 100% | −15% | Hard | Once | Non‑Qual | −22.00% → −7.00% | **$93.00** |
+| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Once | IRA | +30.00% → +30.60% | **$130.60** |
+| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Once | IRA | +40.00% → +36.90% | **$136.90** |
+| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Once | ROTH | −35.00% → −35.00% | **$65.00** |
 | NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.10% | **$102.22** |
-| AXA | ^NDX | 100% | 100% | −20% | Hard | Inception | IRA | −15.00% → 0.00% | **$100.00** |
-| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Inception | ROTH | +12.00% → +12.00% | **$112.00** |
-| MAREX | ^RUT | 20% | 100% | −10% | Floor | Inception | Non‑Qual | −18.00% → −10.00% | **$90.00** |
+| AXA | ^NDX | 100% | 100% | −20% | Hard | Once | IRA | −15.00% → 0.00% | **$100.00** |
+| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Once | ROTH | +12.00% → +12.00% | **$112.00** |
+| MAREX | ^RUT | 20% | 100% | −10% | Floor | Once | Non‑Qual | −18.00% → −10.00% | **$90.00** |
 | **Total** | | | | | | | | | **$941.97** |
 
 What each row demonstrates:
@@ -129,7 +132,7 @@ What each row demonstrates:
 These nine cover every distinct case in the real tracker: **downside** —
 Floor (max loss, incl. 0%), Hard (buffer), Soft (barrier); **cap** — capped + uncapped
 (`9.99` sentinel); **participation** — <100% / 100% / >100%; **reset** —
-Inception / Annual / Monthly; **index** — SPX / NDX / RUT / worst‑of; **account**
+Once / Annual / Monthly; **index** — SPX / NDX / RUT / worst‑of; **account**
 — Non‑Qual / IRA / ROTH; plus a monthly‑coupon income note alongside the
 standard indexed annuities.
 

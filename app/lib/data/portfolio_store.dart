@@ -152,7 +152,7 @@ class PortfolioStore extends ChangeNotifier {
     final asOf = _market?.asOf;
     if (asOf == null || _holdings.isEmpty) return null;
     final flows = <(DateTime, double)>[
-      for (final h in _holdings) (h.openDate, -h.initial),
+      for (final h in _holdings) (h.returnStart, -h.initial),
       (asOf, totalProjValue),
     ];
     return xirr(flows);

@@ -97,7 +97,7 @@ void main() {
     });
 
     test('enum labels (v1.0)', () {
-      expect(ResetFreq.inception.label, 'Inception');
+      expect(ResetFreq.inception.label, 'Once');
       expect(ResetFreq.annual.label, 'Annual');
       expect(ResetFreq.monthly.label, 'Monthly');
       expect(AccountType.roth.label, 'ROTH');

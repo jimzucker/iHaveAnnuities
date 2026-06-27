@@ -44,10 +44,11 @@ const headers = <String>[
   'Floor',
   'Strike',
   'Reset Freq',
-  'Open',
+  'Start Date', // U — was "Open"; import still accepts the legacy "Open" header
   'Last Reset',
   'NDX_Strike', // W — populated only for worst-of
   'RUT_Strike', // X — populated only for worst-of
+  'Inception', // Y — original investment date (rolled contracts); optional
 ];
 
 /// Numeric sentinel for an uncapped CAP column (= 999%).
@@ -83,7 +84,14 @@ DateTime? _date(List<dynamic> row, Map<String, int> h, String key) {
 ResetFreq _resetFreq(String? s) {
   final v = (s ?? '').toLowerCase().trim();
   if (v == 'monthly') return ResetFreq.monthly;
-  if (v == 'inception') return ResetFreq.inception;
+  // Point-to-point: "Once" (current), plus legacy "Inception" / "Point to Point".
+  if (v == 'once' ||
+      v == 'inception' ||
+      v == 'point to point' ||
+      v == 'point-to-point' ||
+      v == 'p2p') {
+    return ResetFreq.inception;
+  }
   if (RegExp(r'^\d+-year$').hasMatch(v)) return ResetFreq.inception;
   return ResetFreq.annual;
 }
@@ -156,7 +164,7 @@ List<Holding> parseTracker(List<int> bytes) {
     final indexGain = _num(r, h, 'Index Gain %') ?? 0;
     final freq = _resetFreq(_str(r, h, 'Reset Freq'));
     final isNote = freq == ResetFreq.monthly;
-    final open = _date(r, h, 'Open') ?? DateTime(2026);
+    final open = _date(r, h, 'Start Date') ?? _date(r, h, 'Open') ?? DateTime(2026);
 
     out.add(Holding(
       issuer: issuer,
@@ -179,6 +187,7 @@ List<Holding> parseTracker(List<int> bytes) {
       couponProj: isNote ? (_num(r, h, 'Proj Gain @ Reset') ?? 0.0) : 0.0,
       ndxStrike: _num(r, h, 'NDX_Strike'),
       rutStrike: _num(r, h, 'RUT_Strike'),
+      inceptionDate: _date(r, h, 'Inception'), // null when column absent
     ));
   }
   return out;
@@ -233,10 +242,11 @@ List<int> writeTracker(
       DoubleCellValue(x.floor), // R Floor
       DoubleCellValue(x.strike), // S Strike
       TextCellValue(x.resetFreq.label), // T Reset Freq
-      _dateCell(x.openDate), // U Open
+      _dateCell(x.openDate), // U Start Date
       _dateCell(x.lastReset), // V Last Reset
       isWorstOf && x.ndxStrike != null ? DoubleCellValue(x.ndxStrike!) : null, // W
       isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null, // X
+      x.inceptionDate == null ? null : _dateCell(x.inceptionDate!), // Y Inception
     ]);
   }
 
@@ -271,7 +281,8 @@ void _styleTracker(Sheet s, int nRows) {
     'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
     'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
     'CAP': pctF, 'Part.': pctF, 'Floor': pctF,
-    'Next Reset': dateF, 'Maturity': dateF, 'Open': dateF, 'Last Reset': dateF,
+    'Next Reset': dateF, 'Maturity': dateF, 'Start Date': dateF, 'Last Reset': dateF,
+    'Inception': dateF,
     'Strike': numF, 'NDX_Strike': numF, 'RUT_Strike': numF,
   };
 

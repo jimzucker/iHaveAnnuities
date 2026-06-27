@@ -22,7 +22,7 @@ enum GainStatus { loss, flat, gain, capped }
 
 extension ResetFreqLabel on ResetFreq {
   String get label => switch (this) {
-        ResetFreq.inception => 'Inception',
+        ResetFreq.inception => 'Once', // point-to-point: credits once at maturity
         ResetFreq.annual => 'Annual',
         ResetFreq.monthly => 'Monthly',
       };
@@ -85,6 +85,7 @@ class Holding {
     this.couponProj = 0.0, // projected coupon for income notes (fraction)
     this.ndxStrike, // worst-of only; else null
     this.rutStrike, // worst-of only; else null
+    this.inceptionDate, // original investment date (rolled contracts); else null
   }) : issuer = canonicalIssuer(issuer);
 
   final String issuer;
@@ -107,6 +108,15 @@ class Holding {
   final double couponProj;
   final double? ndxStrike;
   final double? rutStrike;
+
+  /// When the money was *originally* invested (for contracts that rolled from a
+  /// prior period). Drives the CAGR/Yield start so a freshly-reset contract's
+  /// life-to-date isn't measured from the roll date. Null → use [openDate].
+  final DateTime? inceptionDate;
+
+  /// Start date for life-to-date returns: the original inception when set, else
+  /// the open date.
+  DateTime get returnStart => inceptionDate ?? openDate;
 
   /// Index move since [strike] (fraction).
   double get indexGain => indexReturn(currentLevel, strike);
@@ -141,13 +151,14 @@ class Holding {
   /// realized% + unrealized%. 0 when there is no principal.
   double get totalReturnPct => initial == 0 ? 0 : (projValueK - initial) / initial;
 
-  /// Life-to-date yield as of [asOf]: the annualized return since the open date
-  /// using the current projected value (so it counts realized income + the
-  /// current unrealized mark). For holdings under a year it returns the plain
-  /// cumulative return, since annualizing a partial year overstates wildly.
+  /// Life-to-date yield as of [asOf]: the annualized return since [returnStart]
+  /// (inception when set, else the open date) using the current projected value
+  /// (so it counts realized income + the current unrealized mark). For holdings
+  /// under a year it returns the plain cumulative return, since annualizing a
+  /// partial year overstates wildly.
   double lifeToDateYield(DateTime asOf) {
     if (initial <= 0) return 0;
-    final days = asOf.difference(openDate).inDays;
+    final days = asOf.difference(returnStart).inDays;
     if (days <= 0) return 0;
     final ratio = projValueK / initial;
     if (ratio <= 0) return -1; // total loss — avoid pow() of a non-positive base
@@ -257,6 +268,7 @@ class Holding {
         couponProj: couponProj,
         ndxStrike: ndxStrike,
         rutStrike: rutStrike,
+        inceptionDate: inceptionDate,
       );
 
   Map<String, dynamic> toJson() => {
@@ -280,6 +292,8 @@ class Holding {
         'couponProj': couponProj,
         if (ndxStrike != null) 'ndxStrike': ndxStrike,
         if (rutStrike != null) 'rutStrike': rutStrike,
+        if (inceptionDate != null)
+          'inceptionDate': inceptionDate!.toIso8601String(),
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
@@ -303,6 +317,9 @@ class Holding {
         couponProj: (j['couponProj'] as num?)?.toDouble() ?? 0.0,
         ndxStrike: (j['ndxStrike'] as num?)?.toDouble(),
         rutStrike: (j['rutStrike'] as num?)?.toDouble(),
+        inceptionDate: j['inceptionDate'] == null
+            ? null
+            : DateTime.parse(j['inceptionDate'] as String),
       );
 }
 

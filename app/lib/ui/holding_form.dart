@@ -42,12 +42,14 @@ class _HoldingFormState extends State<HoldingForm> {
     return 'SPX';
   }
   late DateTime _open, _lastReset, _maturity, _nextReset;
+  DateTime? _inception; // optional original-investment date (rolled contracts)
 
   @override
   void initState() {
     super.initState();
     final h = widget.initial;
     final now = DateTime(2026, 6, 14);
+    _inception = h?.inceptionDate;
     _index = _indexOption(h?.index); // normalize tickers to a dropdown value
     _account = h?.account ?? AccountType.nonQual;
     _floorType = h?.floorType ?? FloorType.hard;
@@ -112,6 +114,7 @@ class _HoldingFormState extends State<HoldingForm> {
       realized: _n('realized'),
       isIncomeNote: _note,
       couponProj: _note ? _n('coupon') / 100 : 0,
+      inceptionDate: _inception,
     );
     Navigator.of(context).pop(h);
   }
@@ -160,10 +163,30 @@ class _HoldingFormState extends State<HoldingForm> {
                     (v) => setState(() => _reset = v!), (v) => v.label),
               ),
             ]),
-            _dateTile('Open', _open, (d) => setState(() => _open = d)),
+            _dateTile('Start Date', _open, (d) => setState(() => _open = d)),
             _dateTile('Last Reset', _lastReset, (d) => setState(() => _lastReset = d)),
             _dateTile('Maturity', _maturity, (d) => setState(() => _maturity = d)),
             _dateTile('Next Reset', _nextReset, (d) => setState(() => _nextReset = d)),
+            // Optional — original investment date for a rolled contract; drives
+            // Yield/CAGR. Blank = use Open.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Inception (optional)'),
+              subtitle: Text(_inception == null
+                  ? 'Not set — Yield uses Open'
+                  : date(_inception!)),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (_inception != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    tooltip: 'Clear',
+                    onPressed: () => setState(() => _inception = null),
+                  ),
+                const Icon(Icons.calendar_today, size: 18),
+              ]),
+              onTap: () => _pickDate(_inception ?? _open,
+                  (d) => setState(() => _inception = d)),
+            ),
             Row(children: [
               Expanded(child: _num('initial', 'Initial (\$000)', positive: true)),
               const SizedBox(width: 12),

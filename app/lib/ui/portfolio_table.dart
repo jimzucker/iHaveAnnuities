@@ -174,10 +174,17 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 92),
         _Col('Reset Freq', false, (h, _) => h.resetFreq.index, (h, _, _) => _t(h.resetFreq.label),
             fixedWidth: 100),
-        _Col('Open', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate)),
+        _Col('Start Date', false, (h, _) => h.openDate, (h, _, _) => _t(date(h.openDate)),
             fixedWidth: 92),
         _Col('Last Reset', false, (h, _) => h.lastReset, (h, _, _) => _t(date(h.lastReset)),
             fixedWidth: 92),
+        // Original investment date for rolled contracts; drives Yield/XIRR's
+        // start. Blank when not set (Yield then measures from Open).
+        _Col('Inception', false, (h, _) => h.inceptionDate ?? DateTime(9999),
+            (h, _, _) => _t(h.inceptionDate == null ? '' : date(h.inceptionDate!)),
+            fixedWidth: 92,
+            tooltip: 'Original investment date (for rolled contracts). When set, '
+                'Yield/CAGR and XIRR measure from here instead of Open.'),
       ];
 
   /// Columns shown in the compact "core" view (identity + key inputs/outcome

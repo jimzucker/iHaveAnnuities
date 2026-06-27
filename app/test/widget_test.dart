@@ -479,6 +479,8 @@ void main() {
     expect(find.text('Total Value'), findsWidgets); // renamed from Projected Value
     expect(find.text('Return %'), findsOneWidget); // replaces Realized %
     expect(find.text('Yield'), findsOneWidget); // life-to-date CAGR column
+    // "Inception" also appears as a Reset Freq value, so just confirm presence.
+    expect(find.text('Inception'), findsWidgets); // rightmost date column header
     expect(find.text('Realized %'), findsNothing); // removed
     expect(find.text('Protection'), findsWidgets); // table column (also the hero donut label)
     expect(find.text('Days to Reset'), findsOneWidget);
@@ -709,8 +711,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Soft (barrier)').last);
     await tester.pumpAndSettle();
-    // Open the date picker for "Open" and confirm the initial date.
-    await tester.tap(find.text('Open'));
+    // Open the date picker for "Start Date" and confirm the initial date.
+    await tester.tap(find.text('Start Date'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
@@ -735,6 +737,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.holdings, isNotEmpty); // loaded from the bundled asset
     expect(find.textContaining('sample holdings'), findsOneWidget); // snackbar
+  });
+
+  testWidgets('menu → User Guide opens the column glossary', (tester) async {
+    final store = PortfolioStore()..debugSeed([], _market);
+    await tester.pumpWidget(_wrap(store));
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('User Guide'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'User Guide'), findsOneWidget);
+    expect(find.text('Columns'), findsOneWidget); // top section card
+    await tester.scrollUntilVisible(find.text('Protection types'), 300);
+    expect(find.text('Protection types'), findsOneWidget);
   });
 
   testWidgets('menu → Reset history opens the log screen', (tester) async {
