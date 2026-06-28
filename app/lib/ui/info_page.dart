@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../data/app_version.dart';
 import 'format.dart';
 
 class InfoPage extends StatelessWidget {
@@ -22,7 +23,11 @@ class InfoPage extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             children: [
               Text('iHaveAnnuities', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
+              Text('Version $appVersion',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 8),
               Text(
                 'A personal tracker for structured-product annuities — the kind '
                 'whose return is linked to a market index with a cap or '

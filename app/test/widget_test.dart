@@ -451,6 +451,7 @@ void main() {
 
   testWidgets('info page renders the protection types', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InfoPage()));
+    expect(find.textContaining('Version'), findsOneWidget); // build version shown
     expect(find.textContaining('What it does'), findsOneWidget);
     expect(find.textContaining('Floor (max-loss)', findRichText: true),
         findsOneWidget);

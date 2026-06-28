@@ -25,15 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # need tags so `git describe` yields a version string
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
       - name: build web
         working-directory: app
         run: |
+          VERSION=$(git -C "$GITHUB_WORKSPACE" describe --tags --always --dirty)
           flutter pub get
           flutter build web --release --base-href /iHaveAnnuities/ \
-            --dart-define=BUILD_SHA=${{ github.sha }}
+            --dart-define=BUILD_SHA=${{ github.sha }} \
+            --dart-define=APP_VERSION="$VERSION"
       # Stamp the deployed build id so a kept-open tab can detect a new version.
       - name: write build-id.json
         run: echo '{"sha":"${{ github.sha }}"}' > app/build/web/build-id.json

@@ -13,6 +13,10 @@ import 'package:http/http.dart' as http;
 /// --dart-define), which disables the update prompt off-deploy.
 const appBuildSha = String.fromEnvironment('BUILD_SHA', defaultValue: 'dev');
 
+/// Human-readable version stamped at build time via `git describe --tags`
+/// (e.g. `v1.1.0-3-gf02f483`). `dev` for local builds. Shown on the About page.
+const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
+
 /// Fetch the SHA currently published at `build-id.json` (same origin as the
 /// app). Returns null on error or if the file/field is missing.
 Future<String?> fetchDeployedSha({http.Client? client}) async {
