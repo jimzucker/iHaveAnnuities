@@ -8,14 +8,8 @@ on:
     branches: [main]
     paths:
       - 'app/**'
-      - 'data/market.json'
-      - 'data/history.json'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
-  # Redeploy after the market job updates prices (token pushes don't fire `push`).
-  workflow_run:
-    workflows: ['market-update']
-    types: [completed]
 
 permissions:
   contents: read
@@ -38,11 +32,13 @@ jobs:
         working-directory: app
         run: |
           flutter pub get
-          flutter build web --release --base-href /iHaveAnnuities/
-      - name: bundle latest market + history json
-        run: |
-          cp data/market.json app/build/web/market.json
-          cp data/history.json app/build/web/history.json
+          flutter build web --release --base-href /iHaveAnnuities/ \
+            --dart-define=BUILD_SHA=${{ github.sha }}
+      # Stamp the deployed build id so a kept-open tab can detect a new version.
+      - name: write build-id.json
+        run: echo '{"sha":"${{ github.sha }}"}' > app/build/web/build-id.json
+      # Prices are fetched at runtime from the `market-data` branch (raw URL),
+      # so nothing market-related needs bundling into the build.
       - uses: actions/upload-pages-artifact@v5
         with:
           path: app/build/web

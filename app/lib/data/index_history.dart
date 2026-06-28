@@ -1,7 +1,8 @@
 // Copyright 2026 Jim Zucker
 // SPDX-License-Identifier: Apache-2.0
-// Index price history (data/history.json), refreshed by the daily Action. Used
-// by the tap-through index chart. Server-side fetch avoids browser CORS.
+// Index price history (history.json on the `market-data` branch), refreshed by
+// the daily Action. Used by the tap-through index chart; raw.githubusercontent
+// serves it CORS-enabled.
 
 import 'dart:convert';
 

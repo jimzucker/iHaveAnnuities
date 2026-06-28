@@ -17,6 +17,7 @@ import '../core/reset_event.dart';
 import '../core/reset_rollover.dart';
 import 'biometric.dart';
 import 'index_history.dart';
+import 'app_version.dart';
 import 'market.dart';
 import 'tracker_xlsx.dart';
 import 'vault.dart';
@@ -31,7 +32,8 @@ class PortfolioStore extends ChangeNotifier {
       {this.base = marketDataBase,
       this.client,
       Vault? vault,
-      BiometricAuthenticator? biometric})
+      BiometricAuthenticator? biometric,
+      this.buildSha = appBuildSha})
       : _vault = vault ?? Vault(),
         biometric = biometric ?? defaultBiometric();
 
@@ -72,6 +74,14 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Optional injected HTTP client (tests).
   final http.Client? client;
+
+  /// The git SHA this build was compiled with (drives the "new version" prompt).
+  final String buildSha;
+  bool _newVersionAvailable = false;
+  String? _dismissedSha; // a deployed SHA the user chose "Later" on
+
+  /// True when a newer app version has been deployed than the one running.
+  bool get newVersionAvailable => _newVersionAvailable;
 
   /// Crypto core + biometric authenticator (injectable for tests).
   final Vault _vault;
@@ -234,10 +244,36 @@ class PortfolioStore extends ChangeNotifier {
     // Apply any resets that fell due since the data was last current (only when
     // we can actually read the holdings).
     if (_vaultState != VaultState.locked) await _catchUpResets();
-    // While the app stays open, re-pull market.json once per day shortly after
-    // the publish time — so a kept-open tab appears to update on its own.
-    _autoTimer ??= Timer.periodic(
-        const Duration(minutes: 20), (_) => _maybeAutoRefresh());
+    // While the app stays open: re-pull market.json once per day after the
+    // publish time (silent auto-refresh) and check whether a newer app version
+    // has been deployed (prompts the user to reload).
+    await checkAppVersion();
+    _autoTimer ??= Timer.periodic(const Duration(minutes: 20), (_) {
+      _maybeAutoRefresh();
+      checkAppVersion();
+    });
+  }
+
+  String? _pendingVersionSha; // the deployed SHA currently being prompted
+
+  /// Poll the deployed build id; flag a new version when it differs from this
+  /// build's SHA (and wasn't already dismissed). No-op for local/test builds.
+  Future<void> checkAppVersion() async {
+    if (buildSha == 'dev' || _newVersionAvailable) return;
+    final deployed = await fetchDeployedSha(client: client);
+    if (deployed != null && deployed != buildSha && deployed != _dismissedSha) {
+      _newVersionAvailable = true;
+      _pendingVersionSha = deployed;
+      notifyListeners();
+    }
+  }
+
+  /// Dismiss the prompt for the current build ("Later") — won't re-nag until an
+  /// even newer version is deployed.
+  void dismissNewVersion() {
+    _dismissedSha = _pendingVersionSha;
+    _newVersionAvailable = false;
+    notifyListeners();
   }
 
   /// Read holdings + reset-history from prefs, decrypting with the in-memory DEK

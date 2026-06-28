@@ -35,15 +35,19 @@ jobs:
           fi
       - name: publish to market-data branch
         run: |
-          # The script only writes on a trading-day 5pm run; if nothing changed
-          # vs. main's snapshot it skipped, so don't overwrite the branch.
-          if git diff --quiet -- data/market.json data/history.json; then
-            echo "no fresh prices (skipped or unchanged)"
+          # The script writes data/*.json ONLY on a real 5pm trading-day run
+          # (they aren't committed on main), so their absence means it skipped.
+          if [ ! -f data/market.json ] || [ ! -f data/history.json ]; then
+            echo "no fresh prices (skipped)"
             exit 0
           fi
           cp data/market.json market-data/market.json
           cp data/history.json market-data/history.json
           cd market-data
+          if git diff --quiet; then
+            echo "prices unchanged vs. branch"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add market.json history.json

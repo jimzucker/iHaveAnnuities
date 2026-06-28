@@ -3,7 +3,7 @@
 // One combined index chart: every index rebased to % change over the selected
 // range (so different price scales compare), with a tappable legend to hide/
 // show indexes (remembered) and 1D…Max range toggles. Data comes from the
-// Action-generated data/history.json (same-origin fetch avoids CORS).
+// Action-generated history.json on the `market-data` branch (raw URL, CORS-ok).
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;

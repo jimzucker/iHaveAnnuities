@@ -739,6 +739,22 @@ void main() {
     expect(find.textContaining('sample holdings'), findsOneWidget); // snackbar
   });
 
+  testWidgets('new-version banner shows and Later dismisses it', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final client = MockClient((_) async => http.Response('{"sha":"new"}', 200));
+    final store = PortfolioStore(buildSha: 'old', client: client)
+      ..debugSeed([], _market);
+    await store.checkAppVersion(); // detect the newer deployed build
+    await tester.pumpWidget(_wrap(store));
+    expect(find.text('A new version of the app is available.'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Reload'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Later'));
+    await tester.pumpAndSettle();
+    expect(find.text('A new version of the app is available.'), findsNothing);
+  });
+
   testWidgets('menu → User Guide opens the column glossary', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));

@@ -10,6 +10,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../data/app_reload.dart';
 import '../data/portfolio_store.dart';
 import 'confirm.dart';
 import 'format.dart';
@@ -100,6 +101,7 @@ class PortfolioScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
+          if (store.newVersionAvailable) const _UpdateBanner(),
           if (!store.isEmpty)
             _SummaryToggle(
               hidden: store.hideSummary,
@@ -340,6 +342,39 @@ class _Quote extends StatelessWidget {
 }
 
 /// A thin, labeled, tappable strip that collapses/expands the prices + hero.
+/// Top banner shown when a newer app version has been deployed.
+class _UpdateBanner extends StatelessWidget {
+  const _UpdateBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final store = context.read<PortfolioStore>();
+    return Material(
+      color: cs.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(children: [
+          Icon(Icons.system_update, size: 18, color: cs.onPrimaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('A new version of the app is available.',
+                style: TextStyle(color: cs.onPrimaryContainer)),
+          ),
+          TextButton(
+            onPressed: store.dismissNewVersion,
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: reloadApp,
+            child: const Text('Reload'),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class _SummaryToggle extends StatelessWidget {
   const _SummaryToggle({required this.hidden, required this.onTap});
   final bool hidden;
