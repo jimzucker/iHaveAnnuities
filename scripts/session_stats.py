@@ -7,9 +7,17 @@ Reports token usage, prompt/turn counts, and active vs. idle time by parsing
 the JSONL transcript(s) Claude Code stores under
 ``~/.claude/projects/<encoded-repo-path>/``.
 
+Portable: the project name is auto-detected from the repo folder, so this file
+can be dropped into any repo's ``scripts/`` directory unchanged.
+
+Scope: the repo's own dir plus each session's ``subagents/*.jsonl`` and any
+pre-rename ALIAS_PROJECT_DIRS (e.g. iyield -> TrueYield), so the totals cover the
+whole project history, not just the current path.
+
 Usage:
     python3 scripts/session_stats.py            # all transcripts for this repo
     python3 scripts/session_stats.py FILE.jsonl # a specific transcript
+    python3 scripts/session_stats.py --also DIR # fold in another project dir
     python3 scripts/session_stats.py --idle 10  # idle gap threshold in minutes
     python3 scripts/session_stats.py --md       # write the Markdown report
 """
@@ -24,6 +32,13 @@ import sys
 
 # Gaps longer than this (minutes) count as idle, not active work.
 DEFAULT_IDLE_MIN = 5
+
+# Prior encoded project-dir names to fold in alongside this repo's own dir, so
+# the stats span the whole project history rather than just the current path.
+# Set this only when a repo was renamed mid-build (Claude Code keys transcripts
+# by path, so pre-rename sessions live under the old encoded name); leave empty
+# ([]) for a repo that kept its name. Override at runtime with --also NAME.
+ALIAS_PROJECT_DIRS = []
 
 # Claude Opus 4.8 standard API rates, USD per million tokens. Source:
 # Anthropic's official pricing docs, platform.claude.com/docs/en/about-claude/
@@ -42,20 +57,41 @@ RATES = {
 DAY_RATE = 800
 
 
+def repo_root() -> str:
+    """The repo this script lives in (its parent of scripts/)."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
+def project_name() -> str:
+    return os.path.basename(repo_root())
+
+
 def transcript_dir_for(repo_path: str) -> str:
     """Claude Code encodes the repo path by replacing '/' with '-'."""
     encoded = repo_path.replace("/", "-")
     return os.path.expanduser(f"~/.claude/projects/{encoded}")
 
 
-def find_transcripts(args_paths: list[str]) -> list[str]:
+def transcripts_in(d: str) -> list[str]:
+    """Every transcript under one project dir: the top-level session files plus
+    the per-session ``subagents/*.jsonl`` (sub-agent runs count toward the
+    build's tokens/time too)."""
+    return (glob.glob(os.path.join(d, "*.jsonl"))
+            + glob.glob(os.path.join(d, "*", "subagents", "*.jsonl")))
+
+
+def find_transcripts(args_paths: list[str], also: list[str]) -> list[str]:
     if args_paths:
         return args_paths
-    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    d = transcript_dir_for(repo)
-    files = sorted(glob.glob(os.path.join(d, "*.jsonl")))
+    base = os.path.dirname(transcript_dir_for(repo_root()))  # ~/.claude/projects
+    dirs = [transcript_dir_for(repo_root())]
+    dirs += [os.path.join(base, name) for name in (*ALIAS_PROJECT_DIRS, *also)]
+    files: list[str] = []
+    for d in dirs:
+        files.extend(transcripts_in(d))
+    files = sorted(set(files))
     if not files:
-        sys.exit(f"No transcripts found in {d}")
+        sys.exit(f"No transcripts found in {dirs[0]}")
     return files
 
 
@@ -127,8 +163,8 @@ def costs(outp, inp, cc, cr, rates):
     return c
 
 
-def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
-                   turns, events, active, claude, user, idle, idle_min,
+def write_markdown(path, project, files, n_rows, outp, inp, cc, cr, total,
+                   prompts, turns, events, active, claude, user, idle, idle_min,
                    n_user_records, rates) -> None:
     """Write the full narrative report — the story, not just the tables."""
     cr_m = cr / 1e6
@@ -138,7 +174,7 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
     lines = [
         "# Build session story",
         "",
-        "The real numbers behind building **iHaveAnnuities**, pulled from this "
+        f"The real numbers behind building **{project}**, pulled from this "
         f"project's Claude Code session transcript ({n_rows:,} records spanning "
         "the whole build). Regenerate with `python3 scripts/session_stats.py --md`.",
         "",
@@ -227,9 +263,8 @@ def write_markdown(path, files, n_rows, outp, inp, cc, cr, total, prompts,
         f"effectively included; the ~${c['total']:,.0f} above is the equivalent "
         "à-la-carte value, useful for ROI math but not what most orgs pay.",
         "",
-        "**ROI framing.** A from-scratch Flutter app — payoff engine, custom "
-        "`.xlsx` reader/writer, 60+ tests with a CI coverage gate, Pages deploy, "
-        "and a market-data cron — is realistically **3–10 engineer-days**. At "
+        "**ROI framing.** A project of this scope — built from scratch with "
+        "tests and CI — is realistically **3–10 engineer-days**. At "
         f"~${DAY_RATE:,}/loaded-day that's **${3 * DAY_RATE:,}–${10 * DAY_RATE:,}** "
         f"of labor, so even the metered ~${c['total']:,.0f} (or a month of "
         f"subscription) is roughly **{3 * DAY_RATE / c['total']:.0f}–"
@@ -266,6 +301,9 @@ def main() -> None:
     ap.add_argument("--md", nargs="?", const="docs/SESSION_STATS.md", default=None,
                     metavar="PATH",
                     help="write a Markdown report (default path docs/SESSION_STATS.md)")
+    ap.add_argument("--also", action="append", default=[], metavar="DIR",
+                    help="extra encoded project-dir name(s) to fold in, beyond "
+                         "this repo's own and ALIAS_PROJECT_DIRS (repeatable)")
     ap.add_argument("--rate-output", type=float, default=RATES["output"])
     ap.add_argument("--rate-input", type=float, default=RATES["input"])
     ap.add_argument("--rate-cache-write", type=float, default=RATES["cache_write"])
@@ -278,7 +316,7 @@ def main() -> None:
         "cache_read": args.rate_cache_read,
     }
 
-    files = find_transcripts(args.paths)
+    files = find_transcripts(args.paths, args.also)
     rows: list[dict] = []
     for p in files:
         rows.extend(load(p))
@@ -317,9 +355,9 @@ def main() -> None:
 
     if args.md is not None:
         n_user_records = sum(1 for r in rows if r.get("type") == "user")
-        write_markdown(args.md, files, len(rows), outp, inp, cc, cr, total,
-                       prompts, assistant_turns, events, active, claude, user,
-                       idle, args.idle, n_user_records, rates)
+        write_markdown(args.md, project_name(), files, len(rows), outp, inp, cc,
+                       cr, total, prompts, assistant_turns, events, active,
+                       claude, user, idle, args.idle, n_user_records, rates)
         print(f"Wrote {args.md}")
         return
 
