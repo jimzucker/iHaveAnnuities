@@ -26,7 +26,7 @@ class GuideScreen extends StatelessWidget {
     ('Inception', 'Original investment date for a contract that rolled from a prior '
         'period. When set, Yield/CAGR measures from here instead of Start Date.'),
     ('Start Date', 'When the current period began (the most recent roll/open).'),
-    ('Protection', 'Downside type + floor: Floor / Hard / Soft.'),
+    ('Protection', 'Downside type + floor: Floor / Hard / Soft / None.'),
     ('Cap', 'Maximum credited gain (or Uncapped).'),
     ('Part.', 'Participation rate applied to the index move.'),
     ('Floor', 'The downside level (≤ 0%).'),
@@ -81,6 +81,8 @@ class GuideScreen extends StatelessWidget {
                     'Buffer — absorbs the first |floor|% of losses; you lose beyond it.'),
                 _ProtChip('Soft', cs,
                     'Barrier — fully protected unless the index breaches it, then full loss.'),
+                _ProtChip('None', cs,
+                    'No protection — you take the full index loss, 1:1.'),
               ],
             ),
           ),

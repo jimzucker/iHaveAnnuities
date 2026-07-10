@@ -15,6 +15,7 @@
 #   floor < 0, floor  -> Floor (max-loss): lose only down to |floor|%
 #   floor < 0, Hard   -> Hard (buffer): absorbs first |floor|%, lose 1:1 beyond
 #   floor < 0, Soft   -> Soft (barrier): protected unless breached, then full loss
+#   None              -> no protection: full 1:1 index loss (floor value ignored)
 #   credited gain = uncapped ? part*idx : min(cap, part*idx)
 #
 # Regenerate:
@@ -105,6 +106,8 @@ def credited(idx, cap, part, floor, soft, floortype=None):
     if idx >= 0:
         up = part * idx
         return up if cap is None else min(cap, up)
+    if floortype == "none":        # no protection: full 1:1 loss
+        return idx
     if floor == 0:                 # true 0% floor
         return 0.0
     if floortype == "floor":       # max-loss floor: lose only down to the floor
@@ -114,9 +117,12 @@ def credited(idx, cap, part, floor, soft, floortype=None):
     return min(0.0, idx - floor)   # hard buffer: absorb first |floor|
 
 
-# Protection class/label for a row: Protected (floor 0), Floor (max-loss),
-# Soft (barrier), or Hard (buffer). Single source for the HTML pill + xlsx cell.
+# Protection class/label for a row: None (unprotected), Protected (floor 0),
+# Floor (max-loss), Soft (barrier), or Hard (buffer). Single source for the HTML
+# pill + xlsx cell.
 def prot_of(r):
+    if r.get("floortype") == "none":
+        return "none", "None"      # no downside protection
     if r["floor"] == 0:
         return "abs", "Floor"      # 0% floor = no loss (blue pill)
     if r.get("floortype") == "floor":
@@ -228,6 +234,7 @@ HTML = f"""<!--
   .abs {{ background:#e6efff; color:#1f3a5f; }}
   .soft {{ background:#fff3e0; color:#b26a00; }}
   .floor {{ background:#fdeaea; color:#b00020; }}
+  .none {{ background:#fbe4e6; color:#b00020; }}
   .nq  {{ background:#fff8e1; color:#8a6d00; font-weight:600; }}
   .ira {{ background:#e6efff; color:#1f3a5f; font-weight:600; }}
   .roth{{ background:#eaf7ec; color:#0a7d28; font-weight:600; }}

@@ -33,7 +33,9 @@ class PayoffChart extends StatelessWidget {
             _legend(cs.primary, 'payoff', solid: true),
             _legend(cs.outline, 'index (1:1)', solid: false),
             if (h.cap != null) _legend(capAmber, 'cap', solid: false),
-            if (h.floor < 0)
+            if (h.floorType == FloorType.none)
+              _legend(lossRed, 'full loss', solid: false)
+            else if (h.floor < 0)
               _legend(h.floorType == FloorType.soft ? capAmber : gainGreen,
                   h.floorType == FloorType.soft ? 'barrier' : 'buffer',
                   solid: false),
@@ -137,10 +139,14 @@ class _PayoffPainter extends CustomPainter {
         _label(canvas, label, Offset((l + r) / 2, padT + 1), center: true);
       }
 
-      band(h.floor < 0 ? h.floor : idxLo, 0, gainGreen, 'no loss');
-      if (h.floor < 0) {
-        band(idxLo, h.floor, lossRed,
-            h.floorType == FloorType.soft ? 'barrier' : 'buffer');
+      if (h.floorType == FloorType.none) {
+        band(idxLo, 0, lossRed, 'full loss'); // no protection — 1:1 downside
+      } else {
+        band(h.floor < 0 ? h.floor : idxLo, 0, gainGreen, 'no loss');
+        if (h.floor < 0) {
+          band(idxLo, h.floor, lossRed,
+              h.floorType == FloorType.soft ? 'barrier' : 'buffer');
+        }
       }
       if (h.cap != null) {
         band((h.cap! / h.participation).clamp(0.0, idxHi).toDouble(), idxHi,

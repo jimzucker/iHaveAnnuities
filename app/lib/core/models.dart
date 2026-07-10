@@ -227,14 +227,15 @@ class Holding {
   }
 
   /// Display label for the downside protection (v1.0 vocab):
-  /// `Protected` (floor=0), `Hard` (buffer), `Soft` (barrier).
-  String get protectionType => floor == 0
-      ? 'Floor' // a 0% floor is just a Floor at 0% (was "Protected")
-      : switch (floorType) {
-          FloorType.soft => 'Soft',
-          FloorType.floor => 'Floor',
-          FloorType.hard => 'Hard',
-        };
+  /// `None` (unprotected), `Floor` (floor=0 or max-loss), `Hard` (buffer),
+  /// `Soft` (barrier).
+  String get protectionType => switch (floorType) {
+        FloorType.none => 'None', // no downside protection — full index loss
+        _ when floor == 0 => 'Floor', // a 0% floor is just a Floor at 0%
+        FloorType.soft => 'Soft',
+        FloorType.floor => 'Floor',
+        FloorType.hard => 'Hard',
+      };
 
   /// Stable identity across re-imports (issuer/index/account/maturity don't
   /// change on a reset) — used to key reset-history entries.

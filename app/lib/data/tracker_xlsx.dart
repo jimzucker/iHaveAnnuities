@@ -108,6 +108,7 @@ AccountType _account(String? s) => switch ((s ?? '').toLowerCase()) {
 /// → floor (max-loss; a 0% floor reads as "Floor"); anything else → hard
 /// (buffer). Case-insensitive.
 FloorType _floorType(String? s) => switch ((s ?? 'hard').toLowerCase()) {
+      'none' || 'unprotected' || 'full' || 'no floor' => FloorType.none,
       'soft' || 'soft-buffer' || 'barrier' => FloorType.soft,
       'floor' || 'floored' || 'protected' => FloorType.floor,
       _ => FloorType.hard, // 'hard', 'hard-buffer', 'buffer', anything else

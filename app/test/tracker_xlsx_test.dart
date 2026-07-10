@@ -150,6 +150,24 @@ void main() {
     expect(reparsed[1].inceptionDate, isNull); // others stay null
   });
 
+  test('None protection round-trips as "None"', () {
+    final base = parseTracker(File(examplePath).readAsBytesSync());
+    final h0 = base.first;
+    final none = Holding(
+      issuer: h0.issuer, index: h0.index, account: h0.account, cap: h0.cap,
+      participation: h0.participation, floor: 0.0, floorType: FloorType.none,
+      strike: h0.strike, currentLevel: h0.currentLevel, openDate: h0.openDate,
+      lastReset: h0.lastReset, maturity: h0.maturity, nextReset: h0.nextReset,
+      resetFreq: h0.resetFreq, initial: h0.initial, realized: h0.realized,
+    );
+    expect(none.protectionType, 'None'); // Floor Type cell exports as "None"
+    final bytes = writeTracker([none],
+        asOf: DateTime(2026, 6, 14), prices: {'SPX': 7400, 'NDX': 29600, 'RUT': 2950});
+    final reparsed = parseTracker(bytes).first;
+    expect(reparsed.floorType, FloorType.none);
+    expect(reparsed.protectionType, 'None');
+  });
+
   test('imports the real Zucker-Annuity-Tracker.xlsx', () {
     final f = File(realPath);
     if (!f.existsSync()) {

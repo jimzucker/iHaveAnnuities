@@ -14,8 +14,10 @@ import 'dart:math' as math;
 ///   unless the index breaches the floor, then the full decline applies.
 /// * [FloorType.floor] with a **negative** floor is a *max-loss floor*: the loss
 ///   is limited to the floor (`max(indexReturn, floor)`) and never worse.
-/// * A floor of `0` is a *true floor*: no loss in the period (any type).
-enum FloorType { hard, soft, floor }
+/// * [FloorType.none] is *no protection*: the full index decline applies 1:1
+///   (the floor value is ignored).
+/// * A floor of `0` is a *true floor*: no loss in the period (except [none]).
+enum FloorType { hard, soft, floor, none }
 
 /// Upside credited gain for a non-negative index move:
 /// `uncapped ? participation*idx : min(cap, participation*idx)`.
@@ -43,8 +45,11 @@ double payoffReturn(
   if (indexReturn >= 0) {
     return creditedGain(indexReturn, cap: cap, participation: participation);
   }
-  if (floor == 0) return 0.0; // true 0% floor
   return switch (floorType) {
+    // no protection: full 1:1 loss (floor value ignored)
+    FloorType.none => indexReturn,
+    // a 0% floor (any protected type) means no loss this period
+    _ when floor == 0 => 0.0,
     // barrier: protected unless breached, then full 1:1 loss
     FloorType.soft => indexReturn >= floor ? 0.0 : indexReturn,
     // max-loss floor: lose down to the floor and no further

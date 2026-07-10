@@ -82,6 +82,15 @@ class _HoldingFormState extends State<HoldingForm> {
 
   double _n(String k) => double.tryParse(_c[k]!.text.trim()) ?? 0;
 
+  /// Distinct, unambiguous label per floor type (the three protection kinds
+  /// used to collapse two of them into one "Hard (floor/buffer)" entry).
+  static String _floorTypeLabel(FloorType t) => switch (t) {
+        FloorType.hard => 'Hard (buffer)',
+        FloorType.soft => 'Soft (barrier)',
+        FloorType.floor => 'Floor (max loss)',
+        FloorType.none => 'None (full downside)',
+      };
+
   Future<void> _pickDate(DateTime current, ValueChanged<DateTime> onPick) async {
     final d = await showDatePicker(
       context: context,
@@ -101,7 +110,8 @@ class _HoldingFormState extends State<HoldingForm> {
       account: _account,
       cap: _uncapped ? null : _n('cap') / 100,
       participation: _n('participation') / 100,
-      floor: _n('floor') / 100,
+      // None = no downside protection; the floor value is irrelevant.
+      floor: _floorType == FloorType.none ? 0.0 : _n('floor') / 100,
       floorType: _floorType,
       strike: strike,
       currentLevel: widget.initial?.currentLevel ?? strike,
@@ -150,11 +160,19 @@ class _HoldingFormState extends State<HoldingForm> {
             Row(children: [
               Expanded(child: _num('participation', 'Participation %')),
               const SizedBox(width: 12),
-              Expanded(child: _num('floor', 'Floor % (≤ 0)', max0: true)),
+              Expanded(
+                // None ignores the floor, so hide the field and say so.
+                child: _floorType == FloorType.none
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 6),
+                        child: Text('No downside floor',
+                            style: TextStyle(fontStyle: FontStyle.italic)),
+                      )
+                    : _num('floor', 'Floor % (≤ 0)', max0: true),
+              ),
             ]),
             _dropdown<FloorType>('Floor type', _floorType, FloorType.values,
-                (v) => setState(() => _floorType = v!),
-                (v) => v == FloorType.soft ? 'Soft (barrier)' : 'Hard (floor/buffer)'),
+                (v) => setState(() => _floorType = v!), _floorTypeLabel),
             Row(children: [
               Expanded(child: _num('strike', 'Strike', positive: true)),
               const SizedBox(width: 12),

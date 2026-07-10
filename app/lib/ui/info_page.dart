@@ -68,6 +68,13 @@ class InfoPage extends StatelessWidget {
                         'Fully protected unless the index falls past the barrier. '
                         'Cross it and the entire decline applies — a 35% drop '
                         'through a 30% barrier is a full 35% loss.'),
+                _Bullet(
+                    label: 'None',
+                    color: protectionPalette('None', cs).accent,
+                    text:
+                        'No downside protection — you take the full index loss, '
+                        '1:1. Upside still applies (subject to cap and '
+                        'participation).'),
               ]),
 
               _Section(title: 'Where the numbers come from', children: [

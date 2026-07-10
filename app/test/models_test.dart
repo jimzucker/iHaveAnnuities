@@ -237,6 +237,22 @@ void main() {
         _h(cap: null, floor: -0.15, floorType: FloorType.floor, strike: 100, currentLevel: 100)
             .protectionType,
         'Floor');
+    // None wins even with a 0 floor (unprotected, full downside).
+    expect(
+        _h(cap: null, floor: 0, floorType: FloorType.none, strike: 100, currentLevel: 100)
+            .protectionType,
+        'None');
+  });
+
+  test('None protection: full 1:1 downside, upside still credited', () {
+    // -25% index move -> -25% (no protection), regardless of floor value.
+    final loss = _h(
+        cap: 0.12, floor: 0, floorType: FloorType.none, strike: 100, currentLevel: 75);
+    expect(loss.projGain, closeTo(-0.25, 1e-12));
+    // +18% move still capped at 12%.
+    final gain = _h(
+        cap: 0.12, floor: 0, floorType: FloorType.none, strike: 100, currentLevel: 118);
+    expect(gain.projGain, closeTo(0.12, 1e-12));
   });
 
   test('computed position = ISSUER-floor-maturity (issuer uppercased)', () {

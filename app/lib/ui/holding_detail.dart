@@ -22,11 +22,13 @@ class HoldingDetail extends StatelessWidget {
   String _summary(Holding h, DateTime asOf) {
     final cap = h.cap == null ? 'uncapped' : 'capped at ${pct(h.cap!)}';
     final part = h.participation == 1.0 ? '' : ' at ${pct(h.participation)} participation';
-    final down = h.floor == 0
-        ? 'no loss if it falls'
-        : (h.floorType == FloorType.soft
-            ? 'protected unless it falls past ${pct(h.floor.abs())} (then full loss)'
-            : 'a ${pct(h.floor.abs())} buffer absorbs the first losses');
+    final down = h.floorType == FloorType.none
+        ? 'you take the full index loss (no protection)'
+        : h.floor == 0
+            ? 'no loss if it falls'
+            : (h.floorType == FloorType.soft
+                ? 'protected unless it falls past ${pct(h.floor.abs())} (then full loss)'
+                : 'a ${pct(h.floor.abs())} buffer absorbs the first losses');
     final upside = h.isIncomeNote
         ? '${pct(h.couponRate)} monthly coupon'
         : 'gains $cap$part';
@@ -222,8 +224,11 @@ class _KeyFigures extends StatelessWidget {
       cell('Yield', h.initial <= 0 ? '—' : pctSigned(h.lifeToDateYield(asOf)),
           color: lossColor(h.lifeToDateYield(asOf), cs), big: true),
     ];
-    // Always show the floor level alongside the type (e.g. "Floor 0.00%").
-    final protLabel = '${h.protectionType} ${pct(h.floor)}';
+    // Show the floor level alongside the type (e.g. "Floor 0.00%"); None has no
+    // floor to show.
+    final protLabel = h.floorType == FloorType.none
+        ? 'None'
+        : '${h.protectionType} ${pct(h.floor)}';
     // Same font size as the figures row (the smaller size read as too subtle).
     final terms = <Widget>[
       cell('Account', h.account.label, big: true),

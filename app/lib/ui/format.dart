@@ -89,5 +89,10 @@ Color gainStatusColor(GainStatus s, ColorScheme c) {
           fg: const Color(0xFF1F3A5F),
           accent: cs.primary,
         ),
+      'None' => (
+          bg: const Color(0xFFFBE4E6),
+          fg: const Color(0xFFB00020),
+          accent: const Color(0xFFB00020),
+        ),
       _ => (bg: const Color(0xFFEAF7EC), fg: gainGreen, accent: gainGreen),
     };

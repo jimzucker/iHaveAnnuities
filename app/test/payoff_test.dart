@@ -118,6 +118,22 @@ void main() {
     });
   });
 
+  group('payoffReturn — none (no protection)', () {
+    test('upside still credited (capped)', () {
+      expect(
+          payoffReturn(0.18, cap: 0.1225, floor: 0, floorType: FloorType.none),
+          closeTo(0.1225, 1e-12));
+    });
+    test('downside is full 1:1 loss, ignoring floor value', () {
+      expect(payoffReturn(-0.30, cap: null, floor: 0, floorType: FloorType.none),
+          closeTo(-0.30, 1e-12));
+      // a stray floor value is ignored — still full loss
+      expect(
+          payoffReturn(-0.30, cap: null, floor: -0.15, floorType: FloorType.none),
+          closeTo(-0.30, 1e-12));
+    });
+  });
+
   group('indexReturn', () {
     test('normal', () {
       expect(indexReturn(7400, 6271.19), closeTo(0.18, 1e-3));

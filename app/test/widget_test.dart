@@ -628,6 +628,27 @@ void main() {
     expect(find.text('Must be ≤ 0'), findsOneWidget);
   });
 
+  testWidgets('floor-type dropdown has distinct labels including None',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
+    await tester.pumpAndSettle();
+    // Default is Hard (buffer) — one clear label, not a duplicated "Hard".
+    expect(find.text('Hard (buffer)'), findsOneWidget);
+    await tester.tap(find.text('Hard (buffer)'));
+    await tester.pumpAndSettle();
+    // The open menu offers all four distinct choices.
+    expect(find.text('Soft (barrier)'), findsWidgets);
+    expect(find.text('Floor (max loss)'), findsWidgets);
+    expect(find.text('None (full downside)'), findsWidgets);
+    // Choosing None hides the floor input and says so.
+    await tester.tap(find.text('None (full downside)').last);
+    await tester.pumpAndSettle();
+    expect(find.text('No downside floor'), findsOneWidget);
+  });
+
   testWidgets('refresh fetches prices and shows a snackbar', (tester) async {
     final client = MockClient((_) async => http.Response(
         '{"asOf":"2026-06-18","spx":7500.0,"ndx":30000.0,"rut":3000.0,'
@@ -708,7 +729,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextFormField, 'Cap %'), findsNothing);
     // Change the floor-type dropdown to Soft (barrier).
-    await tester.tap(find.text('Hard (floor/buffer)'));
+    await tester.tap(find.text('Hard (buffer)'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Soft (barrier)').last);
     await tester.pumpAndSettle();
