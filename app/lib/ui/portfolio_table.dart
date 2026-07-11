@@ -282,14 +282,6 @@ class PortfolioTable extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     onPressed: () => _edit(context, store, x),
                   ),
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    onPressed: () => _delete(context, store, x),
-                  ),
                 ])),
                 const DataCell(SizedBox.shrink()), // spacer
               ],
@@ -395,16 +387,10 @@ class PortfolioTable extends StatelessWidget {
                 ]),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                        tooltip: 'Edit',
-                        icon: const Icon(Icons.edit, size: 18),
-                        onPressed: () => _edit(context, store, x)),
-                    IconButton(
-                        tooltip: 'Delete',
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        onPressed: () => _delete(context, store, x)),
-                  ]),
+                  child: IconButton(
+                      tooltip: 'Edit',
+                      icon: const Icon(Icons.edit, size: 18),
+                      onPressed: () => _edit(context, store, x)),
                 ),
               ]),
             ),
@@ -422,12 +408,18 @@ class PortfolioTable extends StatelessWidget {
       );
 
   Future<void> _edit(BuildContext context, PortfolioStore store, Holding x) async {
-    final edited = await Navigator.of(context)
-        .push<Holding>(MaterialPageRoute(builder: (_) => HoldingForm(initial: x)));
+    // Delete now lives inside the edit panel (it isn't a routine, per-row action).
+    // The form pops itself when a delete goes through, so `edited` is null then.
+    final edited = await Navigator.of(context).push<Holding>(MaterialPageRoute(
+        builder: (_) =>
+            HoldingForm(initial: x, onDelete: () => _delete(context, store, x))));
     if (edited != null) await store.upsert(edited, replacing: x);
   }
 
-  Future<void> _delete(BuildContext context, PortfolioStore store, Holding x) async {
+  /// Confirm + delete [x]; returns true when it was actually removed (so the
+  /// edit panel knows to close). Keeps the typed-phrase guard, backup offer, and
+  /// encryption re-auth.
+  Future<bool> _delete(BuildContext context, PortfolioStore store, Holding x) async {
     final messenger = ScaffoldMessenger.of(context);
     final ok = await confirmTyped(
       context,
@@ -448,5 +440,6 @@ class PortfolioTable extends StatelessWidget {
       },
     );
     if (ok) await store.remove(x);
+    return ok;
   }
 }

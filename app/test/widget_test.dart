@@ -487,7 +487,8 @@ void main() {
     expect(find.text('Days to Reset'), findsOneWidget);
     expect(find.text('TOTAL'), findsOneWidget); // totals row
     expect(find.byTooltip('Edit'), findsWidgets);
-    expect(find.byTooltip('Delete'), findsWidgets);
+    // Delete moved into the edit panel — it's no longer a per-row action.
+    expect(find.byTooltip('Delete'), findsNothing);
   });
 
   testWidgets('compact-columns toggle hides static columns', (tester) async {
@@ -566,9 +567,10 @@ void main() {
     expect(store.sortColumn, 0); // Issuer column
   });
 
-  testWidgets('delete removes a holding after confirm', (tester) async {
-    // Use the card layout (narrow) so the Delete button is on-screen.
-    tester.view.physicalSize = const Size(420, 1400);
+  testWidgets('delete lives in the edit panel header and is typed-confirm guarded',
+      (tester) async {
+    // Card layout (narrow) so the row's Edit button is on-screen.
+    tester.view.physicalSize = const Size(420, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final holdings =
@@ -577,26 +579,52 @@ void main() {
     await tester.pumpWidget(_wrap(store));
     final before = store.holdings.length;
 
-    final del = find.byTooltip('Delete').first;
-    await tester.ensureVisible(del);
+    // Open the edit panel; Delete lives in its header, not on the row.
+    final edit = find.byTooltip('Edit').first;
+    await tester.ensureVisible(edit);
     await tester.pumpAndSettle();
-    await tester.tap(del);
+    await tester.tap(edit);
     await tester.pumpAndSettle();
+    expect(find.text('Edit holding'), findsOneWidget);
+
+    final deleteInPanel = find.byTooltip('Delete holding');
+    expect(deleteInPanel, findsOneWidget);
+    await tester.tap(deleteInPanel);
+    await tester.pumpAndSettle();
+
+    // Typed-confirm dialog, with the backup offer preserved.
     expect(find.text('Delete holding?'), findsOneWidget);
     expect(find.textContaining('cannot be undone'), findsOneWidget);
-    expect(find.text('Export backup'), findsOneWidget); // backup offered
+    expect(find.text('Export backup'), findsOneWidget);
 
-    // Guarded like Clear-all: Delete stays disabled until the phrase is typed.
-    final delBtn = tester.widget<FilledButton>(
+    // Guarded: confirm stays disabled until the phrase is typed.
+    final confirm = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Delete'));
-    expect(delBtn.onPressed, isNull);
-    expect(store.holdings.length, before); // tapping early does nothing
+    expect(confirm.onPressed, isNull);
+    expect(store.holdings.length, before); // nothing removed yet
 
-    await tester.enterText(find.byType(TextField), 'delete');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Type "delete" to confirm'), 'delete');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
     await tester.pumpAndSettle();
+
+    // Removed, and the edit panel closed back to the list.
     expect(store.holdings.length, before - 1);
+    expect(find.text('Edit holding'), findsNothing);
+  });
+
+  testWidgets('fields carry inline helper text so the form is self-explanatory',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MaterialApp(home: HoldingForm()));
+    await tester.pumpAndSettle();
+    // Jargon is explained right under the field, no tap needed.
+    expect(find.text('Share of the gain (100% = all)'), findsOneWidget);
+    expect(find.text('How downside is cushioned'), findsOneWidget);
+    expect(find.textContaining('Pays periodic coupons'), findsOneWidget);
   });
 
   testWidgets('edit form opens for a Yahoo-ticker index (no dropdown crash)',
