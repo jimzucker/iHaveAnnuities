@@ -95,31 +95,16 @@ class InfoPage extends StatelessWidget {
                     'removes them, so export an .xlsx if you want a durable copy.'),
               ]),
 
-              // The app's own license — the terms it is distributed under —
-              // plus the standard button to the bundled open-source notices.
+              // The app's own license — the terms it is distributed under. The
+              // required third-party notices ship in Flutter's bundled NOTICES.
               _Section(title: 'License', children: [
                 _Para(
                     'iHaveAnnuities is proprietary software — © 2026 Jim Zucker, '
                     'all rights reserved. It is free for personal, non-commercial '
                     'use. Commercial use, redistribution, and modification require '
                     'prior written approval from the author. See the LICENSE file '
-                    'for full terms.'),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.description_outlined, size: 18),
-                    label: const Text('Open-source licenses'),
-                    // Flutter's standard showLicensePage over the auto-bundled
-                    // NOTICES — the required third-party attribution.
-                    onPressed: () => showLicensePage(
-                      context: context,
-                      applicationName: 'iHaveAnnuities',
-                      applicationVersion: 'Version $appVersion',
-                      applicationLegalese:
-                          '© 2026 Jim Zucker · Proprietary — all rights reserved',
-                    ),
-                  ),
-                ),
+                    'for full terms; open-source components are used under their '
+                    'own licenses.'),
               ]),
 
               const SizedBox(height: 8),

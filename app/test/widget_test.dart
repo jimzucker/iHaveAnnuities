@@ -460,17 +460,11 @@ void main() {
     expect(find.textContaining('claims-paying ability'), findsOneWidget);
   });
 
-  testWidgets('info page states the app license and opens the OSS notices',
-      (tester) async {
+  testWidgets('info page states the app license', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InfoPage()));
     // A plain-language statement of what the app is distributed under.
     expect(find.textContaining('proprietary software'), findsWidgets);
-    // The standard open-source attribution (Flutter's bundled notices).
-    final licensesBtn = find.widgetWithText(OutlinedButton, 'Open-source licenses');
-    await tester.scrollUntilVisible(licensesBtn, 300);
-    await tester.tap(licensesBtn);
-    await tester.pumpAndSettle();
-    expect(find.byType(LicensePage), findsOneWidget);
+    expect(find.textContaining('non-commercial'), findsWidgets);
   });
 
   testWidgets('seeded portfolio shows summary + rows', (tester) async {
