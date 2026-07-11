@@ -95,26 +95,35 @@ class InfoPage extends StatelessWidget {
                     'removes them, so export an .xlsx if you want a durable copy.'),
               ]),
 
-              const SizedBox(height: 8),
-              _Disclosures(cs: cs, theme: theme),
-
-              const SizedBox(height: 24),
-              // Attribution for the open-source packages this app is built on.
-              // showLicensePage is the Flutter/cross-platform standard: a list of
-              // libraries, each with its license text, from the LicenseRegistry.
-              Center(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.description_outlined, size: 18),
-                  label: const Text('Open-source licenses'),
-                  onPressed: () => showLicensePage(
-                    context: context,
-                    applicationName: 'iHaveAnnuities',
-                    applicationVersion: 'Version $appVersion',
-                    applicationLegalese:
-                        '© 2026 Jim Zucker · Proprietary — all rights reserved',
+              // The app's own license — the terms it is distributed under —
+              // plus the standard button to the bundled open-source notices.
+              _Section(title: 'License', children: [
+                _Para(
+                    'iHaveAnnuities is proprietary software — © 2026 Jim Zucker, '
+                    'all rights reserved. It is free for personal, non-commercial '
+                    'use. Commercial use, redistribution, and modification require '
+                    'prior written approval from the author. See the LICENSE file '
+                    'for full terms.'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: const Text('Open-source licenses'),
+                    // Flutter's standard showLicensePage over the auto-bundled
+                    // NOTICES — the required third-party attribution.
+                    onPressed: () => showLicensePage(
+                      context: context,
+                      applicationName: 'iHaveAnnuities',
+                      applicationVersion: 'Version $appVersion',
+                      applicationLegalese:
+                          '© 2026 Jim Zucker · Proprietary — all rights reserved',
+                    ),
                   ),
                 ),
-              ),
+              ]),
+
+              const SizedBox(height: 8),
+              _Disclosures(cs: cs, theme: theme),
 
               const SizedBox(height: 24),
               Center(

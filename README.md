@@ -204,11 +204,9 @@ from the author. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 For a commercial license or any approval, contact Jim Zucker via
 [github.com/jimzucker](https://github.com/jimzucker).
 
-Third-party components remain under their own licenses. The full aggregated
-notices are auto-generated (from Flutter's build output) in
-[`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt) — regenerate with
-`./scripts/gen_notices.sh` — and shown in-app via *About → Open-source licenses*.
-See [`licenses/`](licenses/) for details.
+Third-party components remain under their own licenses. Flutter bundles the
+aggregated notices with the build automatically; they're shown in-app via
+*About → Open-source licenses* (`showLicensePage`). See [`licenses/`](licenses/).
 
 Every source file carries an SPDX header:
 
