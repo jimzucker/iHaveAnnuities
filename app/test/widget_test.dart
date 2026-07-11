@@ -460,7 +460,7 @@ void main() {
     expect(find.textContaining('claims-paying ability'), findsOneWidget);
   });
 
-  testWidgets('info page exposes open-source licenses (attribution)',
+  testWidgets('info page opens the standard open-source licenses page',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InfoPage()));
     final licensesBtn = find.widgetWithText(OutlinedButton, 'Open-source licenses');
@@ -468,7 +468,7 @@ void main() {
     expect(licensesBtn, findsOneWidget);
     await tester.tap(licensesBtn);
     await tester.pumpAndSettle();
-    // Flutter's aggregated license page opens (shows the app name).
+    // Flutter's built-in LicensePage (the cross-platform standard) opens.
     expect(find.byType(LicensePage), findsOneWidget);
   });
 

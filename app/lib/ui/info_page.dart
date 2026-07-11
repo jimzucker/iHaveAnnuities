@@ -99,9 +99,9 @@ class InfoPage extends StatelessWidget {
               _Disclosures(cs: cs, theme: theme),
 
               const SizedBox(height: 24),
-              // Attribution for the open-source packages this app is built on
-              // (Flutter SDK, Material Icons, and pub.dev deps). Flutter's
-              // LicenseRegistry aggregates every bundled package's notice.
+              // Attribution for the open-source packages this app is built on.
+              // showLicensePage is the Flutter/cross-platform standard: a list of
+              // libraries, each with its license text, from the LicenseRegistry.
               Center(
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.description_outlined, size: 18),
@@ -111,9 +111,7 @@ class InfoPage extends StatelessWidget {
                     applicationName: 'iHaveAnnuities',
                     applicationVersion: 'Version $appVersion',
                     applicationLegalese:
-                        '© 2026 Jim Zucker · Proprietary — all rights reserved.\n'
-                        'This app is built on the open-source components listed '
-                        'below, each under its own license.',
+                        '© 2026 Jim Zucker · Proprietary — all rights reserved',
                   ),
                 ),
               ),

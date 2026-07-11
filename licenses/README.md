@@ -1,35 +1,31 @@
 # Third-Party Licenses
 
-This directory holds the license texts for third-party components redistributed
-as part of iHaveAnnuities. The project itself is **proprietary — all rights
-reserved** under a custom Proprietary Software License (see the root
-[`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE)); it is not open source.
-The third-party components below remain under their own licenses.
+`iHaveAnnuities` is proprietary software (see the root [`LICENSE`](../LICENSE) and
+[`NOTICE`](../NOTICE)). It is built on open-source components that remain under
+their own licenses.
 
-## How this directory is organized
+## Where the notices live
 
-When a third-party dependency whose source or binary is **bundled/redistributed**
-in this repository is added, place its full license text here as:
+- **Repo:** [`../THIRD_PARTY_NOTICES.txt`](../THIRD_PARTY_NOTICES.txt) — the full
+  aggregated set of third-party license texts, **auto-generated** from Flutter's
+  own build output so it can never drift from what the app actually ships.
+- **In-app:** *About & Disclosures → Open-source licenses* opens Flutter's
+  standard `showLicensePage` (the same `LicenseRegistry` data), a list of the
+  bundled libraries each with its license text.
+
+## Regenerating
+
+Run before a release (rebuilds web and refreshes the notices file):
 
 ```
-licenses/<component-name>-LICENSE.txt
+./scripts/gen_notices.sh
 ```
 
-and add a row to the inventory below.
+This is the Flutter-native equivalent of Android's `oss-licenses-plugin` or
+npm's `license-checker`: the framework collects every package's license into the
+build's `NOTICES` asset, and the script copies that to `THIRD_PARTY_NOTICES.txt`.
 
-## Current inventory
+## Market data
 
-No third-party source or binary code is currently vendored into this repository,
-so there are no third-party license files to include yet. The dependencies
-below are either linked at build/runtime from upstream sources (pub.dev, the
-Flutter SDK) or accessed over HTTP — none of their code is checked into this
-repo.
-
-| Component | Role | License | Bundled? | Notes |
-| --- | --- | --- | --- | --- |
-| Flutter SDK | Framework | BSD-3-Clause | No | Resolved from the installed Flutter toolchain at build time |
-| Dart packages (`excel`, `archive`, `xml`, `provider`, `http`, `file_picker`, `file_saver`, `shared_preferences`, `intl`, `cupertino_icons`, `flutter_lints`) | Runtime / dev deps | See each package on pub.dev (mostly BSD/MIT/Apache-2.0) | No | Fetched by `flutter pub get`; not vendored |
-| Yahoo Finance chart API | Market-data source | Yahoo terms of use | No | External HTTP endpoint; no code bundled |
-
-> Update this table and add the corresponding `*-LICENSE.txt` file whenever a
-> Dart package or other dependency that ships code is vendored into the repo.
+The app fetches index levels from the Yahoo Finance chart API (an external HTTP
+endpoint governed by Yahoo's terms of use) — no Yahoo code is bundled.
