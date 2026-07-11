@@ -31,8 +31,8 @@ class InfoPage extends StatelessWidget {
               Text(
                 'A personal tracker for structured-product annuities — the kind '
                 'whose return is linked to a market index with a cap or '
-                'participation rate on the upside and one of three forms of '
-                'downside protection.',
+                'participation rate on the upside and one of four forms of '
+                'downside protection (including none).',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
@@ -98,7 +98,27 @@ class InfoPage extends StatelessWidget {
               const SizedBox(height: 8),
               _Disclosures(cs: cs, theme: theme),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              // Attribution for the open-source packages this app is built on
+              // (Flutter SDK, Material Icons, and pub.dev deps). Flutter's
+              // LicenseRegistry aggregates every bundled package's notice.
+              Center(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.description_outlined, size: 18),
+                  label: const Text('Open-source licenses'),
+                  onPressed: () => showLicensePage(
+                    context: context,
+                    applicationName: 'iHaveAnnuities',
+                    applicationVersion: 'Version $appVersion',
+                    applicationLegalese:
+                        '© 2026 Jim Zucker · Proprietary — all rights reserved.\n'
+                        'This app is built on the open-source components listed '
+                        'below, each under its own license.',
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               Center(
                 child: Text('© 2026 Jim Zucker · Proprietary — all rights reserved',
                     style: theme.textTheme.bodySmall

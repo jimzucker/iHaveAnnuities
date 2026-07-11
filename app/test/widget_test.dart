@@ -460,6 +460,18 @@ void main() {
     expect(find.textContaining('claims-paying ability'), findsOneWidget);
   });
 
+  testWidgets('info page exposes open-source licenses (attribution)',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: InfoPage()));
+    final licensesBtn = find.widgetWithText(OutlinedButton, 'Open-source licenses');
+    await tester.scrollUntilVisible(licensesBtn, 300);
+    expect(licensesBtn, findsOneWidget);
+    await tester.tap(licensesBtn);
+    await tester.pumpAndSettle();
+    // Flutter's aggregated license page opens (shows the app name).
+    expect(find.byType(LicensePage), findsOneWidget);
+  });
+
   testWidgets('seeded portfolio shows summary + rows', (tester) async {
     final holdings =
         parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
