@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # fetch_market.py — refresh data/market.json from Yahoo Finance (no API key).
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 #
 # Runs from the 5pm-ET trading-day GitHub Action. Without --force it is a no-op
 # unless "now" is 5pm ET (17:00) on a US trading day, so the two UTC cron entries

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // UnlockScreen UI: passphrase unlock (right/wrong) and the recovery flow that
 // sets a new passphrase inline (regression: "Set" did nothing when it was a
 // dialog on the screen the unlock was tearing down).

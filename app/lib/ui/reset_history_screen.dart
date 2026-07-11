@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // A reference log of resets the app applied automatically: income-note coupons
 // credited and point-to-point periods locked in as their reset dates passed.
 

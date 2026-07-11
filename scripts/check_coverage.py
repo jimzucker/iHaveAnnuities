@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # check_coverage.py — enforce the coverage gate on app/coverage/lcov.info.
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 #
 # Requires lib/core and lib/data at (near) 100% — the pure, fully-testable
 # layers — and reports overall. Exits non-zero if the core/data gate fails.

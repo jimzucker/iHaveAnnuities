@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Screenshot generator for the README. NOT a CI regression check — tagged
 // 'golden' and excluded from the gate (font rendering is platform-specific).
 // Regenerate the PNGs with:

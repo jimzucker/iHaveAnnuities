@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Local encrypted vault — pure crypto core (no Flutter, no storage).
 //
 // Key-wrapping model: a random 256-bit Data Encryption Key (DEK) encrypts the

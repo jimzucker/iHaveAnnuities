@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Holding derived-value coverage, mirroring the eight example contracts.
 
 import 'dart:math' as math;

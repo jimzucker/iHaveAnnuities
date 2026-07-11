@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Payoff diagram: payoff return vs. index move, with axis ticks/gridlines, the
 // 1:1 index reference, cap and barrier/buffer reference lines, and a labeled
 // marker at the current index gain.

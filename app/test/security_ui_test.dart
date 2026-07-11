@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Widget coverage for the security UI: onboarding wizard, Security settings,
 // the re-auth gate (passphrase / recovery / Touch ID), and the destructive
 // confirm dialog's Touch ID branch.

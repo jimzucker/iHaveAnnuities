@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Add/edit a holding. One form for both modes; returns a Holding via pop.
 
 import 'package:flutter/material.dart';

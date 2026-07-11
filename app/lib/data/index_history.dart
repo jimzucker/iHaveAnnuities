@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Index price history (history.json on the `market-data` branch), refreshed by
 // the daily Action. Used by the tap-through index chart; raw.githubusercontent
 // serves it CORS-enabled.

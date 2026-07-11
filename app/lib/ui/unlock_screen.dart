@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Shown when the vault is locked: passphrase unlock, optional Touch ID, recovery
 // with the one-time code, and a last-resort "Forget & reset".
 

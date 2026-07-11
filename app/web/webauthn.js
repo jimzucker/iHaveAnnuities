@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // WebAuthn PRF helpers for biometric (Touch ID / Face ID) vault unlock.
 // Exposes window.webauthnSupported / webauthnEnroll / webauthnAuth, all
 // returning base64 strings so the Dart side stays simple.

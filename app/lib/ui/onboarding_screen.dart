@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // First-run security wizard: shown once on a brand-new install, BEFORE any data
 // exists. Lets the user opt into encryption, forces them to save the recovery
 // code (the only way back — there's no email reset), and optionally enrolls

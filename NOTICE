@@ -1,7 +1,9 @@
 iHaveAnnuities
-Copyright 2026 Jim Zucker
+Copyright © 2026 Jim Zucker. All rights reserved.
 
-This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+This product is proprietary software licensed under a custom Proprietary
+Software License (see LICENSE). It is NOT open source. Commercial use,
+redistribution, and modification require the Author's prior written approval.
 
 Third-party components and their licenses are documented in the
 licenses/ directory. See licenses/README.md for the current inventory.

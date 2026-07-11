@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Full-branch coverage of the payoff engine. Mirrors docs/gen_overview.py.
 
 import 'package:flutter_test/flutter_test.dart';

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Read/write the Zucker Annuity Tracker .xlsx schema v1.2. The same format is
 // used for import, the shipped example/template, and what the app exports — so
 // the user's real spreadsheet round-trips.

@@ -196,15 +196,23 @@ breakdown — with pricing assumptions and caveats — in
 
 ## License
 
-Licensed under the **Apache License, Version 2.0** — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+**Proprietary — all rights reserved.** This is **not** open-source software. It is
+source-available for transparency and personal, non-commercial use only.
+**Commercial use, redistribution, and modification require prior written approval**
+from the author. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-Third-party license texts (when any code is vendored) live in [`licenses/`](licenses/).
+For a commercial license or any approval, contact Jim Zucker via
+[github.com/jimzucker](https://github.com/jimzucker).
+
+Third-party components remain under their own licenses. Flutter bundles the
+aggregated notices with the build automatically; they're shown in-app via
+*About → Open-source licenses* (`showLicensePage`). See [`licenses/`](licenses/).
 
 Every source file carries an SPDX header:
 
 ```dart
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 ```
 
-Copyright 2026 Jim Zucker.
+Copyright © 2026 Jim Zucker. All rights reserved.

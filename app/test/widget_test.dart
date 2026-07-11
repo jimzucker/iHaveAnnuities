@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Widget coverage for the portfolio screen (prices header, summary, list) and
 // the add/edit form validation.
 
@@ -458,6 +458,13 @@ void main() {
     await tester.scrollUntilVisible(
         find.textContaining('claims-paying ability'), 300);
     expect(find.textContaining('claims-paying ability'), findsOneWidget);
+  });
+
+  testWidgets('info page states the app license', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: InfoPage()));
+    // A plain-language statement of what the app is distributed under.
+    expect(find.textContaining('proprietary software'), findsWidgets);
+    expect(find.textContaining('non-commercial'), findsWidgets);
   });
 
   testWidgets('seeded portfolio shows summary + rows', (tester) async {

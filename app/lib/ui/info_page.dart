@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Plain-language explainer + the disclosures this app is required to show.
 
 import 'package:flutter/material.dart';
@@ -31,8 +31,8 @@ class InfoPage extends StatelessWidget {
               Text(
                 'A personal tracker for structured-product annuities — the kind '
                 'whose return is linked to a market index with a cap or '
-                'participation rate on the upside and one of three forms of '
-                'downside protection.',
+                'participation rate on the upside and one of four forms of '
+                'downside protection (including none).',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
@@ -95,12 +95,24 @@ class InfoPage extends StatelessWidget {
                     'removes them, so export an .xlsx if you want a durable copy.'),
               ]),
 
+              // The app's own license — the terms it is distributed under. The
+              // required third-party notices ship in Flutter's bundled NOTICES.
+              _Section(title: 'License', children: [
+                _Para(
+                    'iHaveAnnuities is proprietary software — © 2026 Jim Zucker, '
+                    'all rights reserved. It is free for personal, non-commercial '
+                    'use. Commercial use, redistribution, and modification require '
+                    'prior written approval from the author. See the LICENSE file '
+                    'for full terms; open-source components are used under their '
+                    'own licenses.'),
+              ]),
+
               const SizedBox(height: 8),
               _Disclosures(cs: cs, theme: theme),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               Center(
-                child: Text('Copyright 2026 Jim Zucker · Apache License 2.0',
+                child: Text('© 2026 Jim Zucker · Proprietary — all rights reserved',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant)),
               ),

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // In-app user guide: a column glossary plus short explainers for the metrics,
 // protection types, reset cadence, and security — styled as section cards that
 // match the rest of the app. Reachable from the overflow menu; pairs with the

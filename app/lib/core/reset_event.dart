@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // A logged reset: what the app credited when a holding's reset date passed.
 // Kept as an audit trail so the auto-roll of realized income / strikes is
 // transparent and reviewable.

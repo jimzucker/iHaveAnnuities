@@ -1,6 +1,6 @@
 <!--
 Copyright 2026 Jim Zucker
-SPDX-License-Identifier: Apache-2.0
+SPDX-License-Identifier: LicenseRef-Proprietary
 -->
 # UX roadmap — round 2 (drilldown + controls)
 

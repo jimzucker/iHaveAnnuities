@@ -1,6 +1,6 @@
 # deploy-web.yml — build the Flutter web app and publish to GitHub Pages.
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 name: deploy-web
 
 on:

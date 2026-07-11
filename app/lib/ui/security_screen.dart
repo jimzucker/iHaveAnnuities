@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Security settings: enable/disable encryption, change passphrase, regenerate
 // the recovery code, biometric toggle, stay-unlocked duration, and Lock now.
 

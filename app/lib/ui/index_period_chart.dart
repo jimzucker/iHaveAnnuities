@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // The underlying index over the contract's current period (since the last
 // reset), with the strike, cap, and floor/buffer levels drawn as reference
 // lines and the no-loss / capped zones shaded. Falls back to the structural

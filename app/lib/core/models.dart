@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Domain model for a tracked structured-product holding. Pure Dart; mirrors the
 // Zucker Annuity Tracker schema v1.0. Derived values are computed via the
 // payoff engine in payoff.dart, never stored.

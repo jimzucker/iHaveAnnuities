@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // New-app-version detection: the store flags an update when the deployed
 // build-id SHA differs from the running build's SHA, and "Later" suppresses
 // re-nagging for that same build.
