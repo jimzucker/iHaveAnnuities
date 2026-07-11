@@ -1,6 +1,6 @@
 # test.yml — CI gate: analyze + test with coverage threshold.
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 name: test
 
 on:

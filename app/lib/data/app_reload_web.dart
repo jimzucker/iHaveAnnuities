@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Web reload — fetches the freshly deployed app. The Flutter loader picks up the
 // updated service worker on the next load.
 

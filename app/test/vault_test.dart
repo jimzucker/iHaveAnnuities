@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Crypto core for the local encrypted vault. Uses a tiny KDF iteration count so
 // the suite stays fast (production uses kVaultKdfIterations).
 

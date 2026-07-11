@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Web implementation of BiometricAuthenticator over the global helpers defined
 // in web/webauthn.js (which does the actual WebAuthn PRF dance and base64s the
 // results). Needs live device verification — not exercised in headless tests.

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // XIRR — money-weighted annualized return for dated cash flows. Solves for the
 // annual rate r where the net present value of all flows is zero, via robust
 // bisection (no derivative blow-ups). Pure Dart.

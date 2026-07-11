@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // App-version detection. Each deploy stamps the git SHA into `build-id.json`
 // (same-origin on the Pages site) and compiles the same SHA into the app via
 // --dart-define=BUILD_SHA. Polling that file and comparing tells a kept-open

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Shared destructive-action guards: a typed-confirmation dialog (the user must
 // type a phrase before the action enables) plus a one-call .xlsx backup export.
 // Used by both "Clear all data" and "Delete holding" so they guard alike.

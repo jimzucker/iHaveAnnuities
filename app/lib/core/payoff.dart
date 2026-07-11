@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Pure payoff engine. No Flutter imports — fully unit-testable.
 // Mirrors docs/gen_overview.py so the app, the README, and the example
 // spreadsheet all agree on the math.

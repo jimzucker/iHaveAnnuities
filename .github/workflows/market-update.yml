@@ -1,7 +1,7 @@
 # market-update.yml — refresh prices at 5pm ET on trading days and publish them
 # to the orphan `market-data` branch (NOT main, so main's history stays clean).
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 name: market-update
 
 on:

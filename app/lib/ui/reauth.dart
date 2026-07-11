@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Re-authentication gate for sensitive screens (e.g. Security). Requires the
 // vault passphrase, with a recovery-code fallback if forgotten. No-op when
 // encryption is off (nothing to protect yet).

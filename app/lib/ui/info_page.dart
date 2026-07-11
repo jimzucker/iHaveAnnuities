@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Plain-language explainer + the disclosures this app is required to show.
 
 import 'package:flutter/material.dart';
@@ -100,7 +100,7 @@ class InfoPage extends StatelessWidget {
 
               const SizedBox(height: 32),
               Center(
-                child: Text('Copyright 2026 Jim Zucker · Apache License 2.0',
+                child: Text('© 2026 Jim Zucker · Proprietary — all rights reserved',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant)),
               ),

@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Published index prices (market.json), refreshed by the daily 5 PM trading-day
 // GitHub Action. The UI shows these as a header banner.
 

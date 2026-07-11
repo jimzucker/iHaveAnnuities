@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 Jim Zucker
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Proprietary
 """Summarize Claude Code session transcripts for this repo.
 
 Reports token usage, prompt/turn counts, and active vs. idle time by parsing

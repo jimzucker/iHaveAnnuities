@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Coverage for the pure reset-rollover engine.
 
 import 'package:flutter_test/flutter_test.dart';

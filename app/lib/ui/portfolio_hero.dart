@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // A summary band above the table: a protection-mix donut (principal split
 // across Floor / Hard / Soft), the headline totals with a Total-Value
 // composition bar (Principal | Realized | Unrealized), and the soonest

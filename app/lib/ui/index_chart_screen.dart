@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // One combined index chart: every index rebased to % change over the selected
 // range (so different price scales compare), with a tappable legend to hide/
 // show indexes (remembered) and 1D…Max range toggles. Data comes from the

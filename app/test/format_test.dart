@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ihaveannuities/ui/format.dart';

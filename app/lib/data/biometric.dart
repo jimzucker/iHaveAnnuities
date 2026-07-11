@@ -1,5 +1,5 @@
 // Copyright 2026 Jim Zucker
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Biometric (Touch ID / Face ID) unlock via WebAuthn PRF. The PRF extension
 // returns a stable per-credential secret on a successful platform-authenticator
 // gesture; that secret wraps the vault DEK. The browser never exposes the secret

@@ -1,8 +1,10 @@
 # Third-Party Licenses
 
 This directory holds the license texts for third-party components redistributed
-as part of iHaveAnnuities. The project itself is licensed under the Apache
-License 2.0 (see the root [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE)).
+as part of iHaveAnnuities. The project itself is **proprietary — all rights
+reserved** under a custom Proprietary Software License (see the root
+[`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE)); it is not open source.
+The third-party components below remain under their own licenses.
 
 ## How this directory is organized
 
