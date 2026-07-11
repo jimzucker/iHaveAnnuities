@@ -2,12 +2,13 @@
 
 Track structured products (annuities) that pay an index-linked return. The
 **upside** is the index move — optionally scaled by a **participation rate** and
-limited by a **cap** (or uncapped). The **downside** uses one of three protection
+limited by a **cap** (or uncapped). The **downside** uses one of four protection
 types (the tracker's *Floor Type* column):
 
 1. **Floor** — *max-loss floor*: you lose only down to the floor, never worse. A **0% floor** means no loss at all; a −10% floor caps the loss at 10%.
 2. **Hard** (Floor < 0%) — *buffer*: absorbs the first *X%* of losses; you lose only beyond it.
 3. **Soft** (Floor < 0%) — *barrier*: fully protected unless the index breaches it, then the full loss applies.
+4. **None** — *no downside protection*: you take the full index loss (for fixed-rate notes or a cap-but-no-floor structure).
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
@@ -149,8 +150,8 @@ flutter test --exclude-tags golden   # core 100% / data ≥95% coverage gate
 flutter run -d chrome                # run the web app locally
 ```
 
-- **Core** (`lib/core`): payoff engine + model (floor / Hard buffer / Soft barrier,
-  participation, capped/uncapped, income notes; per‑contract Yield/CAGR).
+- **Core** (`lib/core`): payoff engine + model (floor / Hard buffer / Soft barrier /
+  None, participation, capped/uncapped, income notes; per‑contract Yield/CAGR).
 - **Data** (`lib/data`): robust `.xlsx` reader/writer (the tracker schema), market
   feed, browser-persisted store, the **encrypted vault** (AES‑256‑GCM + WebAuthn
   biometric), and a money‑weighted **XIRR** solver.
