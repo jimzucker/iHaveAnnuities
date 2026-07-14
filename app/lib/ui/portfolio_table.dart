@@ -286,11 +286,21 @@ class PortfolioTable extends StatelessWidget {
     final rows = <DataRow>[];
     var i = 0; // running index for zebra striping across all groups
     _grouped(items, store.groupBy).forEach((value, members) {
-      rows.add(_groupHeaderRow(shown, store.groupBy, value, members.length, cs));
-      for (final x in members) {
-        rows.add(_dataRow(context, store, shown, x, asOf, cs, i++));
+      final collapsed = store.isGroupCollapsed(value);
+      // The group header carries the subtotals (name + count + summed money),
+      // plus the group's money-weighted XIRR. A chevron toggles collapse.
+      rows.add(_totalsBandRow(shown, members, cs,
+          label: '$value  (${members.length})',
+          bg: cs.primaryContainer,
+          labelColor: cs.onPrimaryContainer,
+          yieldXirr: store.xirrFor(members),
+          chevron: collapsed ? Icons.chevron_right : Icons.expand_more,
+          onToggle: () => store.toggleGroupCollapsed(value)));
+      if (!collapsed) {
+        for (final x in members) {
+          rows.add(_dataRow(context, store, shown, x, asOf, cs, i++));
+        }
       }
-      rows.add(_subtotalRow(shown, members, cs, label: 'Subtotal'));
     });
     return rows;
   }
@@ -346,49 +356,66 @@ class PortfolioTable extends StatelessWidget {
     return map;
   }
 
-  /// A group header row: the dimension value + member count on the frozen side.
-  DataRow _groupHeaderRow(
-      List<_Col> shown, String dim, String value, int count, ColorScheme cs) {
-    final cells = <DataCell>[];
-    for (final (i, _) in shown.indexed) {
-      cells.add(i == 0
-          ? DataCell(Text('$value  ($count)',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: cs.onPrimaryContainer)))
-          : const DataCell(Text('')));
-    }
-    return DataRow(
-      color: WidgetStatePropertyAll(cs.primaryContainer),
-      cells: [
-        ...cells,
-        const DataCell(Text('')), // Actions
-        const DataCell(SizedBox.shrink()), // spacer
-      ],
-    );
-  }
-
   /// Bold portfolio TOTAL row under the money columns.
   DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
-      _subtotalRow(shown, store.holdings, cs, label: 'TOTAL', strong: true);
+      _totalsBandRow(shown, store.holdings, cs,
+          label: 'TOTAL',
+          bg: cs.surfaceContainerHigh,
+          yieldXirr: store.portfolioXirr);
 
-  /// A totals row over an arbitrary holding list (grand total or a group subtotal).
-  DataRow _subtotalRow(List<_Col> shown, List<Holding> items, ColorScheme cs,
-      {required String label, bool strong = false}) {
+  /// A totals band over an arbitrary holding list: either a group header (the
+  /// dimension value + count in the leading cell, subtotals in the money cells)
+  /// or the grand-total row. [bg]/[labelColor] style it.
+  DataRow _totalsBandRow(List<_Col> shown, List<Holding> items, ColorScheme cs,
+      {required String label,
+      required Color bg,
+      Color? labelColor,
+      double? yieldXirr,
+      IconData? chevron,
+      VoidCallback? onToggle}) {
     final initial = items.fold(0.0, (s, h) => s + h.initial);
     final realized = items.fold(0.0, (s, h) => s + h.realized);
     final projValue = items.fold(0.0, (s, h) => s + h.projValueK);
     final projGain = projValue - initial - realized;
+    // Ratios don't sum — aggregate them the weighted way, all over principal so
+    // the band ties to the hero and Return% − Unrealized% = Realized%:
+    //  Return %      = (ΣprojValue − Σinitial) / Σinitial
+    //  Unrealized %  = ΣUnrealized$ / Σinitial   (matches the hero)
+    //  Index Gain    = principal-weighted average index move
+    // Yield (XIRR) is money-weighted (set by the caller); not derivable here.
+    final returnPct = initial == 0 ? null : (projValue - initial) / initial;
+    final unrealizedPct = initial == 0 ? null : projGain / initial;
+    final indexGainW = initial == 0
+        ? null
+        : items.fold(0.0, (s, h) => s + h.indexGain * h.initial) / initial;
     return DataRow(
-      color: WidgetStatePropertyAll(
-          strong ? cs.surfaceContainerHigh : cs.surfaceContainerHighest),
+      color: WidgetStatePropertyAll(bg),
+      // A collapsible group header taps to fold/unfold; the grand total doesn't.
+      onSelectChanged: onToggle == null ? null : (_) => onToggle(),
       cells: [
         for (final c in shown)
-          _totalCell(c.label, cs,
-              label: label,
-              initial: initial,
-              realized: realized,
-              projValue: projValue,
-              projGain: projGain),
+          if (c.label == 'Issuer' && chevron != null)
+            DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(chevron, size: 18, color: labelColor),
+              const SizedBox(width: 4),
+              Flexible(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: labelColor))),
+            ]))
+          else
+            _totalCell(c.label, cs,
+                label: label,
+                labelColor: labelColor,
+                initial: initial,
+                realized: realized,
+                projValue: projValue,
+                projGain: projGain,
+                returnPct: returnPct,
+                unrealizedPct: unrealizedPct,
+                indexGainW: indexGainW,
+                yieldXirr: yieldXirr),
         const DataCell(Text('')), // Actions
         const DataCell(SizedBox.shrink()), // spacer
       ],
@@ -397,12 +424,17 @@ class PortfolioTable extends StatelessWidget {
 
   static DataCell _totalCell(String colLabel, ColorScheme cs,
       {required String label,
+      Color? labelColor,
       required double initial,
       required double realized,
       required double projValue,
-      required double projGain}) {
+      required double projGain,
+      double? returnPct,
+      double? unrealizedPct,
+      double? indexGainW,
+      double? yieldXirr}) {
     String t = '';
-    Color? color;
+    Color? color = labelColor;
     switch (colLabel) {
       case 'Issuer':
         t = label;
@@ -415,6 +447,28 @@ class PortfolioTable extends StatelessWidget {
       case 'Unrealized \$':
         t = moneyK(projGain);
         color = gainColor(projGain, cs);
+      // Weighted ratio aggregates (blank when undefined); losses flagged red.
+      case 'Return %':
+        if (returnPct != null) {
+          t = pctSigned(returnPct);
+          color = lossColor(returnPct, cs);
+        }
+      case 'Unrealized %':
+        if (unrealizedPct != null) {
+          t = pctSigned(unrealizedPct);
+          color = lossColor(unrealizedPct, cs);
+        }
+      case 'Index Gain':
+        if (indexGainW != null) {
+          t = pctSigned(indexGainW);
+          color = lossColor(indexGainW, cs);
+        }
+      // Money-weighted annualized return (XIRR) — ties the TOTAL row to the hero.
+      case 'Yield':
+        if (yieldXirr != null) {
+          t = pctSigned(yieldXirr);
+          color = lossColor(yieldXirr, cs);
+        }
     }
     return DataCell(
         Text(t, style: TextStyle(fontWeight: FontWeight.bold, color: color)));

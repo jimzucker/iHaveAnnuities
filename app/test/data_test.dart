@@ -400,6 +400,65 @@ void main() {
       expect(s2.groupBy, 'Type');
     });
 
+    test('pivot groups default collapsed; toggle + collapse/expand all', () async {
+      final store = PortfolioStore();
+      // Summary-first: nothing expanded → every group reads collapsed.
+      expect(store.allGroupsCollapsed, isTrue);
+      expect(store.isGroupCollapsed('IRA'), isTrue);
+
+      store.toggleGroupCollapsed('IRA');
+      expect(store.isGroupCollapsed('IRA'), isFalse);
+      expect(store.allGroupsCollapsed, isFalse);
+
+      store.expandAllGroups({'IRA', 'ROTH'});
+      expect(store.isGroupCollapsed('ROTH'), isFalse);
+
+      store.collapseAllGroups();
+      expect(store.allGroupsCollapsed, isTrue);
+      expect(store.isGroupCollapsed('IRA'), isTrue);
+
+      // Changing the group-by dimension resets the view to collapsed.
+      store.toggleGroupCollapsed('IRA');
+      await store.setGroupBy('Issuer');
+      expect(store.allGroupsCollapsed, isTrue);
+    });
+
+    test('xirrFor: whole-book subset equals portfolioXirr; groups solvable', () {
+      final a = _sample(); // opened 2024-01-02, initial 100
+      final b = Holding(
+        issuer: 'BNP',
+        index: '^GSPC',
+        account: AccountType.roth,
+        cap: null,
+        participation: 1.0,
+        floor: -0.30,
+        floorType: FloorType.soft,
+        strike: 100,
+        currentLevel: 120,
+        openDate: DateTime(2025, 1, 2),
+        lastReset: DateTime(2025, 1, 2),
+        maturity: DateTime(2030, 1, 2),
+        nextReset: DateTime(2027, 1, 2),
+        resetFreq: ResetFreq.inception,
+        initial: 50,
+      );
+      final store = PortfolioStore()
+        ..debugSeed([a, b],
+            Market(asOf: DateTime(2026, 6, 12), spx: 7431.46, ndx: 29635.95,
+                rut: 2943.99, dow: 44012.10, comp: 23501.75));
+
+      // The grand-total Yield uses xirrFor(all) — it must equal the hero's value.
+      expect(store.xirrFor(store.holdings), store.portfolioXirr);
+      // Each single-holding group resolves to a finite rate.
+      for (final h in store.holdings) {
+        final r = store.xirrFor([h]);
+        expect(r, isNotNull);
+        expect(r!.isFinite, isTrue);
+      }
+      // An empty group has no rate.
+      expect(store.xirrFor(const []), isNull);
+    });
+
     test('init ignores corrupt cache', () async {
       SharedPreferences.setMockInitialValues({'portfolio.v1': 'not json'});
       final c = MockClient((_) async => http.Response(_marketJson, 200));

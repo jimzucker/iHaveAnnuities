@@ -123,6 +123,35 @@ class PortfolioStore extends ChangeNotifier {
     'Issuer', 'Type', 'Index', 'Protection', 'Reset Freq',
   ];
 
+  /// Expanded group values in the table's pivot view (in-memory only — a
+  /// transient view state, reset when the group-by dimension changes). Tracking
+  /// the EXPANDED set means groups default to collapsed (summary-first): a group
+  /// not in this set is folded to its subtotal band. Keyed by display value.
+  final Set<String> _expandedGroups = {};
+
+  bool isGroupCollapsed(String value) => !_expandedGroups.contains(value);
+
+  /// True when no group is expanded (drives the Collapse-all/Expand-all state).
+  bool get allGroupsCollapsed => _expandedGroups.isEmpty;
+
+  void toggleGroupCollapsed(String value) {
+    _expandedGroups.contains(value)
+        ? _expandedGroups.remove(value)
+        : _expandedGroups.add(value);
+    notifyListeners();
+  }
+
+  void collapseAllGroups() {
+    if (_expandedGroups.isEmpty) return;
+    _expandedGroups.clear();
+    notifyListeners();
+  }
+
+  void expandAllGroups(Iterable<String> values) {
+    _expandedGroups.addAll(values);
+    notifyListeners();
+  }
+
   /// Whether the prices banner + hero are hidden to maximize the list (phones).
   bool get hideSummary => _hideSummary;
 
@@ -173,12 +202,21 @@ class PortfolioStore extends ChangeNotifier {
   /// principal is an outflow at its open date, today's total value the inflow.
   /// Correctly handles contracts opened on different dates. Null when it can't
   /// be solved (no holdings / no market date / degenerate flows).
-  double? get portfolioXirr {
+  double? get portfolioXirr => xirrFor(_holdings);
+
+  /// Money-weighted annualized return (XIRR) for an arbitrary subset — a table
+  /// group or the whole book. Each holding's principal is an outflow at its
+  /// return-start date, the subset's projected value the inflow at [asOf]. Same
+  /// convention as [portfolioXirr]; null when unsolvable (no market date, empty,
+  /// or degenerate flows).
+  double? xirrFor(Iterable<Holding> items) {
     final asOf = _market?.asOf;
-    if (asOf == null || _holdings.isEmpty) return null;
+    final list = items.toList();
+    if (asOf == null || list.isEmpty) return null;
+    final projValue = list.fold(0.0, (s, h) => s + h.projValueK);
     final flows = <(DateTime, double)>[
-      for (final h in _holdings) (h.returnStart, -h.initial),
-      (asOf, totalProjValue),
+      for (final h in list) (h.returnStart, -h.initial),
+      (asOf, projValue),
     ];
     return xirr(flows);
   }
@@ -200,9 +238,12 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set the table grouping dimension ('' clears it); persisted.
+  /// Set the table grouping dimension ('' clears it); persisted. Changing the
+  /// dimension resets the transient view state — every group starts collapsed
+  /// (summary-first), so the expanded set is emptied.
   Future<void> setGroupBy(String dim) async {
     _groupBy = groupDimensions.contains(dim) ? dim : '';
+    _expandedGroups.clear();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_groupByKey, _groupBy);
     notifyListeners();

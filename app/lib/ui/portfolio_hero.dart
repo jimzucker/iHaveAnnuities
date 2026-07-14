@@ -146,7 +146,8 @@ class _ProjectedBlock extends StatelessWidget {
     // can't be solved (e.g. everything opened today).
     final xirr = store.portfolioXirr;
     final rate = xirr ?? retPct;
-    final rateLabel = '${_pct0(rate)}${xirr != null ? '/yr' : ''}';
+    // 2 decimals (app standard) so this ties exactly to the table's Yield total.
+    final rateLabel = '${pctSigned(rate)}${xirr != null ? '/yr' : ''}';
     final gc = gainColor(gain, cs);
     Widget kpi(String label, Widget value) => Column(
           mainAxisSize: MainAxisSize.min,
@@ -214,9 +215,6 @@ class _ProjectedBlock extends StatelessWidget {
         Text(text, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       ]);
 }
-
-/// Signed percentage with no decimals (e.g. "+8%", "-10%").
-String _pct0(double v) => '${v >= 0 ? '+' : ''}${(v * 100).round()}%';
 
 /// Stacked bar showing how Total Value breaks down: Principal (base) +
 /// Realized (banked) + Unrealized (gain green / loss red, eating in when
