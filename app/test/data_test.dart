@@ -384,6 +384,22 @@ void main() {
       expect(s2.sortAscending, isFalse);
     });
 
+    test('groupBy defaults to none and is remembered', () async {
+      final store = PortfolioStore();
+      expect(store.groupBy, '');
+      await store.setGroupBy('Issuer');
+      expect(store.groupBy, 'Issuer');
+      // Unknown dimensions are rejected (fall back to no grouping).
+      await store.setGroupBy('Nonsense');
+      expect(store.groupBy, '');
+      await store.setGroupBy('Type');
+
+      final c = MockClient((_) async => http.Response('x', 500));
+      final s2 = PortfolioStore(client: c);
+      await s2.init();
+      expect(s2.groupBy, 'Type');
+    });
+
     test('init ignores corrupt cache', () async {
       SharedPreferences.setMockInitialValues({'portfolio.v1': 'not json'});
       final c = MockClient((_) async => http.Response(_marketJson, 200));

@@ -41,6 +41,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _sortKey = 'sortColumn.v1';
   static const _ascKey = 'sortAsc.v1';
   static const _fullColKey = 'fullColumns.v1';
+  static const _groupByKey = 'groupBy.v1';
   static const _hideSummaryKey = 'hideSummary.v1';
   static const _hiddenIdxKey = 'hiddenIndexes.v1';
   static const _resetHistKey = 'resetHistory.v1';
@@ -102,6 +103,7 @@ class PortfolioStore extends ChangeNotifier {
   int _sortColumn = defaultSortColumn;
   bool _sortAscending = true;
   bool _fullColumns = true;
+  String _groupBy = ''; // '' = no grouping; else a dimension label
   bool _hideSummary = false;
   Set<String> _hiddenIndexes = {};
   List<ResetEvent> _resetHistory = [];
@@ -111,6 +113,15 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Whether the table shows every column (true) or a compact core view.
   bool get fullColumns => _fullColumns;
+
+  /// Table grouping dimension ('' = ungrouped). One of the labels in
+  /// [groupDimensions]; the table renders a header + subtotal row per group.
+  String get groupBy => _groupBy;
+
+  /// The dimensions holdings can be grouped by (label → value extractor).
+  static const groupDimensions = <String>[
+    'Issuer', 'Type', 'Index', 'Protection', 'Reset Freq',
+  ];
 
   /// Whether the prices banner + hero are hidden to maximize the list (phones).
   bool get hideSummary => _hideSummary;
@@ -189,6 +200,14 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set the table grouping dimension ('' clears it); persisted.
+  Future<void> setGroupBy(String dim) async {
+    _groupBy = groupDimensions.contains(dim) ? dim : '';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_groupByKey, _groupBy);
+    notifyListeners();
+  }
+
   Future<void> setHideSummary(bool hide) async {
     _hideSummary = hide;
     final prefs = await SharedPreferences.getInstance();
@@ -212,6 +231,8 @@ class PortfolioStore extends ChangeNotifier {
     _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
     _sortAscending = prefs.getBool(_ascKey) ?? true;
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
+    _groupBy = prefs.getString(_groupByKey) ?? '';
+    if (!groupDimensions.contains(_groupBy)) _groupBy = '';
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
     _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
     _stayUnlockedDays = prefs.getInt(_stayDaysKey) ?? 30;

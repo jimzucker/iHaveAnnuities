@@ -59,6 +59,30 @@ class PortfolioScreen extends StatelessWidget {
                   : Icons.view_column_outlined),
               onPressed: () => store.setFullColumns(!store.fullColumns),
             ),
+          // Group the table by a dimension (subtotals per group). A filled icon
+          // signals grouping is active; the checked item shows the dimension.
+          if (!store.isEmpty && wide)
+            PopupMenuButton<String>(
+              tooltip: 'Group by',
+              icon: Icon(store.groupBy.isEmpty
+                  ? Icons.workspaces_outline
+                  : Icons.workspaces),
+              onSelected: store.setGroupBy,
+              itemBuilder: (_) => [
+                CheckedPopupMenuItem(
+                  value: '',
+                  checked: store.groupBy.isEmpty,
+                  child: const Text('No grouping'),
+                ),
+                const PopupMenuDivider(),
+                for (final dim in PortfolioStore.groupDimensions)
+                  CheckedPopupMenuItem(
+                    value: dim,
+                    checked: store.groupBy == dim,
+                    child: Text(dim),
+                  ),
+              ],
+            ),
           // Only shown when encrypted — a closed lock that locks the app now.
           // (Encryption setup lives in the overflow "Security" menu.)
           if (store.encryptionEnabled)

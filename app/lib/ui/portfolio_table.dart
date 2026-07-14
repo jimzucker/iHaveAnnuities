@@ -266,30 +266,56 @@ class PortfolioTable extends StatelessWidget {
           const DataColumn2(label: Text(''), size: ColumnSize.L),
         ],
         rows: [
-          for (final (i, x) in items.indexed)
-            DataRow2(
-              color: WidgetStateProperty.resolveWith(
-                  (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
-              onTap: () => Navigator.of(context).push(detailRoute(x)),
-              cells: [
-                for (final c in shown) c.cell(x, asOf, cs),
-                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconButton(
-                    tooltip: 'Edit',
-                    icon: const Icon(Icons.edit, size: 18),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    onPressed: () => _edit(context, store, x),
-                  ),
-                ])),
-                const DataCell(SizedBox.shrink()), // spacer
-              ],
-            ),
+          ..._bodyRows(context, store, shown, items, asOf, cs),
           _totalsRow(shown, store, cs),
         ],
       );
     });
+  }
+
+  /// The table body: a flat list of data rows, or — when a group-by dimension is
+  /// active — a header + member rows + subtotal for each group.
+  List<DataRow> _bodyRows(BuildContext context, PortfolioStore store,
+      List<_Col> shown, List<Holding> items, DateTime asOf, ColorScheme cs) {
+    if (store.groupBy.isEmpty) {
+      return [
+        for (final (i, x) in items.indexed)
+          _dataRow(context, store, shown, x, asOf, cs, i),
+      ];
+    }
+    final rows = <DataRow>[];
+    var i = 0; // running index for zebra striping across all groups
+    _grouped(items, store.groupBy).forEach((value, members) {
+      rows.add(_groupHeaderRow(shown, store.groupBy, value, members.length, cs));
+      for (final x in members) {
+        rows.add(_dataRow(context, store, shown, x, asOf, cs, i++));
+      }
+      rows.add(_subtotalRow(shown, members, cs, label: 'Subtotal'));
+    });
+    return rows;
+  }
+
+  DataRow _dataRow(BuildContext context, PortfolioStore store, List<_Col> shown,
+      Holding x, DateTime asOf, ColorScheme cs, int i) {
+    return DataRow2(
+      color: WidgetStateProperty.resolveWith(
+          (_) => i.isOdd ? cs.onSurface.withValues(alpha: 0.035) : null),
+      onTap: () => Navigator.of(context).push(detailRoute(x)),
+      cells: [
+        for (final c in shown) c.cell(x, asOf, cs),
+        DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(
+            tooltip: 'Edit',
+            icon: const Icon(Icons.edit, size: 18),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            onPressed: () => _edit(context, store, x),
+          ),
+        ])),
+        const DataCell(SizedBox.shrink()), // spacer
+      ],
+    );
   }
 
   /// Relative column width (flexible, so columns fill the viewport width).
@@ -300,32 +326,95 @@ class PortfolioTable extends StatelessWidget {
         _ => ColumnSize.M,
       };
 
+  /// The value a holding falls under for the active group-by dimension.
+  static String groupValueOf(Holding h, String dim) => switch (dim) {
+        'Issuer' => h.issuer,
+        'Type' => h.account.label,
+        'Index' => indexLabel(h.index),
+        'Protection' => h.protectionType,
+        'Reset Freq' => h.resetFreq.label,
+        _ => '',
+      };
+
+  /// Split [items] into groups in first-appearance order (so within-group order
+  /// stays the current sort), keyed by [dim]'s value.
+  static Map<String, List<Holding>> _grouped(List<Holding> items, String dim) {
+    final map = <String, List<Holding>>{};
+    for (final h in items) {
+      (map[groupValueOf(h, dim)] ??= []).add(h);
+    }
+    return map;
+  }
+
+  /// A group header row: the dimension value + member count on the frozen side.
+  DataRow _groupHeaderRow(
+      List<_Col> shown, String dim, String value, int count, ColorScheme cs) {
+    final cells = <DataCell>[];
+    for (final (i, _) in shown.indexed) {
+      cells.add(i == 0
+          ? DataCell(Text('$value  ($count)',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: cs.onPrimaryContainer)))
+          : const DataCell(Text('')));
+    }
+    return DataRow(
+      color: WidgetStatePropertyAll(cs.primaryContainer),
+      cells: [
+        ...cells,
+        const DataCell(Text('')), // Actions
+        const DataCell(SizedBox.shrink()), // spacer
+      ],
+    );
+  }
+
   /// Bold portfolio TOTAL row under the money columns.
   DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
-      DataRow(
-        color: WidgetStatePropertyAll(cs.surfaceContainerHigh),
-        cells: [
-          for (final c in shown) _totalCell(c.label, store, cs),
-          const DataCell(Text('')), // Actions
-          const DataCell(SizedBox.shrink()), // spacer
-        ],
-      );
+      _subtotalRow(shown, store.holdings, cs, label: 'TOTAL', strong: true);
 
-  static DataCell _totalCell(String label, PortfolioStore store, ColorScheme cs) {
+  /// A totals row over an arbitrary holding list (grand total or a group subtotal).
+  DataRow _subtotalRow(List<_Col> shown, List<Holding> items, ColorScheme cs,
+      {required String label, bool strong = false}) {
+    final initial = items.fold(0.0, (s, h) => s + h.initial);
+    final realized = items.fold(0.0, (s, h) => s + h.realized);
+    final projValue = items.fold(0.0, (s, h) => s + h.projValueK);
+    final projGain = projValue - initial - realized;
+    return DataRow(
+      color: WidgetStatePropertyAll(
+          strong ? cs.surfaceContainerHigh : cs.surfaceContainerHighest),
+      cells: [
+        for (final c in shown)
+          _totalCell(c.label, cs,
+              label: label,
+              initial: initial,
+              realized: realized,
+              projValue: projValue,
+              projGain: projGain),
+        const DataCell(Text('')), // Actions
+        const DataCell(SizedBox.shrink()), // spacer
+      ],
+    );
+  }
+
+  static DataCell _totalCell(String colLabel, ColorScheme cs,
+      {required String label,
+      required double initial,
+      required double realized,
+      required double projValue,
+      required double projGain}) {
     String t = '';
     Color? color;
-    switch (label) {
+    switch (colLabel) {
       case 'Issuer':
-        t = 'TOTAL';
+        t = label;
       case 'Initial':
-        t = moneyK(store.totalInitial);
+        t = moneyK(initial);
       case 'Realized':
-        t = moneyK(store.totalRealized);
-      case 'Projected Value':
-        t = moneyK(store.totalProjValue);
+        t = moneyK(realized);
+      case 'Total Value':
+        t = moneyK(projValue);
       case 'Unrealized \$':
-        t = moneyK(store.totalProjGain);
-        color = gainColor(store.totalProjGain, cs);
+        t = moneyK(projGain);
+        color = gainColor(projGain, cs);
     }
     return DataCell(
         Text(t, style: TextStyle(fontWeight: FontWeight.bold, color: color)));
