@@ -15,6 +15,7 @@ import 'package:ihaveannuities/core/payoff.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:ihaveannuities/ui/portfolio_table.dart' show BandAggregates;
 
 const _marketJson =
     '{"asOf":"2026-06-12","tradingDay":true,"spx":7431.46,"ndx":29635.95,"rut":2943.99}';
@@ -421,6 +422,35 @@ void main() {
       store.toggleGroupCollapsed('IRA');
       await store.setGroupBy('Issuer');
       expect(store.allGroupsCollapsed, isTrue);
+    });
+
+    test('TOTAL band reconciles with the hero card (regression guard)', () {
+      // Uses the real sample (NATBANK carries realized income), so a ÷base vs
+      // ÷principal drift on Unrealized % would break this — which is the point.
+      final holdings = parseTracker(
+          File('../data/example-portfolio.xlsx').readAsBytesSync());
+      final store = PortfolioStore()
+        ..debugSeed(holdings,
+            Market(asOf: DateTime(2026, 6, 12), spx: 7431.46, ndx: 29635.95,
+                rut: 2943.99, dow: 44012.10, comp: 23501.75));
+      final agg = BandAggregates.of(store.holdings);
+
+      // Dollars — the exact getters the hero renders.
+      expect(agg.initial, store.totalInitial);
+      expect(agg.realized, store.totalRealized);
+      expect(agg.projValue, store.totalProjValue);
+      expect(agg.unrealizedDollars, closeTo(store.totalProjGain, 1e-9));
+
+      // Percentages — the hero divides both by principal; the TOTAL band must
+      // match (so Return% − Unrealized% = Realized%, all over principal).
+      final heroReturn =
+          (store.totalProjValue - store.totalInitial) / store.totalInitial;
+      final heroUnrealized = store.totalProjGain / store.totalInitial;
+      expect(agg.returnPct, closeTo(heroReturn, 1e-12));
+      expect(agg.unrealizedPct, closeTo(heroUnrealized, 1e-12));
+
+      // Yield — the grand-total XIRR is the same value the hero headline uses.
+      expect(store.xirrFor(store.holdings), store.portfolioXirr);
     });
 
     test('xirrFor: whole-book subset equals portfolioXirr; groups solvable', () {
