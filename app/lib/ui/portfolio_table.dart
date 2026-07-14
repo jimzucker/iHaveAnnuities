@@ -34,6 +34,49 @@ Route<void> detailRoute(Holding h) => PageRouteBuilder(
       },
     );
 
+/// The weighted aggregates shown on a group/total band. Pure and testable so
+/// the TOTAL row provably reconciles with the hero card: every figure uses the
+/// same definition the hero does (dollars are sums; ratios divide by principal,
+/// so Return% − Unrealized% = Realized%). Yield is money-weighted XIRR and is
+/// supplied separately by the caller (store.xirrFor / portfolioXirr).
+class BandAggregates {
+  const BandAggregates({
+    required this.initial,
+    required this.realized,
+    required this.projValue,
+    required this.unrealizedDollars,
+    required this.returnPct,
+    required this.unrealizedPct,
+    required this.indexGain,
+  });
+
+  final double initial, realized, projValue, unrealizedDollars;
+
+  /// Null when there is no principal to divide by (an empty/zero group).
+  final double? returnPct, unrealizedPct, indexGain;
+
+  factory BandAggregates.of(Iterable<Holding> items) {
+    var initial = 0.0, realized = 0.0, projValue = 0.0, idxWeighted = 0.0;
+    for (final h in items) {
+      initial += h.initial;
+      realized += h.realized;
+      projValue += h.projValueK;
+      idxWeighted += h.indexGain * h.initial;
+    }
+    final unrealized = projValue - initial - realized;
+    final hasBase = initial != 0;
+    return BandAggregates(
+      initial: initial,
+      realized: realized,
+      projValue: projValue,
+      unrealizedDollars: unrealized,
+      returnPct: hasBase ? (projValue - initial) / initial : null,
+      unrealizedPct: hasBase ? unrealized / initial : null,
+      indexGain: hasBase ? idxWeighted / initial : null,
+    );
+  }
+}
+
 /// One sortable column: how to render it and how to sort by it.
 class _Col {
   const _Col(this.label, this.numeric, this.key, this.cell,
@@ -373,21 +416,7 @@ class PortfolioTable extends StatelessWidget {
       double? yieldXirr,
       IconData? chevron,
       VoidCallback? onToggle}) {
-    final initial = items.fold(0.0, (s, h) => s + h.initial);
-    final realized = items.fold(0.0, (s, h) => s + h.realized);
-    final projValue = items.fold(0.0, (s, h) => s + h.projValueK);
-    final projGain = projValue - initial - realized;
-    // Ratios don't sum — aggregate them the weighted way, all over principal so
-    // the band ties to the hero and Return% − Unrealized% = Realized%:
-    //  Return %      = (ΣprojValue − Σinitial) / Σinitial
-    //  Unrealized %  = ΣUnrealized$ / Σinitial   (matches the hero)
-    //  Index Gain    = principal-weighted average index move
-    // Yield (XIRR) is money-weighted (set by the caller); not derivable here.
-    final returnPct = initial == 0 ? null : (projValue - initial) / initial;
-    final unrealizedPct = initial == 0 ? null : projGain / initial;
-    final indexGainW = initial == 0
-        ? null
-        : items.fold(0.0, (s, h) => s + h.indexGain * h.initial) / initial;
+    final agg = BandAggregates.of(items);
     return DataRow(
       color: WidgetStatePropertyAll(bg),
       // A collapsible group header taps to fold/unfold; the grand total doesn't.
@@ -408,13 +437,13 @@ class PortfolioTable extends StatelessWidget {
             _totalCell(c.label, cs,
                 label: label,
                 labelColor: labelColor,
-                initial: initial,
-                realized: realized,
-                projValue: projValue,
-                projGain: projGain,
-                returnPct: returnPct,
-                unrealizedPct: unrealizedPct,
-                indexGainW: indexGainW,
+                initial: agg.initial,
+                realized: agg.realized,
+                projValue: agg.projValue,
+                projGain: agg.unrealizedDollars,
+                returnPct: agg.returnPct,
+                unrealizedPct: agg.unrealizedPct,
+                indexGainW: agg.indexGain,
                 yieldXirr: yieldXirr),
         const DataCell(Text('')), // Actions
         const DataCell(SizedBox.shrink()), // spacer
