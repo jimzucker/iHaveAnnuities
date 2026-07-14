@@ -59,6 +59,50 @@ class PortfolioScreen extends StatelessWidget {
                   : Icons.view_column_outlined),
               onPressed: () => store.setFullColumns(!store.fullColumns),
             ),
+          // Group the table by a dimension (subtotals per group). A filled icon
+          // signals grouping is active; the checked item shows the dimension.
+          if (!store.isEmpty && wide)
+            PopupMenuButton<String>(
+              tooltip: 'Group by',
+              icon: Icon(store.groupBy.isEmpty
+                  ? Icons.workspaces_outline
+                  : Icons.workspaces),
+              onSelected: store.setGroupBy,
+              itemBuilder: (_) => [
+                CheckedPopupMenuItem(
+                  value: '',
+                  checked: store.groupBy.isEmpty,
+                  child: const Text('No grouping'),
+                ),
+                const PopupMenuDivider(),
+                for (final dim in PortfolioStore.groupDimensions)
+                  CheckedPopupMenuItem(
+                    value: dim,
+                    checked: store.groupBy == dim,
+                    child: Text(dim),
+                  ),
+              ],
+            ),
+          // Fold every group down to its subtotal band (pivot summary), or
+          // expand them all back open. Groups start collapsed, so this defaults
+          // to Expand-all. Only meaningful while grouping is on.
+          if (!store.isEmpty && wide && store.groupBy.isNotEmpty)
+            IconButton(
+              tooltip: store.allGroupsCollapsed ? 'Expand all' : 'Collapse all',
+              icon: Icon(store.allGroupsCollapsed
+                  ? Icons.unfold_more
+                  : Icons.unfold_less),
+              onPressed: () {
+                if (store.allGroupsCollapsed) {
+                  store.expandAllGroups({
+                    for (final h in store.holdings)
+                      PortfolioTable.groupValueOf(h, store.groupBy)
+                  });
+                } else {
+                  store.collapseAllGroups();
+                }
+              },
+            ),
           // Only shown when encrypted — a closed lock that locks the app now.
           // (Encryption setup lives in the overflow "Security" menu.)
           if (store.encryptionEnabled)

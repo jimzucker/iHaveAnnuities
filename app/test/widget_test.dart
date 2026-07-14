@@ -834,4 +834,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('No resets recorded yet'), findsOneWidget);
   });
+
+  testWidgets('grouping the table adds a header+subtotal band per group',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await store.setHideSummary(true); // maximize the table area
+    await tester.pumpWidget(_wrap(store));
+
+    // A "value  (count)" group header (subtotals live on this line).
+    final groupHeader = find.byWidgetPredicate((w) =>
+        w is Text && w.data != null && RegExp(r'\(\d+\)$').hasMatch(w.data!));
+
+    // Ungrouped: no group headers; the group-by control shows the inactive icon.
+    expect(groupHeader, findsNothing);
+    expect(find.byIcon(Icons.workspaces_outline), findsOneWidget);
+
+    await store.setGroupBy('Type'); // group by account
+    await tester.pumpAndSettle();
+
+    // A header band per account group, the active icon, and the grand total kept.
+    expect(groupHeader, findsWidgets);
+    expect(find.byIcon(Icons.workspaces), findsOneWidget);
+    expect(find.text('TOTAL'), findsOneWidget);
+  });
+
+  testWidgets('collapse-all folds groups to bands; expand-all restores rows',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await store.setHideSummary(true);
+    await store.setGroupBy('Type');
+    await tester.pumpWidget(_wrap(store));
+
+    final groupHeader = find.byWidgetPredicate((w) =>
+        w is Text && w.data != null && RegExp(r'\(\d+\)$').hasMatch(w.data!));
+    // Grouping starts COLLAPSED (summary-first): bands show, member rows hidden.
+    expect(groupHeader, findsWidgets);
+    expect(find.text('HSBC'), findsNothing);
+    expect(find.text('TOTAL'), findsOneWidget); // grand total always shown
+
+    // Expand all → member rows appear.
+    await tester.tap(find.byTooltip('Expand all'));
+    await tester.pumpAndSettle();
+    expect(find.text('HSBC'), findsWidgets);
+
+    // Collapse all → back to summary bands only.
+    await tester.tap(find.byTooltip('Collapse all'));
+    await tester.pumpAndSettle();
+    expect(find.text('HSBC'), findsNothing);
+    expect(groupHeader, findsWidgets);
+  });
 }

@@ -41,6 +41,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _sortKey = 'sortColumn.v1';
   static const _ascKey = 'sortAsc.v1';
   static const _fullColKey = 'fullColumns.v1';
+  static const _groupByKey = 'groupBy.v1';
   static const _hideSummaryKey = 'hideSummary.v1';
   static const _hiddenIdxKey = 'hiddenIndexes.v1';
   static const _resetHistKey = 'resetHistory.v1';
@@ -102,6 +103,7 @@ class PortfolioStore extends ChangeNotifier {
   int _sortColumn = defaultSortColumn;
   bool _sortAscending = true;
   bool _fullColumns = true;
+  String _groupBy = ''; // '' = no grouping; else a dimension label
   bool _hideSummary = false;
   Set<String> _hiddenIndexes = {};
   List<ResetEvent> _resetHistory = [];
@@ -111,6 +113,44 @@ class PortfolioStore extends ChangeNotifier {
 
   /// Whether the table shows every column (true) or a compact core view.
   bool get fullColumns => _fullColumns;
+
+  /// Table grouping dimension ('' = ungrouped). One of the labels in
+  /// [groupDimensions]; the table renders a header + subtotal row per group.
+  String get groupBy => _groupBy;
+
+  /// The dimensions holdings can be grouped by (label → value extractor).
+  static const groupDimensions = <String>[
+    'Issuer', 'Type', 'Index', 'Protection', 'Reset Freq',
+  ];
+
+  /// Expanded group values in the table's pivot view (in-memory only — a
+  /// transient view state, reset when the group-by dimension changes). Tracking
+  /// the EXPANDED set means groups default to collapsed (summary-first): a group
+  /// not in this set is folded to its subtotal band. Keyed by display value.
+  final Set<String> _expandedGroups = {};
+
+  bool isGroupCollapsed(String value) => !_expandedGroups.contains(value);
+
+  /// True when no group is expanded (drives the Collapse-all/Expand-all state).
+  bool get allGroupsCollapsed => _expandedGroups.isEmpty;
+
+  void toggleGroupCollapsed(String value) {
+    _expandedGroups.contains(value)
+        ? _expandedGroups.remove(value)
+        : _expandedGroups.add(value);
+    notifyListeners();
+  }
+
+  void collapseAllGroups() {
+    if (_expandedGroups.isEmpty) return;
+    _expandedGroups.clear();
+    notifyListeners();
+  }
+
+  void expandAllGroups(Iterable<String> values) {
+    _expandedGroups.addAll(values);
+    notifyListeners();
+  }
 
   /// Whether the prices banner + hero are hidden to maximize the list (phones).
   bool get hideSummary => _hideSummary;
@@ -162,12 +202,21 @@ class PortfolioStore extends ChangeNotifier {
   /// principal is an outflow at its open date, today's total value the inflow.
   /// Correctly handles contracts opened on different dates. Null when it can't
   /// be solved (no holdings / no market date / degenerate flows).
-  double? get portfolioXirr {
+  double? get portfolioXirr => xirrFor(_holdings);
+
+  /// Money-weighted annualized return (XIRR) for an arbitrary subset — a table
+  /// group or the whole book. Each holding's principal is an outflow at its
+  /// return-start date, the subset's projected value the inflow at [asOf]. Same
+  /// convention as [portfolioXirr]; null when unsolvable (no market date, empty,
+  /// or degenerate flows).
+  double? xirrFor(Iterable<Holding> items) {
     final asOf = _market?.asOf;
-    if (asOf == null || _holdings.isEmpty) return null;
+    final list = items.toList();
+    if (asOf == null || list.isEmpty) return null;
+    final projValue = list.fold(0.0, (s, h) => s + h.projValueK);
     final flows = <(DateTime, double)>[
-      for (final h in _holdings) (h.returnStart, -h.initial),
-      (asOf, totalProjValue),
+      for (final h in list) (h.returnStart, -h.initial),
+      (asOf, projValue),
     ];
     return xirr(flows);
   }
@@ -186,6 +235,17 @@ class PortfolioStore extends ChangeNotifier {
     _fullColumns = full;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_fullColKey, full);
+    notifyListeners();
+  }
+
+  /// Set the table grouping dimension ('' clears it); persisted. Changing the
+  /// dimension resets the transient view state — every group starts collapsed
+  /// (summary-first), so the expanded set is emptied.
+  Future<void> setGroupBy(String dim) async {
+    _groupBy = groupDimensions.contains(dim) ? dim : '';
+    _expandedGroups.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_groupByKey, _groupBy);
     notifyListeners();
   }
 
@@ -212,6 +272,8 @@ class PortfolioStore extends ChangeNotifier {
     _sortColumn = prefs.getInt(_sortKey) ?? defaultSortColumn;
     _sortAscending = prefs.getBool(_ascKey) ?? true;
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
+    _groupBy = prefs.getString(_groupByKey) ?? '';
+    if (!groupDimensions.contains(_groupBy)) _groupBy = '';
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
     _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
     _stayUnlockedDays = prefs.getInt(_stayDaysKey) ?? 30;
