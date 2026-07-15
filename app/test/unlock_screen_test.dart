@@ -42,12 +42,17 @@ Holding _h(String issuer) => Holding(
     );
 
 class _FakeBio implements BiometricAuthenticator {
+  _FakeBio({this.supported = false});
+  final bool supported;
+  final Uint8List secret = Uint8List.fromList(List.filled(32, 7));
   @override
-  Future<bool> isSupported() async => false;
+  Future<bool> isSupported() async => supported;
   @override
-  Future<BiometricEnrollment?> enroll() async => null;
+  Future<BiometricEnrollment?> enroll() async =>
+      supported ? BiometricEnrollment('cred', secret) : null;
   @override
-  Future<Uint8List?> authenticate(String credentialId) async => null;
+  Future<Uint8List?> authenticate(String credentialId) async =>
+      supported ? secret : null;
 }
 
 Future<(PortfolioStore, String)> _lockedStore() async {
@@ -56,6 +61,17 @@ Future<(PortfolioStore, String)> _lockedStore() async {
   final code = await s.enableEncryption('orig');
   await s.lock();
   return (s, code);
+}
+
+/// A locked store with biometric enrolled (a supported fake authenticator).
+Future<PortfolioStore> _bioLockedStore() async {
+  final s = PortfolioStore(
+      vault: Vault(kdfIterations: 1000), biometric: _FakeBio(supported: true))
+    ..debugSeed([_h('AAA')], _market);
+  await s.enableEncryption('orig');
+  await s.enableBiometric();
+  await s.lock();
+  return s;
 }
 
 Widget _wrap(PortfolioStore s) => ChangeNotifierProvider.value(
@@ -92,6 +108,17 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Unlock'));
     await tester.pumpAndSettle();
     expect(s.vaultState, VaultState.unlocked);
+  });
+
+  testWidgets('biometric unlock via the Touch ID button', (tester) async {
+    final s = await _bioLockedStore();
+    expect(s.biometricEnabled, isTrue);
+    expect(s.vaultState, VaultState.locked);
+    await tester.pumpWidget(_wrap(s));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Unlock with Touch ID'));
+    await tester.pumpAndSettle();
+    expect(s.vaultState, VaultState.unlocked);
+    expect(s.holdings.single.issuer, 'AAA');
   });
 
   testWidgets('recovery sets a new passphrase inline; old one stops working',

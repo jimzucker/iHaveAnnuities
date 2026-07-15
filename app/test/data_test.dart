@@ -15,7 +15,9 @@ import 'package:ihaveannuities/core/payoff.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
-import 'package:ihaveannuities/ui/portfolio_table.dart' show BandAggregates;
+import 'package:ihaveannuities/ui/portfolio_table.dart'
+    show BandAggregates, PortfolioTable;
+import 'package:ihaveannuities/ui/format.dart' show indexLabel;
 
 const _marketJson =
     '{"asOf":"2026-06-12","tradingDay":true,"spx":7431.46,"ndx":29635.95,"rut":2943.99}';
@@ -401,6 +403,17 @@ void main() {
       expect(s2.groupBy, 'Type');
     });
 
+    test('groupValueOf maps every dimension to its display value', () {
+      final h = _sample(); // AIG · ^NDX · IRA · Hard · inception reset
+      expect(PortfolioTable.groupValueOf(h, 'Issuer'), 'AIG');
+      expect(PortfolioTable.groupValueOf(h, 'Type'), h.account.label);
+      expect(PortfolioTable.groupValueOf(h, 'Index'), indexLabel('^NDX'));
+      expect(PortfolioTable.groupValueOf(h, 'Protection'), h.protectionType);
+      expect(PortfolioTable.groupValueOf(h, 'Reset Freq'), h.resetFreq.label);
+      // Unknown / no dimension → empty bucket (ungrouped).
+      expect(PortfolioTable.groupValueOf(h, ''), '');
+    });
+
     test('pivot groups default collapsed; toggle + collapse/expand all', () async {
       final store = PortfolioStore();
       // Summary-first: nothing expanded → every group reads collapsed.
@@ -448,6 +461,12 @@ void main() {
       final heroUnrealized = store.totalProjGain / store.totalInitial;
       expect(agg.returnPct, closeTo(heroReturn, 1e-12));
       expect(agg.unrealizedPct, closeTo(heroUnrealized, 1e-12));
+
+      // Index Gain — principal-weighted average index move.
+      final idxWeighted = store.holdings
+              .fold(0.0, (s, h) => s + h.indexGain * h.initial) /
+          store.totalInitial;
+      expect(agg.indexGain, closeTo(idxWeighted, 1e-12));
 
       // Yield — the grand-total XIRR is the same value the hero headline uses.
       expect(store.xirrFor(store.holdings), store.portfolioXirr);

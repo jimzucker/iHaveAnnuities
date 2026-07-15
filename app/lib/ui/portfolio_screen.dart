@@ -30,6 +30,7 @@ class PortfolioScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
+    final cs = Theme.of(context).colorScheme;
     // The table (and its compact-columns toggle) only show on wide viewports;
     // phones use the card layout where the toggle has no effect.
     final wide = MediaQuery.of(context).size.width >= 720;
@@ -51,57 +52,91 @@ class PortfolioScreen extends StatelessWidget {
                 : const Icon(Icons.refresh),
             onPressed: store.refreshing ? null : () => _refresh(context, store),
           ),
+          // Column density — a labeled dropdown that reads its state
+          // ("Columns: All" / "Columns: Compact"). Wide table only.
           if (!store.isEmpty && wide)
-            IconButton(
-              tooltip: store.fullColumns ? 'Compact columns' : 'All columns',
-              icon: Icon(store.fullColumns
-                  ? Icons.view_column
-                  : Icons.view_column_outlined),
-              onPressed: () => store.setFullColumns(!store.fullColumns),
-            ),
-          // Group the table by a dimension (subtotals per group). A filled icon
-          // signals grouping is active; the checked item shows the dimension.
-          if (!store.isEmpty && wide)
-            PopupMenuButton<String>(
-              tooltip: 'Group by',
-              icon: Icon(store.groupBy.isEmpty
-                  ? Icons.workspaces_outline
-                  : Icons.workspaces),
-              onSelected: store.setGroupBy,
-              itemBuilder: (_) => [
-                CheckedPopupMenuItem(
-                  value: '',
-                  checked: store.groupBy.isEmpty,
-                  child: const Text('No grouping'),
-                ),
-                const PopupMenuDivider(),
-                for (final dim in PortfolioStore.groupDimensions)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PopupMenuButton<bool>(
+                tooltip: 'Show all columns or a compact set',
+                onSelected: store.setFullColumns,
+                itemBuilder: (_) => [
                   CheckedPopupMenuItem(
-                    value: dim,
-                    checked: store.groupBy == dim,
-                    child: Text(dim),
+                    value: true,
+                    checked: store.fullColumns,
+                    child: const Text('All columns'),
                   ),
-              ],
+                  CheckedPopupMenuItem(
+                    value: false,
+                    checked: !store.fullColumns,
+                    child: const Text('Compact'),
+                  ),
+                ],
+                child: _BarButton(
+                  icon: Icons.view_column,
+                  label: store.fullColumns ? 'Columns: All' : 'Columns: Compact',
+                  dropdown: true,
+                ),
+              ),
             ),
-          // Fold every group down to its subtotal band (pivot summary), or
-          // expand them all back open. Groups start collapsed, so this defaults
-          // to Expand-all. Only meaningful while grouping is on.
+          // Group the table by a column. A labeled dropdown (not a bare icon) so
+          // it reads its own state — "Group: Off" / "Group: Type" — at a glance.
+          if (!store.isEmpty && wide)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PopupMenuButton<String>(
+                tooltip: 'Group the table by a column',
+                onSelected: store.setGroupBy,
+                itemBuilder: (_) => [
+                  CheckedPopupMenuItem(
+                    value: '',
+                    checked: store.groupBy.isEmpty,
+                    child: const Text('No grouping'),
+                  ),
+                  const PopupMenuDivider(),
+                  for (final dim in PortfolioStore.groupDimensions)
+                    CheckedPopupMenuItem(
+                      value: dim,
+                      checked: store.groupBy == dim,
+                      child: Text(dim),
+                    ),
+                ],
+                child: _BarButton(
+                  icon: Icons.segment,
+                  label: store.groupBy.isEmpty
+                      ? 'Group: Off'
+                      : 'Group: ${store.groupBy}',
+                  active: store.groupBy.isNotEmpty,
+                  dropdown: true,
+                ),
+              ),
+            ),
+          // Fold every group to its subtotal band (pivot summary) or expand them
+          // all. Groups start collapsed, so this defaults to Expand all. A
+          // labeled button, only while grouping is on.
           if (!store.isEmpty && wide && store.groupBy.isNotEmpty)
-            IconButton(
-              tooltip: store.allGroupsCollapsed ? 'Expand all' : 'Collapse all',
-              icon: Icon(store.allGroupsCollapsed
-                  ? Icons.unfold_more
-                  : Icons.unfold_less),
-              onPressed: () {
-                if (store.allGroupsCollapsed) {
-                  store.expandAllGroups({
-                    for (final h in store.holdings)
-                      PortfolioTable.groupValueOf(h, store.groupBy)
-                  });
-                } else {
-                  store.collapseAllGroups();
-                }
-              },
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: cs.onSurface),
+                icon: Icon(
+                    store.allGroupsCollapsed
+                        ? Icons.unfold_more
+                        : Icons.unfold_less,
+                    size: 18),
+                label: Text(
+                    store.allGroupsCollapsed ? 'Expand all' : 'Collapse all'),
+                onPressed: () {
+                  if (store.allGroupsCollapsed) {
+                    store.expandAllGroups({
+                      for (final h in store.holdings)
+                        PortfolioTable.groupValueOf(h, store.groupBy)
+                    });
+                  } else {
+                    store.collapseAllGroups();
+                  }
+                },
+              ),
             ),
           // Only shown when encrypted — a closed lock that locks the app now.
           // (Encryption setup lives in the overflow "Security" menu.)
@@ -317,6 +352,44 @@ class PortfolioScreen extends StatelessWidget {
         fileExtension: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
+}
+
+/// A labeled, bordered app-bar control — an icon + text (+ optional dropdown
+/// caret) so it reads its purpose and state without relying on a hover tooltip.
+/// Highlights (primary tint) when [active].
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.icon,
+    required this.label,
+    this.active = false,
+    this.dropdown = false,
+  });
+  final IconData icon;
+  final String label;
+  final bool active;
+  final bool dropdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = active ? cs.primary : cs.onSurface;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 7, 6, 7),
+      decoration: BoxDecoration(
+        color: active ? cs.primary.withValues(alpha: 0.10) : null,
+        border: Border.all(color: fg.withValues(alpha: 0.40)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 16, color: fg),
+        const SizedBox(width: 6),
+        Text(label,
+            style: TextStyle(
+                color: fg, fontWeight: FontWeight.w600, fontSize: 13)),
+        if (dropdown) Icon(Icons.arrow_drop_down, size: 18, color: fg),
+      ]),
+    );
+  }
 }
 
 class _PricesHeader extends StatelessWidget {
