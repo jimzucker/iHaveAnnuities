@@ -30,9 +30,11 @@ class PortfolioScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PortfolioStore>();
-    // The table (and its compact-columns toggle) only show on wide viewports;
-    // phones use the card layout where the toggle has no effect.
+    final cs = Theme.of(context).colorScheme;
+    // The table and its view controls only show on wide viewports; phones use
+    // the card layout where they have no effect.
     final wide = MediaQuery.of(context).size.width >= 720;
+    final grouping = store.groupBy.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
         leading: const Padding(
@@ -51,58 +53,88 @@ class PortfolioScreen extends StatelessWidget {
                 : const Icon(Icons.refresh),
             onPressed: store.refreshing ? null : () => _refresh(context, store),
           ),
-          if (!store.isEmpty && wide)
-            IconButton(
-              tooltip: store.fullColumns ? 'Compact columns' : 'All columns',
-              icon: Icon(store.fullColumns
-                  ? Icons.view_column
-                  : Icons.view_column_outlined),
-              onPressed: () => store.setFullColumns(!store.fullColumns),
-            ),
-          // Group the table by a dimension (subtotals per group). A filled icon
-          // signals grouping is active; the checked item shows the dimension.
-          if (!store.isEmpty && wide)
-            PopupMenuButton<String>(
-              tooltip: 'Group by',
-              icon: Icon(store.groupBy.isEmpty
-                  ? Icons.workspaces_outline
-                  : Icons.workspaces),
-              onSelected: store.setGroupBy,
-              itemBuilder: (_) => [
-                CheckedPopupMenuItem(
-                  value: '',
-                  checked: store.groupBy.isEmpty,
-                  child: const Text('No grouping'),
-                ),
-                const PopupMenuDivider(),
-                for (final dim in PortfolioStore.groupDimensions)
+          // View controls stay put (fixed widths) and never appear/disappear —
+          // the Collapse button greys out when nothing is grouped rather than
+          // hiding, so the app bar doesn't shift as state changes.
+          if (!store.isEmpty && wide) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PopupMenuButton<bool>(
+                tooltip: 'Show all columns or a compact set',
+                onSelected: store.setFullColumns,
+                itemBuilder: (_) => [
                   CheckedPopupMenuItem(
-                    value: dim,
-                    checked: store.groupBy == dim,
-                    child: Text(dim),
-                  ),
-              ],
+                      value: true,
+                      checked: store.fullColumns,
+                      child: const Text('All columns')),
+                  CheckedPopupMenuItem(
+                      value: false,
+                      checked: !store.fullColumns,
+                      child: const Text('Compact')),
+                ],
+                child: _BarButton(
+                  icon: Icons.view_column,
+                  width: 168,
+                  label:
+                      store.fullColumns ? 'Columns: All' : 'Columns: Compact',
+                  dropdown: true,
+                ),
+              ),
             ),
-          // Fold every group down to its subtotal band (pivot summary), or
-          // expand them all back open. Groups start collapsed, so this defaults
-          // to Expand-all. Only meaningful while grouping is on.
-          if (!store.isEmpty && wide && store.groupBy.isNotEmpty)
-            IconButton(
-              tooltip: store.allGroupsCollapsed ? 'Expand all' : 'Collapse all',
-              icon: Icon(store.allGroupsCollapsed
-                  ? Icons.unfold_more
-                  : Icons.unfold_less),
-              onPressed: () {
-                if (store.allGroupsCollapsed) {
-                  store.expandAllGroups({
-                    for (final h in store.holdings)
-                      PortfolioTable.groupValueOf(h, store.groupBy)
-                  });
-                } else {
-                  store.collapseAllGroups();
-                }
-              },
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PopupMenuButton<String>(
+                tooltip: 'Group the table by a column',
+                onSelected: store.setGroupBy,
+                itemBuilder: (_) => [
+                  CheckedPopupMenuItem(
+                      value: '',
+                      checked: store.groupBy.isEmpty,
+                      child: const Text('No grouping')),
+                  const PopupMenuDivider(),
+                  for (final dim in PortfolioStore.groupDimensions)
+                    CheckedPopupMenuItem(
+                        value: dim,
+                        checked: store.groupBy == dim,
+                        child: Text(dim)),
+                ],
+                child: _BarButton(
+                  icon: Icons.segment,
+                  width: 200,
+                  label: grouping ? 'Group: ${store.groupBy}' : 'Group: Off',
+                  active: grouping,
+                  dropdown: true,
+                ),
+              ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, right: 8),
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: cs.onSurface),
+                icon: Icon(
+                    store.allGroupsCollapsed
+                        ? Icons.unfold_more
+                        : Icons.unfold_less,
+                    size: 18),
+                label: Text(
+                    store.allGroupsCollapsed ? 'Expand all' : 'Collapse all'),
+                // Disabled (greyed) until grouping is on — not hidden — so the
+                // bar layout stays fixed.
+                onPressed: !grouping
+                    ? null
+                    : () {
+                        if (store.allGroupsCollapsed) {
+                          store.expandAllGroups({
+                            for (final h in store.holdings)
+                              PortfolioTable.groupValueOf(h, store.groupBy)
+                          });
+                        } else {
+                          store.collapseAllGroups();
+                        }
+                      },
+              ),
+            ),
+          ],
           // Only shown when encrypted — a closed lock that locks the app now.
           // (Encryption setup lives in the overflow "Security" menu.)
           if (store.encryptionEnabled)
@@ -113,8 +145,11 @@ class PortfolioScreen extends StatelessWidget {
             ),
           PopupMenuButton<String>(
             onSelected: (v) => _menu(context, store, v),
-            // Grouped: Data · Security · Maintenance (destructive last) · Help.
+            // Help first (most-reached, safe) · Data · Security · destructive last.
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
+              const PopupMenuItem(value: 'guide', child: Text('User Guide')),
+              const PopupMenuDivider(),
               const PopupMenuItem(value: 'import', child: Text('Import .xlsx…')),
               const PopupMenuItem(value: 'export', child: Text('Export .xlsx')),
               const PopupMenuItem(value: 'template', child: Text('Download template')),
@@ -128,12 +163,9 @@ class PortfolioScreen extends StatelessWidget {
               const PopupMenuItem(value: 'security', child: Text('Security')),
               if (store.encryptionEnabled)
                 const PopupMenuItem(value: 'lock', child: Text('Lock now')),
-              const PopupMenuDivider(),
               const PopupMenuItem(value: 'resets', child: Text('Reset history')),
-              const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: 'guide', child: Text('User Guide')),
-              const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
+              const PopupMenuItem(value: 'clear', child: Text('Clear all data')),
             ],
           ),
         ],
@@ -317,6 +349,49 @@ class PortfolioScreen extends StatelessWidget {
         fileExtension: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
+}
+
+/// A labeled, bordered control — an icon + text (+ optional dropdown caret) so
+/// it reads its purpose and state without relying on a hover tooltip. Highlights
+/// (primary tint) when [active]. A fixed [width] keeps neighbours from shifting
+/// when the label text changes length.
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.icon,
+    required this.label,
+    this.active = false,
+    this.dropdown = false,
+    this.width,
+  });
+  final IconData icon;
+  final String label;
+  final bool active;
+  final bool dropdown;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = active ? cs.primary : cs.onSurface;
+    final text = Text(label,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 13));
+    return Container(
+      width: width,
+      padding: const EdgeInsets.fromLTRB(10, 7, 6, 7),
+      decoration: BoxDecoration(
+        color: active ? cs.primary.withValues(alpha: 0.10) : null,
+        border: Border.all(color: fg.withValues(alpha: 0.40)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(mainAxisSize: width == null ? MainAxisSize.min : MainAxisSize.max, children: [
+        Icon(icon, size: 16, color: fg),
+        const SizedBox(width: 6),
+        width == null ? text : Expanded(child: text),
+        if (dropdown) Icon(Icons.arrow_drop_down, size: 18, color: fg),
+      ]),
+    );
+  }
 }
 
 class _PricesHeader extends StatelessWidget {

@@ -50,6 +50,31 @@ class GuideScreen extends StatelessWidget {
             child: _Glossary(entries: _columns),
           ),
           _Card(
+            icon: Icons.segment,
+            title: 'Grouping & totals',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _para(theme,
+                    'Use Group (in the top bar) to slice the table by Issuer, '
+                    'Type, Index, Protection, or Reset. Each group becomes a '
+                    'header band, and the grand TOTAL sits at the bottom.'),
+                const SizedBox(height: 8),
+                _para(theme,
+                    'A band sums the dollar columns (Initial · Realized · '
+                    'Unrealized \$ · Total Value) and shows weighted ratios — '
+                    'Return % and Unrealized % over principal (so they tie to the '
+                    'hero), a principal-weighted Index Gain, and a money-weighted '
+                    'Yield (XIRR) for that group.'),
+                const SizedBox(height: 8),
+                _para(theme,
+                    'Groups start collapsed to their summary line. Click a band '
+                    'to expand it, or use Expand all / Collapse all. Columns '
+                    'switches between the full and a compact column set.'),
+              ],
+            ),
+          ),
+          _Card(
             icon: Icons.trending_up,
             title: 'Yield vs. portfolio XIRR',
             child: Column(
@@ -62,10 +87,11 @@ class GuideScreen extends StatelessWidget {
                     'overstates.'),
                 const SizedBox(height: 8),
                 _para(theme,
-                    'The hero\'s Total Value shows a money-weighted XIRR for the whole '
-                    'book — each holding\'s principal as an outflow at its own start '
-                    'date, today\'s value as the inflow — so contracts opened on '
-                    'different dates combine correctly.'),
+                    'On the group and TOTAL bands the Yield column switches to a '
+                    'money-weighted XIRR — each holding\'s principal as an outflow '
+                    'at its own start date, today\'s value as the inflow — so '
+                    'contracts opened on different dates combine correctly. The '
+                    'grand-total XIRR matches the hero\'s Total Value figure.'),
               ],
             ),
           ),

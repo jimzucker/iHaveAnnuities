@@ -506,7 +506,10 @@ void main() {
     expect(store.fullColumns, isTrue);
     expect(find.text('Strike'), findsOneWidget); // shown in full view
 
-    await tester.tap(find.byTooltip('Compact columns'));
+    // Columns is a labeled dropdown in the app bar (state: "Columns: All").
+    await tester.tap(find.text('Columns: All'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Compact')); // the compact menu item
     await tester.pumpAndSettle();
     expect(store.fullColumns, isFalse);
     expect(find.text('Strike'), findsNothing);   // hidden in compact view
@@ -850,17 +853,47 @@ void main() {
     final groupHeader = find.byWidgetPredicate((w) =>
         w is Text && w.data != null && RegExp(r'\(\d+\)$').hasMatch(w.data!));
 
-    // Ungrouped: no group headers; the group-by control shows the inactive icon.
+    // Ungrouped: no group headers; the labeled control reads "Group: Off".
     expect(groupHeader, findsNothing);
-    expect(find.byIcon(Icons.workspaces_outline), findsOneWidget);
+    expect(find.text('Group: Off'), findsOneWidget);
 
     await store.setGroupBy('Type'); // group by account
     await tester.pumpAndSettle();
 
-    // A header band per account group, the active icon, and the grand total kept.
+    // Header band per group, the control now shows the dimension, total kept.
     expect(groupHeader, findsWidgets);
-    expect(find.byIcon(Icons.workspaces), findsOneWidget);
+    expect(find.text('Group: Type'), findsOneWidget);
     expect(find.text('TOTAL'), findsOneWidget);
+  });
+
+  testWidgets('group-by dropdown selects a dimension and clears via the UI',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final holdings =
+        parseTracker(File('../data/example-portfolio.xlsx').readAsBytesSync());
+    final store = PortfolioStore()..debugSeed(holdings, _market);
+    await store.setHideSummary(true);
+    await tester.pumpWidget(_wrap(store));
+
+    expect(store.groupBy, isEmpty);
+    // Open the labeled Group dropdown and pick a dimension. ('Type' is also a
+    // column header, so the menu item is the later one in the tree → .last.)
+    await tester.tap(find.text('Group: Off'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Type').last);
+    await tester.pumpAndSettle();
+    expect(store.groupBy, 'Type');
+    expect(find.text('Group: Type'), findsOneWidget);
+
+    // Re-open and choose "No grouping" to clear it.
+    await tester.tap(find.text('Group: Type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('No grouping'));
+    await tester.pumpAndSettle();
+    expect(store.groupBy, isEmpty);
+    expect(find.text('Group: Off'), findsOneWidget);
   });
 
   testWidgets('collapse-all folds groups to bands; expand-all restores rows',
@@ -883,12 +916,12 @@ void main() {
     expect(find.text('TOTAL'), findsOneWidget); // grand total always shown
 
     // Expand all → member rows appear.
-    await tester.tap(find.byTooltip('Expand all'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Expand all'));
     await tester.pumpAndSettle();
     expect(find.text('HSBC'), findsWidgets);
 
     // Collapse all → back to summary bands only.
-    await tester.tap(find.byTooltip('Collapse all'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Collapse all'));
     await tester.pumpAndSettle();
     expect(find.text('HSBC'), findsNothing);
     expect(groupHeader, findsWidgets);
