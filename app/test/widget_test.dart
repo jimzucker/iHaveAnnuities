@@ -916,12 +916,12 @@ void main() {
     expect(find.text('TOTAL'), findsOneWidget); // grand total always shown
 
     // Expand all → member rows appear.
-    await tester.tap(find.widgetWithText(TextButton, 'Expand all'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Expand all'));
     await tester.pumpAndSettle();
     expect(find.text('HSBC'), findsWidgets);
 
     // Collapse all → back to summary bands only.
-    await tester.tap(find.widgetWithText(TextButton, 'Collapse all'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Collapse all'));
     await tester.pumpAndSettle();
     expect(find.text('HSBC'), findsNothing);
     expect(groupHeader, findsWidgets);
