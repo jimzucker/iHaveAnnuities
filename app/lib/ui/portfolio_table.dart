@@ -379,6 +379,16 @@ class PortfolioTable extends StatelessWidget {
         _ => ColumnSize.M,
       };
 
+  /// Column labels in table order (sort indices index into this list).
+  static List<String> columnLabels(ColorScheme cs) =>
+      _columns(cs).map((c) => c.label).toList();
+
+  /// Sort-column index for a group dimension — the dimension labels match their
+  /// column labels 1:1 (Issuer/Type/Index/Protection/Reset Freq), so grouping
+  /// can sort the table by the grouped column. Returns -1 if there's no match.
+  static int columnIndexForDimension(String dim, ColorScheme cs) =>
+      columnLabels(cs).indexOf(dim);
+
   /// The value a holding falls under for the active group-by dimension.
   static String groupValueOf(Holding h, String dim) => switch (dim) {
         'Issuer' => h.issuer,
