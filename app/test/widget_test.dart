@@ -25,6 +25,7 @@ import 'package:ihaveannuities/ui/index_chart_screen.dart';
 import 'package:ihaveannuities/ui/index_period_chart.dart';
 import 'package:ihaveannuities/ui/info_page.dart';
 import 'package:ihaveannuities/ui/portfolio_screen.dart';
+import 'package:ihaveannuities/ui/portfolio_table.dart';
 import 'package:ihaveannuities/ui/reset_history_screen.dart';
 
 final _market = Market(
@@ -886,14 +887,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.groupBy, 'Type');
     expect(find.text('Group: Type'), findsOneWidget);
+    // Grouping sorts the table by that column (ascending).
+    final typeIdx = PortfolioTable.columnIndexForDimension(
+        'Type', ColorScheme.fromSeed(seedColor: Colors.blue));
+    expect(store.sortColumn, typeIdx);
+    expect(store.sortAscending, isTrue);
 
-    // Re-open and choose "No grouping" to clear it.
+    // Re-open and choose "No grouping" to clear it — the sort must NOT change.
+    final sortBefore = store.sortColumn;
     await tester.tap(find.text('Group: Type'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('No grouping'));
     await tester.pumpAndSettle();
     expect(store.groupBy, isEmpty);
     expect(find.text('Group: Off'), findsOneWidget);
+    expect(store.sortColumn, sortBefore); // ungrouping leaves the sort alone
   });
 
   testWidgets('collapse-all folds groups to bands; expand-all restores rows',

@@ -85,7 +85,16 @@ class PortfolioScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: PopupMenuButton<String>(
                 tooltip: 'Group the table by a column',
-                onSelected: store.setGroupBy,
+                onSelected: (dim) {
+                  store.setGroupBy(dim);
+                  // Grouping sorts the table by that column (so groups order
+                  // naturally); ungrouping leaves the current sort untouched.
+                  if (dim.isNotEmpty) {
+                    final idx =
+                        PortfolioTable.columnIndexForDimension(dim, cs);
+                    if (idx >= 0) store.setSort(idx, true);
+                  }
+                },
                 itemBuilder: (_) => [
                   CheckedPopupMenuItem(
                       value: '',
