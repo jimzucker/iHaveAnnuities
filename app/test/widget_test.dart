@@ -44,6 +44,27 @@ Widget _wrap(PortfolioStore store) => ChangeNotifierProvider.value(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  group('reportFileName', () {
+    final d = DateTime(2026, 7, 8); // → 07082026
+    test('uses the title, sanitizes invalid chars, keeps up to 20', () {
+      expect(reportFileName('The Zucker Family', d), 'The_Zucker_Family_07082026');
+      expect(reportFileName('Jim/Zucker*2026', d), 'Jim_Zucker_2026_07082026');
+    });
+    test('defaults to iHaveAnnuities when blank/null', () {
+      expect(reportFileName('', d), 'iHaveAnnuities_07082026');
+      expect(reportFileName(null, d), 'iHaveAnnuities_07082026');
+      expect(reportFileName('   ', d), 'iHaveAnnuities_07082026');
+    });
+    test('all-invalid title falls back to the default', () {
+      expect(reportFileName('///', d), 'iHaveAnnuities_07082026');
+    });
+    test('caps at 20 chars with no trailing underscore', () {
+      // 21 chars "abcdefghijklmnopqrs_t" → clip 20 = "...s_" → trailing _ stripped.
+      expect(reportFileName('abcdefghijklmnopqrs t', d),
+          'abcdefghijklmnopqrs_07082026');
+    });
+  });
+
   testWidgets('prices header shows indices and updated date', (tester) async {
     final store = PortfolioStore()..debugSeed([], _market);
     await tester.pumpWidget(_wrap(store));

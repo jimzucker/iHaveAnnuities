@@ -42,8 +42,10 @@ class InfoPage extends StatelessWidget {
                     'Enter the terms of each contract — index, cap, participation '
                     'rate, floor, strike, and dates — and the app projects where '
                     'each one stands today and at its next reset using current '
-                    'index levels. You can import or export your holdings as an '
-                    '.xlsx spreadsheet that opens in Excel.'),
+                    'index levels. Import or export your holdings as a raw .xlsx '
+                    'data file (re-importable), or export a polished .xlsx report '
+                    '— a branded summary and a holdings table that mirrors your '
+                    'on-screen grouping and sort — to share with others.'),
               ]),
 
               _Section(title: 'How the downside protection works', children: [

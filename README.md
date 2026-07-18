@@ -12,10 +12,15 @@ types (the tracker's *Floor Type* column):
 
 **▶ Live app: https://jimzucker.github.io/iHaveAnnuities/** — a Flutter web app
 (source in [`app/`](app/)). Load the sample portfolio, or import/export your own
-tracker `.xlsx` (exports download as `export_ihaveannuities_YYYYMMDD.xlsx`); index
-prices (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100, Russell 2000) refresh daily at
-5 PM ET on trading days, and a kept‑open tab re‑checks once a day after the close.
-Light/dark, with a responsive card layout on phones.
+tracker `.xlsx` (the raw **data** export re‑imports; download as
+`export_ihaveannuities_YYYYMMDD.xlsx`). You can also export a polished, shareable
+**report** `.xlsx` (`title_MMDDYYYY.xlsx`): a branded summary (total value + XIRR,
+principal/realized/unrealized, protection mix) and a holdings table that mirrors
+your on‑screen **grouping and sort**, with per‑group subtotals, collapsible
+account outlines, and frozen headers — for showing people, not re‑importing.
+Index prices (S&P 500, Dow, Nasdaq Composite, Nasdaq‑100, Russell 2000) refresh
+daily at 5 PM ET on trading days, and a kept‑open tab re‑checks once a day after
+the close. Light/dark, with a responsive card layout on phones.
 
 Per‑contract performance shows a **Yield** (life‑to‑date CAGR) and the portfolio a
 money‑weighted **XIRR**; your data stays in your browser and can be **encrypted at
