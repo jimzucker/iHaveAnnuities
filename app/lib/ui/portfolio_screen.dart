@@ -158,9 +158,11 @@ class PortfolioScreen extends StatelessWidget {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'about', child: Text('About & disclosures')),
               const PopupMenuItem(value: 'guide', child: Text('User Guide')),
+              const PopupMenuItem(
+                  value: 'report', child: Text('Export report (.xlsx)…')),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'import', child: Text('Import .xlsx…')),
-              const PopupMenuItem(value: 'export', child: Text('Export .xlsx')),
+              const PopupMenuItem(value: 'export', child: Text('Export .xlsx (data)')),
               const PopupMenuItem(value: 'template', child: Text('Download template')),
               PopupMenuItem(
                 value: 'sample',
@@ -299,6 +301,17 @@ class PortfolioScreen extends StatelessWidget {
         if (!await requireReauth(context, store)) return;
         await _save('${exportFileName()}.xlsx', Uint8List.fromList(store.exportXlsx()));
         messenger.showSnackBar(const SnackBar(content: Text('Exported .xlsx')));
+      case 'report':
+        // The report exposes holdings just like export → re-verify when encrypted.
+        if (!await requireReauth(context, store)) return;
+        if (!context.mounted) return;
+        final who = await _askPreparedFor(context);
+        if (who == null) return; // cancelled
+        await _save(
+            'iHaveAnnuities-Report',
+            Uint8List.fromList(store.exportReportXlsx(
+                preparedFor: who.trim().isEmpty ? null : who.trim())));
+        messenger.showSnackBar(const SnackBar(content: Text('Report exported')));
       case 'template':
         final data = await rootBundle.load('assets/template.xlsx');
         await _save('iHaveAnnuities-template.xlsx', data.buffer.asUint8List());
@@ -358,6 +371,38 @@ class PortfolioScreen extends StatelessWidget {
         fileExtension: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
+
+  /// Prompt for an optional "Prepared for" name on the report header.
+  /// Returns the entered text (may be empty), or null if cancelled.
+  Future<String?> _askPreparedFor(BuildContext context) {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generate report'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Optionally add a name for the report header.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+                labelText: 'Prepared for (optional)',
+                border: OutlineInputBorder()),
+            onSubmitted: (v) => Navigator.pop(ctx, v),
+          ),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('Generate')),
+        ],
+      ),
+    );
+  }
 }
 
 /// A labeled, bordered control — an icon + text (+ optional dropdown caret) so
