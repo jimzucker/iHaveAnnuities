@@ -874,11 +874,21 @@ class PortfolioStore extends ChangeNotifier {
         prices: _market?.bySymbol ?? const {'SPX': 0, 'NDX': 0, 'RUT': 0},
       );
 
-  /// Export a polished, shareable report `.xlsx` (not re-importable).
-  List<int> exportReportXlsx({String? preparedFor}) => writeReport(
-        _holdings,
+  /// Export a polished, shareable report `.xlsx` (not re-importable). The caller
+  /// passes [ordered] holdings (the table's current sort) and the active
+  /// [groupBy] / [groupValueOf] so the report mirrors the on-screen view.
+  List<int> exportReportXlsx({
+    String? preparedFor,
+    required List<Holding> ordered,
+    String groupBy = '',
+    String Function(Holding)? groupValueOf,
+  }) =>
+      writeReport(
+        ordered,
         asOf: _market?.asOf ?? DateTime.now(),
         generatedOn: DateTime.now(),
         preparedFor: preparedFor,
+        groupBy: groupBy,
+        groupValueOf: groupValueOf,
       );
 }

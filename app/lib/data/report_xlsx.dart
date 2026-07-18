@@ -90,12 +90,18 @@ double? _xirr(List<Holding> items, DateTime asOf) {
   ]);
 }
 
-/// Build the shareable report workbook.
+/// Build the shareable report workbook. [holdings] must already be in the order
+/// to display (the caller passes the table's current sort). When [groupBy] is
+/// non-empty, holdings are grouped by [groupValueOf] in first-appearance order
+/// (matching the on-screen pivot) with a subtotal band per group; otherwise the
+/// report is a flat sorted list. Either way it ends with a grand total.
 List<int> writeReport(
   List<Holding> holdings, {
   required DateTime asOf,
   required DateTime generatedOn,
   String? preparedFor,
+  String groupBy = '',
+  String Function(Holding)? groupValueOf,
 }) {
   final excel = Excel.createExcel();
   const sheetName = 'Portfolio Report';
@@ -249,44 +255,51 @@ List<int> writeReport(
     row++;
   }
 
-  // Deterministic account order; only groups that have holdings. Track band
-  // member rows (outline level 1) for the outline injected after encoding.
+  // Track member rows (outline level 1) for the outline injected after encoding.
   final memberRows = <int>[];
-  final byAccount = <AccountType, List<Holding>>{};
-  for (final h in holdings) {
-    (byAccount[h.account] ??= []).add(h);
-  }
   var dataIdx = 0;
-  for (final acct in AccountType.values) {
-    final items = byAccount[acct];
-    if (items == null || items.isEmpty) continue;
-    // Sort by Type (the group) then Maturity within the group.
-    items.sort((a, b) => a.maturity.compareTo(b.maturity));
-    aggregateRow('${acct.label}  (${items.length})', items, grand: false);
-    for (final h in items) {
-      memberRows.add(row);
-      final fill = dataIdx.isOdd ? _stripe : null;
-      dataIdx++;
-      put(0, row, TextCellValue(h.issuer), style: cellStyle(null, fill: fill));
-      put(1, row, TextCellValue(_friendlyIndex(h.index)), style: cellStyle(null, fill: fill));
-      put(2, row, TextCellValue(_protection(h)), style: cellStyle(null, fill: fill));
-      put(_iCap, row,
-          h.cap == null ? TextCellValue('Uncapped') : DoubleCellValue(h.cap!),
-          style: cellStyle(h.cap == null ? null : _pctF,
-              fill: fill,
-              align: h.cap == null ? HorizontalAlign.Right : null));
-      put(_iPart, row, DoubleCellValue(h.participation), style: cellStyle(_pctF, fill: fill));
-      put(_iPrincipal, row, DoubleCellValue(h.initial * 1000), style: cellStyle(_cur, fill: fill));
-      put(_iRealized, row, DoubleCellValue(h.realized * 1000), style: cellStyle(_cur, fill: fill));
-      put(_iUnrealized, row, DoubleCellValue(h.projGainDollarsK * 1000), style: cellStyle(_cur, fill: fill));
-      put(_iProjValue, row, DoubleCellValue(h.projValueK * 1000), style: cellStyle(_cur, fill: fill));
-      put(_iIndexGain, row, DoubleCellValue(h.indexGain), style: cellStyle(_pctF, fill: fill));
-      put(_iReturn, row, DoubleCellValue(h.totalReturnPct), style: cellStyle(_pctF, fill: fill));
-      put(_iYield, row, DoubleCellValue(h.lifeToDateYield(asOf)), style: cellStyle(_pctF, fill: fill));
-      put(_iStrike, row, DoubleCellValue(h.strike), style: cellStyle(_numF, fill: fill));
-      put(_iMaturity, row, _date(h.maturity), style: cellStyle(_dateF, fill: fill));
-      put(_iReset, row, _date(h.nextReset), style: cellStyle(_dateF, fill: fill));
-      row++;
+  void member(Holding h) {
+    final fill = dataIdx.isOdd ? _stripe : null;
+    dataIdx++;
+    put(0, row, TextCellValue(h.issuer), style: cellStyle(null, fill: fill));
+    put(1, row, TextCellValue(_friendlyIndex(h.index)), style: cellStyle(null, fill: fill));
+    put(2, row, TextCellValue(_protection(h)), style: cellStyle(null, fill: fill));
+    put(_iCap, row,
+        h.cap == null ? TextCellValue('Uncapped') : DoubleCellValue(h.cap!),
+        style: cellStyle(h.cap == null ? null : _pctF,
+            fill: fill, align: h.cap == null ? HorizontalAlign.Right : null));
+    put(_iPart, row, DoubleCellValue(h.participation), style: cellStyle(_pctF, fill: fill));
+    put(_iPrincipal, row, DoubleCellValue(h.initial * 1000), style: cellStyle(_cur, fill: fill));
+    put(_iRealized, row, DoubleCellValue(h.realized * 1000), style: cellStyle(_cur, fill: fill));
+    put(_iUnrealized, row, DoubleCellValue(h.projGainDollarsK * 1000), style: cellStyle(_cur, fill: fill));
+    put(_iProjValue, row, DoubleCellValue(h.projValueK * 1000), style: cellStyle(_cur, fill: fill));
+    put(_iIndexGain, row, DoubleCellValue(h.indexGain), style: cellStyle(_pctF, fill: fill));
+    put(_iReturn, row, DoubleCellValue(h.totalReturnPct), style: cellStyle(_pctF, fill: fill));
+    put(_iYield, row, DoubleCellValue(h.lifeToDateYield(asOf)), style: cellStyle(_pctF, fill: fill));
+    put(_iStrike, row, DoubleCellValue(h.strike), style: cellStyle(_numF, fill: fill));
+    put(_iMaturity, row, _date(h.maturity), style: cellStyle(_dateF, fill: fill));
+    put(_iReset, row, _date(h.nextReset), style: cellStyle(_dateF, fill: fill));
+    row++;
+  }
+
+  if (groupBy.isNotEmpty && groupValueOf != null) {
+    // Group by the on-screen dimension, in first-appearance order (holdings are
+    // already in the table's sort order). Each group: band + members.
+    final groups = <String, List<Holding>>{};
+    for (final h in holdings) {
+      (groups[groupValueOf(h)] ??= []).add(h);
+    }
+    groups.forEach((value, items) {
+      aggregateRow('$value  (${items.length})', items, grand: false);
+      for (final h in items) {
+        memberRows.add(row);
+        member(h);
+      }
+    });
+  } else {
+    // Ungrouped: a flat list in the table's sort order (no bands, no outline).
+    for (final h in holdings) {
+      member(h);
     }
   }
   aggregateRow('TOTAL', holdings, grand: true);
@@ -303,15 +316,15 @@ List<int> writeReport(
     mergedLine(line, discStyle, height: 30);
   }
 
-  return _applyRowOutline(excel.encode()!, memberRows);
+  return _applyRowOutline(excel.encode()!, memberRows, headerRow);
 }
 
 /// Post-process the encoded .xlsx (a zip) to add two things the `excel` package
-/// can't emit: a native row outline (account groups collapse/expand via the ±
-/// buttons; outlineLevel 1, summaryBelow=0 → band above, starts expanded) and a
-/// freeze at G13 (columns A–F and rows 1–12 stay put when scrolling). Best-effort:
-/// returns the input unchanged on any hiccup.
-List<int> _applyRowOutline(List<int> bytes, List<int> memberRows0) {
+/// can't emit: a native row outline (groups collapse/expand via the ± buttons;
+/// outlineLevel 1, summaryBelow=0 → band above, starts expanded) and a freeze
+/// that keeps columns A–F and everything through the header row ([headerRow0],
+/// 0-based) on screen while scrolling. Best-effort: input unchanged on any hiccup.
+List<int> _applyRowOutline(List<int> bytes, List<int> memberRows0, int headerRow0) {
   try {
     final members = {for (final r in memberRows0) r + 1}; // xlsx rows are 1-based
     final archive = ZipDecoder().decodeBytes(bytes);
@@ -345,8 +358,10 @@ List<int> _applyRowOutline(List<int> bytes, List<int> memberRows0) {
       }
     }
 
-    // Freeze columns A–F and rows 1–12 (split at G13) so the title/summary and
-    // the identity columns stay visible while scrolling.
+    // Freeze columns A–F and every row through the header (split just below it)
+    // so the title/summary/header and the identity columns stay visible.
+    final frozenRows = headerRow0 + 1; // 1-based count of rows to freeze
+    final topLeft = 'G${headerRow0 + 2}'; // first scrollable cell
     final views = doc.descendantElements
         .where((e) => e.name.local == 'sheetView')
         .cast<XmlElement?>()
@@ -356,8 +371,8 @@ List<int> _applyRowOutline(List<int> bytes, List<int> memberRows0) {
           0,
           XmlElement(XmlName('pane'), [
             XmlAttribute(XmlName('xSplit'), '6'),
-            XmlAttribute(XmlName('ySplit'), '12'),
-            XmlAttribute(XmlName('topLeftCell'), 'G13'),
+            XmlAttribute(XmlName('ySplit'), '$frozenRows'),
+            XmlAttribute(XmlName('topLeftCell'), topLeft),
             XmlAttribute(XmlName('activePane'), 'bottomRight'),
             XmlAttribute(XmlName('state'), 'frozen'),
           ]));

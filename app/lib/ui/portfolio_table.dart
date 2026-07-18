@@ -252,12 +252,7 @@ class PortfolioTable extends StatelessWidget {
 
     // Sort uses the FULL-list column identity so it survives view switches.
     final sortIdxAll = store.sortColumn.clamp(0, all.length - 1);
-    final keyer = all[sortIdxAll].key;
-    final items = [...store.holdings];
-    items.sort((a, b) {
-      final r = keyer(a, asOf).compareTo(keyer(b, asOf));
-      return store.sortAscending ? r : -r;
-    });
+    final items = orderedHoldings(store, asOf, cs);
     // Position of the sorted column within the shown list (null if hidden).
     final shownSortIdx = shown.indexOf(all[sortIdxAll]);
 
@@ -378,6 +373,21 @@ class PortfolioTable extends StatelessWidget {
         'Issuer' => ColumnSize.L,
         _ => ColumnSize.M,
       };
+
+  /// Holdings in the table's current sort order — shared with the report export
+  /// so it mirrors the on-screen sort. (cs only builds the column list; the sort
+  /// keys don't depend on it.)
+  static List<Holding> orderedHoldings(
+      PortfolioStore store, DateTime asOf, ColorScheme cs) {
+    final all = _columns(cs);
+    final keyer = all[store.sortColumn.clamp(0, all.length - 1)].key;
+    final items = [...store.holdings];
+    items.sort((a, b) {
+      final r = keyer(a, asOf).compareTo(keyer(b, asOf));
+      return store.sortAscending ? r : -r;
+    });
+    return items;
+  }
 
   /// Column labels in table order (sort indices index into this list).
   static List<String> columnLabels(ColorScheme cs) =>

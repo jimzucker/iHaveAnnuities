@@ -24,6 +24,20 @@ import 'reauth.dart';
 import 'reset_history_screen.dart';
 import 'security_screen.dart';
 
+/// Build the report download name: `title_mmddyyyy`. [title] defaults to
+/// "iHaveAnnuities" when blank; invalid filename characters collapse to `_` and
+/// the title is capped at 20 chars. (FileSaver appends the `.xlsx` extension.)
+String reportFileName(String? title, DateTime now) {
+  var t = (title ?? '').trim();
+  if (t.isEmpty) t = 'iHaveAnnuities';
+  t = t.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
+  if (t.isEmpty) t = 'iHaveAnnuities';
+  if (t.length > 20) t = t.substring(0, 20);
+  t = t.replaceAll(RegExp(r'_+$'), ''); // no trailing _ left by the 20-char clip
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${t}_${two(now.month)}${two(now.day)}${now.year}';
+}
+
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
 
@@ -303,14 +317,21 @@ class PortfolioScreen extends StatelessWidget {
         messenger.showSnackBar(const SnackBar(content: Text('Exported .xlsx')));
       case 'report':
         // The report exposes holdings just like export → re-verify when encrypted.
+        // Mirror the on-screen view: same sort order and grouping.
+        final asOf = store.market?.asOf ?? DateTime.now();
+        final cs = Theme.of(context).colorScheme;
         if (!await requireReauth(context, store)) return;
         if (!context.mounted) return;
         final who = await _askPreparedFor(context);
         if (who == null) return; // cancelled
+        final groupBy = store.groupBy;
         await _save(
-            'iHaveAnnuities-Report',
+            reportFileName(who, DateTime.now()),
             Uint8List.fromList(store.exportReportXlsx(
-                preparedFor: who.trim().isEmpty ? null : who.trim())));
+                preparedFor: who.trim().isEmpty ? null : who.trim(),
+                ordered: PortfolioTable.orderedHoldings(store, asOf, cs),
+                groupBy: groupBy,
+                groupValueOf: (h) => PortfolioTable.groupValueOf(h, groupBy))));
         messenger.showSnackBar(const SnackBar(content: Text('Report exported')));
       case 'template':
         final data = await rootBundle.load('assets/template.xlsx');
