@@ -148,7 +148,7 @@ void main() {
     await tester.pumpWidget(_wrap(store));
     await tester.tap(find.byTooltip('Show menu'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Export .xlsx'));
+    await tester.tap(find.text('Export .xlsx (data)'));
     await tester.pumpAndSettle();
     expect(find.text('Confirm it\'s you'), findsOneWidget); // gated
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));

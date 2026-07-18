@@ -19,6 +19,7 @@ import 'biometric.dart';
 import 'index_history.dart';
 import 'app_version.dart';
 import 'market.dart';
+import 'report_xlsx.dart';
 import 'tracker_xlsx.dart';
 import 'vault.dart';
 import 'xirr.dart';
@@ -871,5 +872,13 @@ class PortfolioStore extends ChangeNotifier {
         _holdings,
         asOf: _market?.asOf ?? DateTime.now(),
         prices: _market?.bySymbol ?? const {'SPX': 0, 'NDX': 0, 'RUT': 0},
+      );
+
+  /// Export a polished, shareable report `.xlsx` (not re-importable).
+  List<int> exportReportXlsx({String? preparedFor}) => writeReport(
+        _holdings,
+        asOf: _market?.asOf ?? DateTime.now(),
+        generatedOn: DateTime.now(),
+        preparedFor: preparedFor,
       );
 }
