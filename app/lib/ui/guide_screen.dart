@@ -68,6 +68,12 @@ class GuideScreen extends StatelessWidget {
                     'Yield (XIRR) for that group.'),
                 const SizedBox(height: 8),
                 _para(theme,
+                    'Sort a column and the groups re-order by that column\'s '
+                    'subtotal — sort by Unrealized \$ and the groups with the '
+                    'biggest totals rise to the top (not just the one holding that '
+                    'happens to rank highest).'),
+                const SizedBox(height: 8),
+                _para(theme,
                     'Groups start collapsed to their summary line. Click a band '
                     'to expand it, or use Expand all / Collapse all. Columns '
                     'switches between the full and a compact column set.'),

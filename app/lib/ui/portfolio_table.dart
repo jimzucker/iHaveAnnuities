@@ -377,16 +377,67 @@ class PortfolioTable extends StatelessWidget {
   /// Holdings in the table's current sort order — shared with the report export
   /// so it mirrors the on-screen sort. (cs only builds the column list; the sort
   /// keys don't depend on it.)
+  ///
+  /// When a group-by is active, the list is emitted group-contiguous with the
+  /// GROUPS ordered by their subtotal for the active sort column (members keep
+  /// the sort order within each group). This way the group bands sort by their
+  /// total — e.g. sorting by Unrealized \$ orders issuers by their Unrealized \$
+  /// subtotal, not by whichever single holding happens to rank highest. Both the
+  /// table body and the report writer bucket this list by first appearance, so
+  /// both land on the same band order.
   static List<Holding> orderedHoldings(
       PortfolioStore store, DateTime asOf, ColorScheme cs) {
     final all = _columns(cs);
-    final keyer = all[store.sortColumn.clamp(0, all.length - 1)].key;
+    final sortIdx = store.sortColumn.clamp(0, all.length - 1);
+    final keyer = all[sortIdx].key;
     final items = [...store.holdings];
     items.sort((a, b) {
       final r = keyer(a, asOf).compareTo(keyer(b, asOf));
       return store.sortAscending ? r : -r;
     });
-    return items;
+    if (store.groupBy.isEmpty) return items;
+
+    // Grouping is active: keep members in sort order but reorder the GROUPS by
+    // their subtotal for the sort column (falling back to first-appearance for
+    // columns with no group aggregate — dates/terms).
+    final sortLabel = all[sortIdx].label;
+    final entries = _grouped(items, store.groupBy).entries.toList();
+    final aggOf = {
+      for (final e in entries) e.key: _groupAggregate(sortLabel, e.value, store)
+    };
+    if (aggOf.values.any((v) => v != null)) {
+      final firstSeen = {for (final (i, e) in entries.indexed) e.key: i};
+      int seen(String a, String b) => firstSeen[a]!.compareTo(firstSeen[b]!);
+      entries.sort((a, b) {
+        final va = aggOf[a.key], vb = aggOf[b.key];
+        if (va == null && vb == null) return seen(a.key, b.key);
+        if (va == null) return 1; // undefined subtotal sinks to the bottom
+        if (vb == null) return -1;
+        final r = store.sortAscending ? va.compareTo(vb) : -va.compareTo(vb);
+        return r != 0 ? r : seen(a.key, b.key);
+      });
+    }
+    return [for (final e in entries) ...e.value];
+  }
+
+  /// The group-band subtotal used to ORDER groups for the active sort column —
+  /// the same figure the band renders (see [BandAggregates]), so groups sort by
+  /// what the user sees. Null for columns with no band aggregate (identity,
+  /// dates, static terms), which fall back to first-appearance order.
+  static double? _groupAggregate(
+      String sortLabel, List<Holding> members, PortfolioStore store) {
+    final agg = BandAggregates.of(members);
+    return switch (sortLabel) {
+      'Initial' => agg.initial,
+      'Realized' => agg.realized,
+      'Unrealized \$' => agg.unrealizedDollars,
+      'Total Value' => agg.projValue,
+      'Return %' => agg.returnPct,
+      'Unrealized %' => agg.unrealizedPct,
+      'Index Gain' => agg.indexGain,
+      'Yield' => store.xirrFor(members),
+      _ => null,
+    };
   }
 
   /// Column labels in table order (sort indices index into this list).
