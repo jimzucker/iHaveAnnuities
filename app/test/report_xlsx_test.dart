@@ -201,5 +201,33 @@ void main() {
       expect(_allText(bytes), contains('TOTAL'));
       expect(_worksheetXml(bytes), isNot(contains('outlineLevel="1"')));
     });
+
+    // Regression: grouped + sorted by a money column must order the GROUPS by
+    // their subtotal (not by whichever single holding ranks highest). Group by
+    // Issuer, sort by Unrealized $ desc → issuer bands descend by their
+    // Unrealized $ subtotal.
+    test('groups order by their subtotal, not their top holding', () async {
+      final store = seeded();
+      await store.setGroupBy('Issuer');
+      final unrealCol = PortfolioTable.columnLabels(cs).indexOf('Unrealized \$');
+      await store.setSort(unrealCol, false); // descending
+      final ordered = PortfolioTable.orderedHoldings(store, market.asOf, cs);
+
+      // Group appearance order in the ordered list = the band order.
+      final bandOrder = <String>[];
+      final subtotal = <String, double>{};
+      for (final h in ordered) {
+        final v = PortfolioTable.groupValueOf(h, 'Issuer');
+        if (!subtotal.containsKey(v)) bandOrder.add(v);
+        subtotal[v] = (subtotal[v] ?? 0) + h.projGainDollarsK;
+      }
+
+      // Bands are in non-increasing subtotal order.
+      for (var i = 1; i < bandOrder.length; i++) {
+        expect(subtotal[bandOrder[i - 1]]! >= subtotal[bandOrder[i]]! - 1e-9, isTrue,
+            reason: 'band "${bandOrder[i - 1]}" (${subtotal[bandOrder[i - 1]]}) '
+                'should not sit above "${bandOrder[i]}" (${subtotal[bandOrder[i]]})');
+      }
+    });
   });
 }
