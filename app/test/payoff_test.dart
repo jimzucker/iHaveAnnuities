@@ -27,6 +27,34 @@ void main() {
     });
   });
 
+  group('creditedGain — participation edges', () {
+    test('zero participation zeroes the credited gain (min(cap, 0))', () {
+      expect(creditedGain(0.30, cap: 0.10, participation: 0), 0.0);
+    });
+  });
+
+  group('payoffReturn — participation ignored on the downside', () {
+    // participation only scales the upside; a loss is never amplified by it.
+    test('hard buffer: -22% move, -15% buffer -> -7% (participation ignored)', () {
+      expect(
+          payoffReturn(-0.22,
+              participation: 1.05, floor: -0.15, floorType: FloorType.hard),
+          closeTo(-0.07, 1e-12));
+    });
+    test('max-loss floor: clamps to the floor (participation ignored)', () {
+      expect(
+          payoffReturn(-0.22,
+              participation: 1.05, floor: -0.15, floorType: FloorType.floor),
+          closeTo(-0.15, 1e-12));
+    });
+    test('none: full 1:1 loss (participation ignored)', () {
+      expect(
+          payoffReturn(-0.22,
+              participation: 1.05, floor: -0.15, floorType: FloorType.none),
+          closeTo(-0.22, 1e-12));
+    });
+  });
+
   group('payoffReturn — upside', () {
     test('exactly at the cap', () {
       expect(payoffReturn(0.1225,

@@ -48,6 +48,22 @@ void main() {
     expect(s.newVersionAvailable, isFalse);
   });
 
+  test('a newer deploy re-flags after a prior dismiss', () async {
+    var served = 'NEW1';
+    final s = PortfolioStore(
+        buildSha: 'OLD',
+        client: MockClient((_) async => http.Response('{"sha":"$served"}', 200)))
+      ..debugSeed([], _market);
+    await s.checkAppVersion();
+    expect(s.newVersionAvailable, isTrue);
+    s.dismissNewVersion();
+    expect(s.newVersionAvailable, isFalse);
+    // A distinct, even-newer deploy must re-flag (dismissing NEW1 ≠ NEW2).
+    served = 'NEW2';
+    await s.checkAppVersion();
+    expect(s.newVersionAvailable, isTrue);
+  });
+
   test('Later suppresses re-nagging for the same deployed build', () async {
     final s = _store('old', 'new');
     await s.checkAppVersion();

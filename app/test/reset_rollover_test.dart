@@ -189,6 +189,49 @@ void main() {
     expect(r.holding.nextReset, DateTime(2027, 6, 16));
   });
 
+  test('point-to-point reset locks in a capped gain and resets the strike', () {
+    final h = _h(
+      cap: 0.10,
+      floor: 0,
+      floorType: FloorType.hard,
+      strike: 100,
+      initial: 100.0,
+      realized: 0.0,
+      lastReset: DateTime(2025, 6, 16),
+      nextReset: DateTime(2026, 6, 16),
+      resetFreq: ResetFreq.annual,
+    );
+    // level 130 → +30%, but the 10% cap binds → periodReturn clamps to 0.10.
+    final r = applyReset(h, _flat(130.0));
+    expect(r.event, isNotNull);
+    expect(r.event!.periodReturn, closeTo(0.10, 1e-9)); // capped, not 0.30
+    expect(r.event!.oldStrike, 100);
+    expect(r.event!.newStrike, 130);
+    expect(r.holding.strike, 130); // strike resets to the reset-date level
+    expect(r.holding.realized, closeTo(100 * 0.10, 1e-9)); // base * capped return
+  });
+
+  test('income note: worst leg exactly at the barrier still earns the coupon', () {
+    // Single-leg (SPX-only) income note; the barrier boundary is inclusive
+    // because the engine tests `worst >= h.floor`. Uses an exactly-representable
+    // barrier (-0.50 with level 50 / strike 100 → worst == -0.50 in IEEE-754)
+    // so the boundary is hit precisely with no floating-point drift.
+    final h = _h(
+      isIncomeNote: true,
+      cap: 0.12, // 1%/mo
+      floor: -0.50,
+      strike: 100,
+      // ndxStrike / rutStrike null → SPX is the only leg.
+      lastReset: DateTime(2026, 5, 16),
+      nextReset: DateTime(2026, 6, 16),
+    );
+    // SPX 50 → worst = 50/100 - 1 = -0.50, exactly at the -50% barrier.
+    double? lvl(String sym, DateTime _) => sym == 'SPX' ? 50.0 : null;
+    final r = applyReset(h, lvl);
+    expect(r.event!.missed, isFalse); // boundary is inclusive → coupon earned
+    expect(r.event!.periodReturn, closeTo(0.01, 1e-9));
+  });
+
   test('point-to-point max-loss floor caps the loss at the floor', () {
     final h = _h(
       cap: 0.65,

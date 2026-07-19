@@ -302,9 +302,29 @@ void main() {
     expect(dedupedPosition(h2, dup), '${h2.position}-Non-Qual-2');
   });
 
+  test('lifeToDateYield: multi-year LOSS annualizes to a negative CAGR', () {
+    // -25% index move floored (max-loss) to -19% -> projValueK = 81.
+    final h = _h(
+        cap: null, floor: -0.19, floorType: FloorType.floor,
+        strike: 100, currentLevel: 75);
+    expect(h.projGain, closeTo(-0.19, 1e-12));
+    expect(h.projValueK, closeTo(81.0, 1e-9));
+    expect(h.returnStart, DateTime(2026, 1, 1)); // openDate (no inception)
+
+    // Compute the elapsed days rather than hardcoding (span is 730 days).
+    final asOf = DateTime(2028, 1, 1);
+    final days = asOf.difference(h.returnStart).inDays;
+    final expected = math.pow(0.81, 1 / (days / 365.25)).toDouble() - 1;
+    expect(h.lifeToDateYield(asOf), closeTo(expected, 1e-9));
+    expect(h.lifeToDateYield(asOf), lessThan(0)); // a loss annualizes negative
+  });
+
   test('days to maturity/reset', () {
     final h = _h(cap: null, floor: 0, strike: 100, currentLevel: 100);
     expect(h.daysToMaturity(DateTime(2029, 1, 1)), 365);
     expect(h.daysToReset(DateTime(2026, 12, 31)), 1);
+    // asOf past the dates -> negative day counts (maturity 2030, reset 2027).
+    expect(h.daysToMaturity(DateTime(2031, 1, 1)), -365);
+    expect(h.daysToReset(DateTime(2028, 1, 1)), -365);
   });
 }

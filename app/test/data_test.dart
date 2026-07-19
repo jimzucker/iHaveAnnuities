@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart' show ColorScheme, Colors;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -385,6 +386,81 @@ void main() {
       await s2.init();
       expect(s2.sortColumn, 1);
       expect(s2.sortAscending, isFalse);
+    });
+
+    test('view prefs survive a fresh init', () async {
+      final store = PortfolioStore();
+      // Defaults: nothing hidden, summary shown, full columns on.
+      expect(store.hiddenIndexes.contains('RUT'), isFalse);
+      expect(store.hideSummary, isFalse);
+      expect(store.fullColumns, isTrue);
+
+      await store.toggleIndex('RUT');
+      await store.setHideSummary(true);
+      await store.setFullColumns(false);
+
+      final c = MockClient((_) async => http.Response('x', 500));
+      final s2 = PortfolioStore(client: c);
+      await s2.init();
+      expect(s2.hiddenIndexes.contains('RUT'), isTrue);
+      expect(s2.hideSummary, isTrue);
+      expect(s2.fullColumns, isFalse);
+    });
+
+    test('ungrouped sort order is ascending/descending by the sorted column',
+        () async {
+      final cs = ColorScheme.fromSeed(seedColor: Colors.blue);
+      final asOf = DateTime(2026, 6, 12);
+      final holdings = parseTracker(
+          File('../data/example-portfolio.xlsx').readAsBytesSync());
+      final store = PortfolioStore()
+        ..debugSeed(holdings,
+            Market(asOf: asOf, spx: 7431.46, ndx: 29635.95,
+                rut: 2943.99, dow: 44012.10, comp: 23501.75));
+      expect(store.groupBy, ''); // ungrouped (default)
+
+      final idx = PortfolioTable.columnLabels(cs).indexOf('Initial');
+      expect(idx, greaterThanOrEqualTo(0));
+
+      await store.setSort(idx, true);
+      final asc = PortfolioTable.orderedHoldings(store, asOf, cs)
+          .map((h) => h.initial)
+          .toList();
+      for (var i = 1; i < asc.length; i++) {
+        expect(asc[i], greaterThanOrEqualTo(asc[i - 1]));
+      }
+
+      await store.setSort(idx, false);
+      final desc = PortfolioTable.orderedHoldings(store, asOf, cs)
+          .map((h) => h.initial)
+          .toList();
+      for (var i = 1; i < desc.length; i++) {
+        expect(desc[i], lessThanOrEqualTo(desc[i - 1]));
+      }
+    });
+
+    test('uncapped sorts to one end by CAP', () async {
+      final cs = ColorScheme.fromSeed(seedColor: Colors.blue);
+      final asOf = DateTime(2026, 6, 12);
+      final holdings = parseTracker(
+          File('../data/example-portfolio.xlsx').readAsBytesSync());
+      final store = PortfolioStore()
+        ..debugSeed(holdings,
+            Market(asOf: asOf, spx: 7431.46, ndx: 29635.95,
+                rut: 2943.99, dow: 44012.10, comp: 23501.75));
+
+      final idx = PortfolioTable.columnLabels(cs).indexOf('CAP');
+      expect(idx, greaterThanOrEqualTo(0));
+
+      await store.setSort(idx, true); // cap ?? infinity → uncapped sinks last
+      final ordered = PortfolioTable.orderedHoldings(store, asOf, cs);
+      final lastCapped =
+          ordered.lastIndexWhere((h) => h.cap != null);
+      final firstUncapped =
+          ordered.indexWhere((h) => h.cap == null);
+      if (firstUncapped != -1 && lastCapped != -1) {
+        expect(firstUncapped, greaterThan(lastCapped));
+      }
     });
 
     test('groupBy defaults to none and is remembered', () async {

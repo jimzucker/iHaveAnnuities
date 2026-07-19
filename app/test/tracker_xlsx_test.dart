@@ -3,6 +3,7 @@
 // Import the generated example, round-trip, and import the real tracker.
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ihaveannuities/core/models.dart';
@@ -122,6 +123,19 @@ void main() {
       expect(b.initial, closeTo(a.initial, 1e-9));
       expect(b.maturity, a.maturity);
       expect(b.projValueK, closeTo(a.projValueK, 1e-6));
+      // Terms + monitoring inputs must survive the round-trip too.
+      expect(b.strike, closeTo(a.strike, 1e-9));
+      expect(b.realized, closeTo(a.realized, 1e-9));
+      expect(b.openDate, a.openDate);
+      expect(b.nextReset, a.nextReset);
+      expect(b.lastReset, a.lastReset);
+      // Worst-of leg strikes (populated only for the worst-of income note).
+      if (a.ndxStrike != null) {
+        expect(b.ndxStrike, closeTo(a.ndxStrike!, 1e-6));
+      }
+      if (a.rutStrike != null) {
+        expect(b.rutStrike, closeTo(a.rutStrike!, 1e-6));
+      }
     }
   });
 
@@ -166,6 +180,25 @@ void main() {
     final reparsed = parseTracker(bytes).first;
     expect(reparsed.floorType, FloorType.none);
     expect(reparsed.protectionType, 'None');
+  });
+
+  test('parse order follows sheet row order', () {
+    // The parsed sequence must match the source rows exactly — a reordering
+    // regression (e.g. sorting on import) would break identity-by-index and
+    // every position that pairs a holding with an external price.
+    final holdings = parseTracker(File(examplePath).readAsBytesSync());
+    const expectedIssuers = [
+      'ASPIDA', 'AXA', 'CITI', 'HSBC', 'BNP', 'NATBANK', 'AXA', 'CITI', 'MAREX',
+    ];
+    expect(holdings.map((h) => h.issuer).toList(), expectedIssuers);
+    // Deterministic: a second parse yields the identical order.
+    final again = parseTracker(File(examplePath).readAsBytesSync());
+    expect(again.map((h) => h.issuer).toList(), expectedIssuers);
+  });
+
+  test('malformed input is rejected, not silently empty', () {
+    // Garbage bytes must throw (bad zip / not an xlsx), never return [].
+    expect(() => parseTracker(Uint8List.fromList([1, 2, 3, 4])), throwsA(anything));
   });
 
   test('imports the real Zucker-Annuity-Tracker.xlsx', () {

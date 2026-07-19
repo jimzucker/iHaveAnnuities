@@ -42,6 +42,16 @@ void main() {
     expect(npv, closeTo(0, 1e-3));
   });
 
+  test('t0 is the earliest date regardless of list order', () {
+    // Return listed BEFORE the outflow; xirr must still pick 2026 as t0.
+    final unordered = xirr([(_d(2027), 110.0), (_d(2026), -100.0)]);
+    final ordered = xirr([(_d(2026), -100.0), (_d(2027), 110.0)]);
+    expect(unordered, isNotNull);
+    expect(ordered, isNotNull);
+    expect(unordered!, closeTo(ordered!, 1e-12));
+    expect(unordered, closeTo(0.10, 2e-3));
+  });
+
   test('returns null without a sign change or too few flows', () {
     expect(xirr([(_d(2026), -100.0)]), isNull); // one flow
     expect(xirr([(_d(2026), -100.0), (_d(2027), -50.0)]), isNull); // all negative
