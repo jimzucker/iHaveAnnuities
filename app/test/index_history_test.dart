@@ -51,6 +51,16 @@ void main() {
       expect(h.series('XXX', HistoryRange.max), isEmpty);
     });
 
+    test('levelOn clamps to the ends and returns null for unknown symbols', () {
+      final h = IndexHistory.parse(_json);
+      // Before the earliest daily sample → earliest level.
+      expect(h.levelOn('SPX', DateTime.utc(2020, 1, 1)), 100.0);
+      // After the last daily sample → last level.
+      expect(h.levelOn('SPX', DateTime.utc(2030, 1, 1)), 150.0);
+      // No daily history for the symbol → null.
+      expect(h.levelOn('UNKNOWN', DateTime.utc(2026, 6, 1)), isNull);
+    });
+
     test('range labels', () {
       expect(HistoryRange.ytd.label, 'YTD');
       expect(HistoryRange.oneD.label, '1D');

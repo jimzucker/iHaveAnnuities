@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ihaveannuities/core/models.dart';
 import 'package:ihaveannuities/core/payoff.dart';
+import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/data/biometric.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
@@ -82,6 +83,23 @@ void main() {
     expect(await s.unlock('pass1'), isTrue);
     expect(s.vaultState, VaultState.unlocked);
     expect(s.holdings.map((h) => h.issuer), ['AAA', 'BBB']);
+  });
+
+  test('reset history is encrypted at rest', () async {
+    final ev = ResetEvent(
+      holdingKey: 'k1',
+      label: 'ASPIDA SPX Note',
+      date: DateTime(2026, 1, 1),
+      isIncomeNote: false,
+      periodReturn: 0.05,
+      realizedAddedK: 1.0,
+      realizedAfterK: 1.0,
+    );
+    final s = _store()..debugSeed([_h('AAA')], _market, resetHistory: [ev]);
+    await s.enableEncryption('pass1'); // re-persists reset history as ciphertext
+    final stored = await _raw('resetHistory.v1');
+    expect(stored, isNotNull);
+    expect(stored, isNot(contains('ASPIDA'))); // encrypted, not plaintext label
   });
 
   test('wrong passphrase is rejected and stays locked', () async {

@@ -18,12 +18,20 @@ import 'reset_event.dart';
 /// Supplies the closing level for [symbol] on [date] (null when unknown).
 typedef LevelAt = double? Function(String symbol, DateTime date);
 
+/// A [DateTime] for y/m/d with the day clamped to the last valid day of the
+/// month, so month/year arithmetic can't overflow into the following month
+/// (e.g. Jan 31 + 1 month → Feb 28/29, not "Feb 31" which normalizes to Mar 3).
+DateTime _clampedDate(int year, int month, int day) {
+  final lastDay = DateTime(year, month + 1, 0).day; // day 0 of next month
+  return DateTime(year, month, day < lastDay ? day : lastDay);
+}
+
 /// The next reset date after [from] for [freq]. `inception` notes never reset
 /// during the term, so they return [from] unchanged (callers guard with
 /// [resetDue], which is always false for inception).
 DateTime advanceReset(DateTime from, ResetFreq freq) => switch (freq) {
-      ResetFreq.monthly => DateTime(from.year, from.month + 1, from.day),
-      ResetFreq.annual => DateTime(from.year + 1, from.month, from.day),
+      ResetFreq.monthly => _clampedDate(from.year, from.month + 1, from.day),
+      ResetFreq.annual => _clampedDate(from.year + 1, from.month, from.day),
       ResetFreq.inception => from,
     };
 
@@ -47,19 +55,28 @@ bool resetDue(Holding h, DateTime asOf) =>
     // Worst-of contingent coupon. Strikes are fixed (SPX = strike, NDX/RUT =
     // their strikes); the coupon pays iff the worst leg holds the barrier.
     final legs = <double>[];
+    var missing = false; // a leg that IS part of this note has no level yet
     void leg(double? strike, String symbol) {
-      if (strike == null || strike <= 0) return;
+      if (strike == null || strike <= 0) return; // leg not part of this note
       final lvl = levelAt(symbol, resetDate);
-      if (lvl != null) legs.add(lvl / strike - 1);
+      if (lvl == null) {
+        missing = true; // can't compute the worst-of without every real leg
+        return;
+      }
+      legs.add(lvl / strike - 1);
     }
 
     leg(h.strike, 'SPX');
     leg(h.ndxStrike, 'NDX');
     leg(h.rutStrike, 'RUT');
-    if (legs.isEmpty) return (holding: h, event: null); // no data yet
+    // Incomplete worst-of → stop and retry later, never decide on a subset of
+    // legs (a breached-but-missing leg would otherwise be ignored).
+    if (missing || legs.isEmpty) return (holding: h, event: null);
 
     final worst = legs.reduce((a, b) => a < b ? a : b);
-    final held = worst >= h.floor; // barrier holds → coupon earned
+    // Tolerance so a level mathematically exactly at the barrier isn't dropped
+    // by IEEE-754 rounding (e.g. 70/100-1 = -0.30000000000000004 vs floor -0.30).
+    final held = worst >= h.floor - 1e-9; // barrier holds → coupon earned
     final rate = (h.cap ?? 0) / 12; // monthly = annual cap / 12
     final periodReturn = held ? rate : 0.0;
     final added = base * periodReturn;
