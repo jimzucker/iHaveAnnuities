@@ -60,6 +60,24 @@ void main() {
       expect(advanceReset(DateTime(2026, 6, 16), ResetFreq.inception),
           DateTime(2026, 6, 16));
     });
+    test('monthly from a 31st clamps to the shorter month (no overflow)', () {
+      // Jan 31 + 1 month must land on Feb 28/29 — never spill into March.
+      expect(advanceReset(DateTime(2026, 1, 31), ResetFreq.monthly),
+          DateTime(2026, 2, 28)); // 2026 is not a leap year
+      expect(advanceReset(DateTime(2028, 1, 31), ResetFreq.monthly),
+          DateTime(2028, 2, 29)); // 2028 is a leap year
+      // A 31st into a 30-day month clamps to the 30th.
+      expect(advanceReset(DateTime(2026, 3, 31), ResetFreq.monthly),
+          DateTime(2026, 4, 30));
+    });
+    test('monthly from December rolls into January of the next year', () {
+      expect(advanceReset(DateTime(2026, 12, 16), ResetFreq.monthly),
+          DateTime(2027, 1, 16));
+    });
+    test('annual from a leap-day clamps to Feb 28 in a common year', () {
+      expect(advanceReset(DateTime(2028, 2, 29), ResetFreq.annual),
+          DateTime(2029, 2, 28));
+    });
   });
 
   group('resetDue', () {
@@ -230,6 +248,51 @@ void main() {
     final r = applyReset(h, lvl);
     expect(r.event!.missed, isFalse); // boundary is inclusive → coupon earned
     expect(r.event!.periodReturn, closeTo(0.01, 1e-9));
+  });
+
+  test('income note: worst leg exactly at −30% earns the coupon (float epsilon)', () {
+    // 70/100 - 1 = -0.30000000000000004 in IEEE-754, a hair below -0.30. The
+    // engine's 1e-9 tolerance treats a level mathematically at the barrier as
+    // held, so this coupon must NOT be dropped to rounding.
+    final h = _h(
+      isIncomeNote: true,
+      cap: 0.12, // 1%/mo
+      floor: -0.30,
+      strike: 100,
+      lastReset: DateTime(2026, 5, 16),
+      nextReset: DateTime(2026, 6, 16),
+    );
+    expect(70 / 100 - 1 < -0.30, isTrue); // the drift that the epsilon absorbs
+    double? lvl(String sym, DateTime _) => sym == 'SPX' ? 70.0 : null;
+    final r = applyReset(h, lvl);
+    expect(r.event!.missed, isFalse); // barrier held despite the float wart
+    expect(r.event!.periodReturn, closeTo(0.01, 1e-9));
+  });
+
+  test('income note: a missing worst-of leg bails instead of crediting a subset', () {
+    // Three-leg worst-of: SPX and NDX are up, but RUT has no level yet. Deciding
+    // on the two available legs would credit a coupon that a breached-but-missing
+    // RUT could veto — so applyReset must return a null event and retry later.
+    final h = _h(
+      isIncomeNote: true,
+      cap: 0.12,
+      floor: -0.30,
+      strike: 100,
+      ndxStrike: 100,
+      rutStrike: 100,
+      realized: 0.5,
+      lastReset: DateTime(2026, 5, 16),
+      nextReset: DateTime(2026, 6, 16),
+    );
+    double? lvl(String sym, DateTime _) =>
+        switch (sym) { 'RUT' => null, _ => 130.0 }; // RUT unknown
+    final r = applyReset(h, lvl);
+    expect(r.event, isNull); // incomplete data → no coupon decided
+    expect(r.holding.realized, closeTo(0.5, 1e-9)); // untouched
+    expect(r.holding.nextReset, DateTime(2026, 6, 16)); // schedule not advanced
+    // catchUp likewise stops (retries on a later load with full data).
+    final c = catchUp(h, DateTime(2026, 6, 17), lvl);
+    expect(c.events, isEmpty);
   });
 
   test('point-to-point max-loss floor caps the loss at the floor', () {
