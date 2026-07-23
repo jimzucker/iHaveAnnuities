@@ -61,6 +61,7 @@ class PortfolioStore extends ChangeNotifier {
 
   Timer? _autoTimer;
   DateTime? _lastAutoRefresh;
+  DateTime? _lastMarketRefresh; // last SUCCESSFUL market.json fetch (any path)
 
   /// Whether a once-per-day post-close auto-refresh is due: true when [now] is
   /// at/past today's [triggerHour] and we haven't refreshed since then. Pure so
@@ -71,6 +72,16 @@ class PortfolioStore extends ChangeNotifier {
     if (now.isBefore(trigger)) return false;
     return last == null || last.isBefore(trigger);
   }
+
+  /// Whether returning to a foregrounded tab should pull fresh market data:
+  /// true when we've never fetched or the last successful fetch was at least
+  /// [staleAfter] ago. Browsers freeze background-tab timers (and pause them
+  /// across machine sleep), so the periodic refresh can silently stall on a
+  /// long-open tab; this reconciles on return without spamming quick tab
+  /// toggles. Pure so it can be unit-tested without timers.
+  static bool resumeRefreshDue(DateTime now, DateTime? lastRefresh,
+          {Duration staleAfter = const Duration(minutes: 15)}) =>
+      lastRefresh == null || now.difference(lastRefresh) >= staleAfter;
 
   final String base;
 
@@ -374,6 +385,17 @@ class PortfolioStore extends ChangeNotifier {
     _lastAutoRefresh = now;
     await refreshMarket();
     await _catchUpResets(); // a new trading day may have crossed a reset date
+  }
+
+  /// Called when the browser tab regains visibility (Page Visibility / app
+  /// lifecycle resume). Background tabs freeze their timers and machine sleep
+  /// pauses them, so a long-idle tab can miss the daily post-close refresh —
+  /// pull fresh rates on return when the data may be stale.
+  Future<void> onResume() async {
+    if (!resumeRefreshDue(DateTime.now(), _lastMarketRefresh)) return;
+    await refreshMarket();
+    if (_vaultState != VaultState.locked) await _catchUpResets();
+    await checkAppVersion();
   }
 
   @override
@@ -738,6 +760,7 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
     try {
       _market = await Market.fetch(base: base, client: client);
+      _lastMarketRefresh = DateTime.now();
       _revalue();
       _status = null;
     } catch (e) {
