@@ -367,11 +367,11 @@ void main() {
       final bytes = File('../data/example-portfolio.xlsx').readAsBytesSync();
       final n = await store.importXlsx(bytes);
       expect(n, 9);
-      expect(store.totalInitial, closeTo(900.0, 1e-6));
+      expect(store.totalInitial, closeTo(90.0, 1e-6));
       expect(store.totalProjValue, greaterThan(0));
       // Unrealized total excludes realized: value = initial + realized + gain.
       expect(store.totalProjGain,
-          closeTo(store.totalProjValue - 900.0 - store.totalRealized, 1e-6));
+          closeTo(store.totalProjValue - 90.0 - store.totalRealized, 1e-6));
 
       // export round-trips back through the parser
       final exported = store.exportXlsx();

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 #
 # Eight illustrative example contracts modeled on the Zucker Annuity Tracker,
-# every one normalized to a $100,000 principal ($ columns in $000s). Covers all
+# every one normalized to a $10,000 principal ($ columns in $000s). Covers all
 # distinct use cases in the real data: 0% floor, negative Hard buffer, negative
 # Soft barrier; capped + uncapped; participation <100/100/>100%; Annual / Monthly
 # / 4Y / 5Y / 6Y resets; SPX / NDX / RUT / worst-of; Non-Qual / IRA / ROTH; plus
@@ -30,6 +30,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 TODAY = datetime.date(2026, 6, 14)
 PRICES = {"SPX": 7400.0, "NDX": 29600.0, "RUT": 2950.0}
+PRINCIPAL = 10.0  # per-position principal in $000s (10 = $10,000)
 UNCAPPED_SENTINEL = 9.99  # v1.0 schema: numeric cell value meaning "uncapped"
 
 # Issuer canonicalization (must match canonicalIssuer() in models.dart).
@@ -59,7 +60,7 @@ def d(y, m, day): return datetime.date(y, m, day)
 def mdy(dt): return dt.strftime("%d-%b-%y")
 def days(dt): return (dt - TODAY).days
 
-# Each row models a real position, normalized to $100k principal.
+# Each row models a real position, normalized to $10k principal.
 # idx = illustrative index move for the shown period; cap=None means uncapped.
 ROWS = [
     dict(pos="Aspida 12.25%-14Nov28", issuer="Aspida", index="^GSPC",
@@ -86,7 +87,7 @@ ROWS = [
          cap=0.1325, part=1.00, floor=-0.30, soft=True, idx=0.0847,
          open=d(2026,4,16), last=d(2026,5,16), mat=d(2029,4,16), nxt=d(2026,6,16),
          freq="Monthly", acct="Non-Qual",
-         note=True, realized=1.10, proj=0.0112, strike=6583.0,
+         note=True, realized=0.11, proj=0.0112, strike=6583.0,
          ndx_strike=27290.0, rut_strike=2719.0),  # income note: monthly coupon
     dict(pos="Axa 100%-20May32", issuer="AXA", index="^NDX",
          cap=1.00, part=1.00, floor=-0.20, soft=False, idx=-0.15,
@@ -164,11 +165,11 @@ for r in ROWS:
         r["strike"] = PRICES[base_index(r["index"])] / (1 + r["idx"])
     # Matches the tracker: realized is reinvested into the base, so the payoff
     # applies to (initial + realized).
-    base = 100.0 + r["realized_v"]
+    base = PRINCIPAL + r["realized_v"]
     r["proj_value"] = base * (1 + r["proj_gain"])
     r["proj_gain_dollars"] = base * r["proj_gain"]
 
-tot_init = 100.0 * len(ROWS)
+tot_init = PRINCIPAL * len(ROWS)
 tot_real = sum(r["realized_v"] for r in ROWS)
 tot_pv   = sum(r["proj_value"] for r in ROWS)
 tot_pg   = sum(r["proj_gain_dollars"] for r in ROWS)
@@ -193,7 +194,7 @@ for r in ROWS:
         <td class="c"><span class="pill {ACCT[r['acct']]}">{r['acct']}</span></td>
         <td class="c">{r['index']}</td>
         <td class="c"><span class="pill {prot}">{prot_lbl}</span></td>
-        <td>$100.00</td><td>{money(r['realized_v'])}</td>
+        <td>{money(PRINCIPAL)}</td><td>{money(r['realized_v'])}</td>
         <td>{money(r['proj_value'])}</td><td class="{pc}">{money(r['proj_gain_dollars'])}</td>
         <td class="{pc}">{pct(r['proj_gain'])}</td><td class="{ic}">{pct(r['idx'])}</td>
         <td class="c">{mdy(r['nxt'])}</td><td>{days(r['nxt']):,}</td>
@@ -246,7 +247,7 @@ HTML = f"""<!--
 </head>
 <body>
   <div class="title">Zucker Annuity Tracker &mdash; Example Contracts</div>
-  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$100,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard</b> (buffer — absorbs first |floor|, lose beyond), <b>Soft</b> (barrier — full loss if breached). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
+  <div class="sub">Nine illustrative structured products modeled on real holdings, each at a <b>$10,000</b> principal ($ columns in $000s). Floor types: <b>Floor</b> (max loss — lose only down to the floor; 0% = no loss), <b>Hard</b> (buffer — absorbs first |floor|, lose beyond), <b>Soft</b> (barrier — full loss if breached). Updated {TODAY:%d-%b-%y} &middot; illustrative prices: SPX 7,400 &nbsp; NDX 29,600 &nbsp; RUT 2,950.</div>
   <table>
     <thead>
       <tr>
@@ -342,7 +343,7 @@ def _row_values(r):
         r["acct"],                                         # C Type
         r["index"],                                        # D Index
         _floor_type_label(r),                              # E Floor Type
-        100.00,                                            # F Initial ($000)
+        PRINCIPAL,                                         # F Initial ($000)
         r["realized_v"],                                   # G Realized ($000)
         r["proj_value"],                                   # H Proj Value
         r["proj_gain_dollars"],                            # I Proj $ Gain
@@ -406,7 +407,7 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
         # I=Proj $ Gain (1-indexed 6-9). All other columns blank.
         tot = [None] * len(HEADERS)
         tot[0] = "TOTAL"
-        tot[5] = 100.0 * len(rows)                          # F Initial
+        tot[5] = PRINCIPAL * len(rows)                      # F Initial
         tot[6] = sum(r["realized_v"] for r in rows)         # G Realized
         tot[7] = sum(r["proj_value"] for r in rows)         # H Proj Value
         tot[8] = sum(r["proj_gain_dollars"] for r in rows)  # I Proj $ Gain
@@ -439,7 +440,7 @@ def write_xlsx(path, rows, *, with_data, with_instructions):
             ["Reset Freq", "input", "'Once' (point-to-point), 'Annual', or 'Monthly'"],
             ["Next Reset", "input", "Date of next reset"],
             ["Days to Reset", "derived", "Recomputed from Next Reset"],
-            ["Initial ($000)", "input", "Principal in thousands, e.g. 100 = $100,000"],
+            ["Initial ($000)", "input", "Principal in thousands, e.g. 10 = $10,000"],
             ["Realized ($000)", "input", "Cumulative coupons/income to date, in $000"],
             ["Proj Value / Proj $ Gain", "derived", "Recomputed"],
             ["Type", "input", "'Non-Qual', 'IRA', or 'ROTH'"],
