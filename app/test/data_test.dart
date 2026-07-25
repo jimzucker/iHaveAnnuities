@@ -155,6 +155,23 @@ void main() {
       expect(PortfolioStore.autoRefreshDue(at(18, 17), at(18, 16)), isTrue);
     });
 
+    test('resumeRefreshDue reconciles a stale tab on focus, debounces toggles', () {
+      final now = DateTime(2026, 6, 16, 9);
+      // Never fetched → always due.
+      expect(PortfolioStore.resumeRefreshDue(now, null), isTrue);
+      // Just fetched (quick tab toggle) → not due, no fetch spam.
+      expect(PortfolioStore.resumeRefreshDue(now, now.subtract(const Duration(minutes: 5))),
+          isFalse);
+      // Idle past the debounce window → due.
+      expect(PortfolioStore.resumeRefreshDue(now, now.subtract(const Duration(minutes: 15))),
+          isTrue);
+      // The overnight case: tab open all night, timer frozen → due on return,
+      // even in the morning (independent of the 17:00 daily trigger).
+      expect(
+          PortfolioStore.resumeRefreshDue(now, now.subtract(const Duration(hours: 20))),
+          isTrue);
+    });
+
     test('older payload without dow/comp is null-safe', () {
       final m = Market.parse(_marketJson); // no dow/comp keys
       expect(m.dow, isNull);

@@ -13,13 +13,37 @@ void main() {
   runApp(const IHaveAnnuitiesApp());
 }
 
-class IHaveAnnuitiesApp extends StatelessWidget {
+class IHaveAnnuitiesApp extends StatefulWidget {
   const IHaveAnnuitiesApp({super.key});
 
   @override
+  State<IHaveAnnuitiesApp> createState() => _IHaveAnnuitiesAppState();
+}
+
+class _IHaveAnnuitiesAppState extends State<IHaveAnnuitiesApp> {
+  final PortfolioStore _store = PortfolioStore()..init();
+
+  // Refresh rates when the tab regains focus: browsers freeze background-tab
+  // timers, so a long-open/slept tab can silently miss the daily auto-refresh.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onShow: _store.onResume);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    _store.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => PortfolioStore()..init(),
+    return ChangeNotifierProvider.value(
+      value: _store,
       child: MaterialApp(
         title: 'iHaveAnnuities',
         debugShowCheckedModeBanner: false,
