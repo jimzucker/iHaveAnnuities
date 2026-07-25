@@ -98,10 +98,10 @@ projValue   = (initial + realized) × (1 + payoff)
 unrealized  = (initial + realized) × payoff      # projValue = initial + realized + unrealized
 ```
 
-## Example contracts — $100,000 starting principal
+## Example contracts — $10,000 starting principal
 
 The nine illustrative contracts below match the table in the image above. They
-are **modeled on real holdings** but normalized to a **$100,000** principal;
+are **modeled on real holdings** but normalized to a **$10,000** principal;
 index returns/levels are illustrative (dates/days as of 14‑Jun‑26). The
 `Floor Type` column is the downside-protection mechanism — **Floor** (max loss —
 lose only down to the floor; 0% = no loss), **Hard** (first |floor|%
@@ -111,16 +111,16 @@ $000s. Reset cadences collapse to **Once** (point-to-point), **Annual**, or
 
 | Issuer | Index | Cap | Part. | Floor | Floor Type | Reset | Account | Index → Payoff | Proj Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ASPIDA | ^GSPC | 12.25% | 100% | 0% | Floor | Annual | Non‑Qual | +18.00% → +12.25% | **$112.25** |
-| AXA | ^GSPC | 65% | 100% | −15% | Hard | Once | Non‑Qual | −22.00% → −7.00% | **$93.00** |
-| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Once | IRA | +30.00% → +30.60% | **$130.60** |
-| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Once | IRA | +40.00% → +36.90% | **$136.90** |
-| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Once | ROTH | −35.00% → −35.00% | **$65.00** |
-| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.10% | **$102.22** |
-| AXA | ^NDX | 100% | 100% | −20% | Hard | Once | IRA | −15.00% → 0.00% | **$100.00** |
-| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Once | ROTH | +12.00% → +12.00% | **$112.00** |
-| MAREX | ^RUT | 20% | 100% | −10% | Floor | Once | Non‑Qual | −18.00% → −10.00% | **$90.00** |
-| **Total** | | | | | | | | | **$941.97** |
+| ASPIDA | ^GSPC | 12.25% | 100% | 0% | Floor | Annual | Non‑Qual | +18.00% → +12.25% | **$11.23** |
+| AXA | ^GSPC | 65% | 100% | −15% | Hard | Once | Non‑Qual | −22.00% → −7.00% | **$9.30** |
+| CITI | ^GSPC | Uncapped | 102% | −15% | Hard | Once | IRA | +30.00% → +30.60% | **$13.06** |
+| HSBC | ^NDX | Uncapped | 92.25% | −15% | Hard | Once | IRA | +40.00% → +36.90% | **$13.69** |
+| BNP | ^GSPC | Uncapped | 105% | −30% | Soft | Once | ROTH | −35.00% → −35.00% | **$6.50** |
+| NATBANK | SPX/NDX/RUT | 13.25% cpn | 100% | −30% | Soft | Monthly | Non‑Qual | +8.47% → +1.10% | **$10.22** |
+| AXA | ^NDX | 100% | 100% | −20% | Hard | Once | IRA | −15.00% → 0.00% | **$10.00** |
+| CITI | ^GSPC | Uncapped | 100% | −15% | Hard | Once | ROTH | +12.00% → +12.00% | **$11.20** |
+| MAREX | ^RUT | 20% | 100% | −10% | Floor | Once | Non‑Qual | −18.00% → −10.00% | **$9.00** |
+| **Total** | | | | | | | | | **$94.20** |
 
 What each row demonstrates:
 

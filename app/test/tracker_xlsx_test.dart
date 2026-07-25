@@ -35,13 +35,13 @@ void main() {
     expect(aspida.account, AccountType.nonQual);
     expect(aspida.position, 'ASPIDA-0%-14Nov28'); // computed name, uppercase
     expect(aspida.projGain, closeTo(0.1225, 1e-6)); // recomputed from strike/gain
-    expect(aspida.projValueK, closeTo(112.25, 1e-3));
+    expect(aspida.projValueK, closeTo(11.225, 1e-3));
 
     final bnp = holdings.firstWhere((h) => h.issuer == 'BNP');
     expect(bnp.cap, isNull); // 9.99 sentinel → uncapped
     expect(bnp.floorType, FloorType.soft);
     expect(bnp.participation, closeTo(1.05, 1e-9));
-    expect(bnp.projValueK, closeTo(65.0, 1e-2)); // -35% breaches -30% soft
+    expect(bnp.projValueK, closeTo(6.5, 1e-2)); // -35% breaches -30% soft
 
     final note = holdings.firstWhere((h) => h.isIncomeNote);
     expect(note.resetFreq, ResetFreq.monthly);
@@ -50,7 +50,7 @@ void main() {
     expect(note.rutStrike, 2719);
     // Tracker formula: gain = (initial + realized) * projGain; and the identity
     // value = initial + realized + gain holds.
-    expect(note.realized, closeTo(1.10, 1e-9));
+    expect(note.realized, closeTo(0.11, 1e-9));
     expect(note.projGainDollarsK,
         closeTo((note.initial + note.realized) * note.projGain, 1e-9));
     expect(note.initial + note.realized + note.projGainDollarsK,
@@ -81,7 +81,7 @@ void main() {
     // a styled TOTAL row is appended (and skipped on re-import).
     final totalRow = rows.firstWhere(
         (r) => r.isNotEmpty && r.first?.toString().trim() == 'TOTAL');
-    expect(totalRow[7], closeTo(941.98, 0.02)); // Proj Value total (col H)
+    expect(totalRow[7], closeTo(94.198, 0.02)); // Proj Value total (col H)
   });
 
   test('gainStatus flags capped / loss / gain', () {
