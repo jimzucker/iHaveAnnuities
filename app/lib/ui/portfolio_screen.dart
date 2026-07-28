@@ -544,23 +544,31 @@ class _UpdateBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final store = context.read<PortfolioStore>();
+    // High-contrast inverse-surface bar (the SnackBar surface role) so the
+    // update prompt stands out against the light page instead of blending in.
     return Material(
-      color: cs.primaryContainer,
+      color: cs.inverseSurface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Row(children: [
-          Icon(Icons.system_update, size: 18, color: cs.onPrimaryContainer),
+          Icon(Icons.system_update, size: 20, color: cs.inversePrimary),
           const SizedBox(width: 10),
           Expanded(
             child: Text('A new version of the app is available.',
-                style: TextStyle(color: cs.onPrimaryContainer)),
+                style: TextStyle(
+                    color: cs.onInverseSurface, fontWeight: FontWeight.w600)),
           ),
           TextButton(
             onPressed: store.dismissNewVersion,
+            style: TextButton.styleFrom(foregroundColor: cs.onInverseSurface),
             child: const Text('Later'),
           ),
+          const SizedBox(width: 4),
           FilledButton(
             onPressed: reloadApp,
+            style: FilledButton.styleFrom(
+                backgroundColor: cs.onInverseSurface,
+                foregroundColor: cs.inverseSurface),
             child: const Text('Reload'),
           ),
         ]),
