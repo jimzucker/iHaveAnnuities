@@ -1,0 +1,22 @@
+# Dependabot version-update PRs. Vulnerability *alerts* are enabled separately
+# in Settings → Code security → Dependabot alerts.
+version: 2
+updates:
+  # Flutter/Dart packages (pubspec.yaml lives in /app).
+  - package-ecosystem: "pub"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      pub-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used by the workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]
