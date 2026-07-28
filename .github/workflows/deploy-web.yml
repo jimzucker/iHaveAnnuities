@@ -34,7 +34,10 @@ jobs:
           # Version is the single source of truth in pubspec.yaml (semver only).
           VERSION=$(awk '/^version:/{print $2}' pubspec.yaml | cut -d+ -f1)
           flutter pub get
+          # --no-web-resources-cdn self-hosts CanvasKit so nothing loads from the
+          # gstatic CDN at runtime, keeping the Content-Security-Policy strict.
           flutter build web --release --base-href /iHaveAnnuities/ \
+            --no-web-resources-cdn \
             --dart-define=BUILD_SHA=${{ github.sha }} \
             --dart-define=APP_VERSION="$VERSION"
       # Stamp the deployed build id so a kept-open tab can detect a new version.

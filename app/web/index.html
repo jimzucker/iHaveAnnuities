@@ -17,6 +17,15 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <!-- Content-Security-Policy: locks sources to self. 'wasm-unsafe-eval' +
+       blob: are required by Flutter's CanvasKit/skwasm engine (self-hosted via
+       --no-web-resources-cdn); 'unsafe-inline' style covers Flutter's injected
+       styles; connect-src allows the runtime market.json fetch; fonts.gstatic.com
+       is Flutter's CanvasKit glyph-fallback font source (Roboto/Noto). Note:
+       frame-ancestors / X-Frame-Options need HTTP headers, which GitHub Pages
+       can't set. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://raw.githubusercontent.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'">
+  <meta name="referrer" content="no-referrer">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Track structured-product annuities — index-linked returns with cap, participation, and floor/buffer/barrier downside protection.">
   <meta name="theme-color" content="#1F3A5F">
