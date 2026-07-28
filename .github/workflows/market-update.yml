@@ -18,8 +18,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6           # main — has the fetch script + data/ snapshot
-      - uses: actions/checkout@v6           # the publish target branch, in a subdir
+      - uses: actions/checkout@v7           # main — has the fetch script + data/ snapshot
+      - uses: actions/checkout@v7           # the publish target branch, in a subdir
         with:
           ref: market-data
           path: market-data
