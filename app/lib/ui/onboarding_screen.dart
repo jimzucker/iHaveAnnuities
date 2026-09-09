@@ -5,7 +5,7 @@
 // code (the only way back — there's no email reset), and optionally enrolls
 // biometric. "Skip for now" leaves the data unencrypted (changeable later).
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 

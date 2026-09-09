@@ -3,7 +3,7 @@
 // A reference log of resets the app applied automatically: income-note coupons
 // credited and point-to-point periods locked in as their reset dates passed.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../core/reset_event.dart';

@@ -5,7 +5,7 @@
 // match the rest of the app. Reachable from the overflow menu; pairs with the
 // column-header tooltips for inline help.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'format.dart';
 

@@ -5,7 +5,7 @@
 // lines and the no-loss / capped zones shaded. Falls back to the structural
 // payoff diagram when history isn't available (or for income notes).
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/models.dart';

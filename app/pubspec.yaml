@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.6.10+1
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.13.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -44,11 +44,11 @@ dependencies:
   file_saver: ^0.4.0
   shared_preferences: ^2.5.5
   intl: ^0.20.2
-  # Held at 2.x: data_table_2 3.x is built on the standalone `material_ui`
-  # package, so its DataRow/DataCell no longer interoperate with
-  # package:flutter/material. Adopting it means migrating the whole app
-  # off flutter/material — see .github/dependabot.yml.
-  data_table_2: ^2.7.2
+  data_table_2: ^3.0.0
+  # Flutter's Material library, decoupled from the SDK into its own package.
+  # The app imports Material from here, not package:flutter/material, so its
+  # widgets share one set of types with data_table_2 3.x.
+  material_ui: ^1.1.0
   web: ^1.1.1
 
 dev_dependencies:
