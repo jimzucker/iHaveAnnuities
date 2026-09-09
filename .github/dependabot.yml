@@ -11,6 +11,13 @@ updates:
     groups:
       pub-minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # data_table_2 3.x moved to the standalone `material_ui` package, whose
+      # DataRow/DataCell are distinct types from package:flutter/material's.
+      # Taking it means migrating the whole app off flutter/material, so major
+      # bumps stay out of the PR queue until that's a deliberate project.
+      - dependency-name: "data_table_2"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions used by the workflows.
   - package-ecosystem: "github-actions"

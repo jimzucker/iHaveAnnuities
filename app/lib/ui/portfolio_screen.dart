@@ -298,10 +298,12 @@ class PortfolioScreen extends StatelessWidget {
                     store.encryptionEnabled ? store.verifyRecoveryCode : null)) {
           return;
         }
-        final res = await FilePicker.pickFiles(
-            type: FileType.custom, allowedExtensions: ['xlsx'], withData: true);
-        final bytes = res?.files.single.bytes;
-        if (bytes != null) {
+        // file_picker 12 dropped FilePickerResult: pickFile returns the single
+        // PlatformFile (null on cancel) and bytes are read on demand.
+        final picked = await FilePicker.pickFile(
+            type: FileType.custom, allowedExtensions: ['xlsx']);
+        if (picked != null) {
+          final bytes = await picked.readAsBytes();
           try {
             final n = await store.importXlsx(bytes);
             messenger.showSnackBar(SnackBar(content: Text('Imported $n holdings')));
