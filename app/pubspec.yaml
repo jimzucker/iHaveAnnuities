@@ -41,7 +41,7 @@ dependencies:
   provider: ^6.1.5+1
   http: ^1.6.0
   file_picker: ^12.2.0
-  file_saver: ^0.4.0
+  file_saver: ^0.6.0
   shared_preferences: ^2.5.5
   intl: ^0.20.2
   # Held at 2.x: data_table_2 3.x is built on the standalone `material_ui`
