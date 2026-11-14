@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Add/edit a holding. One form for both modes; returns a Holding via pop.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../core/models.dart';
 import '../core/payoff.dart';

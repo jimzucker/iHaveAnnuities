@@ -4,7 +4,7 @@
 // vault passphrase, with a recovery-code fallback if forgotten. No-op when
 // encryption is off (nothing to protect yet).
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../data/portfolio_store.dart';
 
