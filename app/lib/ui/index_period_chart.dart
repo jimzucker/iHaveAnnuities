@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // The underlying index over the contract's current period (since the last
 // reset), with the strike, cap, and floor/buffer levels drawn as reference
-// lines and the no-loss / capped zones shaded. Falls back to the structural
+// lines and the no-loss / loss / capped zones shaded. Falls back to the structural
 // payoff diagram when history isn't available (or for income notes).
 
 import 'package:material_ui/material_ui.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/models.dart';
+import '../core/payoff.dart' show FloorType;
 import '../data/index_history.dart';
 import 'format.dart';
 import 'payoff_chart.dart';
@@ -70,7 +71,8 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
 
     final lastLvl = pts.last.$2;
     final caption = 'Your index (${h.index}) since the last reset on '
-        '${date(h.lastReset)}. Green = no-loss zone'
+        '${date(h.lastReset)}. '
+        '${_hasNoLossZone(h) ? 'Green = no-loss zone' : 'Red = loss zone'}'
         '${h.cap == null ? '' : ', amber = above the ${capLabel(h.cap)} cap'}. '
         'Now ${level(lastLvl)} (${pctSigned(lastLvl / h.strike - 1)} from strike).';
 
@@ -79,8 +81,8 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
         _leg(cs.primary, h.index),
         _leg(cs.outline, 'strike'),
         if (h.cap != null) _leg(capAmber, 'cap'),
-        _leg(gainGreen, 'no loss'),
-        if (h.floor < 0) _leg(lossRed, 'loss'),
+        if (_hasNoLossZone(h)) _leg(gainGreen, 'no loss'),
+        if (h.floor < 0 || !_hasNoLossZone(h)) _leg(lossRed, 'loss'),
       ]),
       const SizedBox(height: 8),
       SizedBox(
@@ -138,6 +140,12 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
       ]);
 }
 
+/// Whether an index fall below the strike can cost nothing. False with no
+/// protection, and for a max-loss floor (losses count until the floor).
+bool _hasNoLossZone(Holding h) =>
+    h.floorType != FloorType.none &&
+    !(h.floorType == FloorType.floor && h.floor < 0);
+
 class _IndexPeriodPainter extends CustomPainter {
   _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac);
   final Holding h;
@@ -180,8 +188,14 @@ class _IndexPeriodPainter extends CustomPainter {
     }
 
     if (capLvl != null) band(capLvl, yHi, capAmber); // capped
-    band(floorLvl ?? yLo, strike, gainGreen); // no-loss zone
-    if (floorLvl != null) band(yLo, floorLvl, lossRed); // loss zone
+    if (_hasNoLossZone(h)) {
+      band(floorLvl ?? yLo, strike, gainGreen); // no-loss zone
+      if (floorLvl != null) band(yLo, floorLvl, lossRed); // loss zone
+    } else {
+      // No protection, or a max-loss floor: every fall below the strike loses
+      // (a floor's dashed line marks where the loss stops growing).
+      band(yLo, strike, lossRed);
+    }
 
     // y gridlines + level labels
     final grid = Paint()
@@ -205,7 +219,12 @@ class _IndexPeriodPainter extends CustomPainter {
     refLine(strike, cs.outline,
         h.floor == 0 ? 'strike · 0% floor' : 'strike');
     if (capLvl != null) refLine(capLvl, capAmber, 'cap ${pct(h.cap!)}');
-    if (floorLvl != null) refLine(floorLvl, lossRed, 'floor ${pct(h.floor)}');
+    if (floorLvl != null) {
+      refLine(floorLvl, lossRed,
+          h.floorType == FloorType.floor
+              ? 'max loss ${pct(h.floor.abs())}'
+              : 'floor ${pct(h.floor)}');
+    }
 
     // ---- index line ----
     final path = Path();
