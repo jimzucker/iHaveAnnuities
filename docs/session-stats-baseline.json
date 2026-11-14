@@ -1,0 +1,19 @@
+{
+  "active_seconds": 66689,
+  "assistant_turns": 4469,
+  "cache_creation_input_tokens": 28569925,
+  "cache_read_input_tokens": 1933012099,
+  "claude_seconds": 42198,
+  "covers_through": "2026-06-24T05:26",
+  "idle_seconds": 780579,
+  "imported_at": "2026-09-20T14:11:43-04:00",
+  "input_tokens": 627701,
+  "note": "Frozen totals for the period below, imported from a committed report. Live transcripts ending at or before 'covers_through' are skipped so nothing is counted twice.",
+  "output_tokens": 5679501,
+  "project": "iHaveAnnuities",
+  "prompts": 212,
+  "records": 11411,
+  "source": "docs/SESSION_STATS.md",
+  "span_start": "2026-06-14 10:05",
+  "user_seconds": 24490
+}
