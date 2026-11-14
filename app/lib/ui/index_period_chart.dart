@@ -122,7 +122,8 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
               onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
               onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
               child: CustomPaint(
-                painter: _IndexPeriodPainter(h, pts, cs, _cursorFrac, support),
+                painter: _IndexPeriodPainter(h, pts, cs, _cursorFrac, support,
+                    font: Theme.of(context).textTheme.bodyMedium?.fontFamily),
                 child: const SizedBox.expand(),
               ),
             ),
@@ -188,12 +189,14 @@ String supportLabel(double lvl, String baseIndex) => baseIndex == 'NDX'
     : 'support ${level(lvl)}';
 
 class _IndexPeriodPainter extends CustomPainter {
-  _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac, this.support);
+  _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac, this.support,
+      {this.font});
   final Holding h;
   final List<(DateTime, double)> pts;
   final ColorScheme cs;
   final double? cursorFrac; // 0..1 across the plot; null when not hovering
   final double? support; // null = support line off
+  final String? font; // the app's font; canvas text doesn't inherit it
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -354,7 +357,8 @@ class _IndexPeriodPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: fg, fontSize: 15, fontWeight: FontWeight.w700)),
+          style: TextStyle(
+              fontFamily: font, color: fg, fontSize: 15, fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
     const padX = 6.0, padY = 3.0;
@@ -372,6 +376,7 @@ class _IndexPeriodPainter extends CustomPainter {
       text: TextSpan(
           text: s,
           style: TextStyle(
+              fontFamily: font,
               color: color ?? cs.onSurface,
               fontSize: 15,
               fontWeight: color == null ? FontWeight.w600 : FontWeight.w700)),
