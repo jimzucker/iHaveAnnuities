@@ -211,7 +211,8 @@ class _IndexChartScreenState extends State<IndexChartScreen> {
               onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
               onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
               child: CustomPaint(
-                painter: _MultiLinePainter(series, cs, _range.label, _cursorFrac),
+                painter: _MultiLinePainter(series, cs, _range.label, _cursorFrac,
+                    font: Theme.of(context).textTheme.bodyMedium?.fontFamily),
                 child: const SizedBox.expand(),
               ),
             ),
@@ -305,9 +306,11 @@ class _LegendChip extends StatelessWidget {
 enum _Anchor { left, center, right }
 
 class _MultiLinePainter extends CustomPainter {
-  _MultiLinePainter(this.series, this.cs, this.rangeLabel, this.cursorFrac);
+  _MultiLinePainter(this.series, this.cs, this.rangeLabel, this.cursorFrac,
+      {this.font});
   final List<_Series> series;
   final ColorScheme cs;
+  final String? font; // the app's font; canvas text doesn't inherit it
   final String rangeLabel;
   final double? cursorFrac;
 
@@ -451,7 +454,8 @@ class _MultiLinePainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: color ?? cs.onSurfaceVariant, fontSize: 10)),
+          style: TextStyle(
+              fontFamily: font, color: color ?? cs.onSurfaceVariant, fontSize: 10)),
       textDirection: TextDirection.ltr,
     )..layout();
     var dx = at.dx;
@@ -467,7 +471,8 @@ class _MultiLinePainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w700)),
+          style: TextStyle(
+              fontFamily: font, color: fg, fontSize: 10, fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
     const padH = 4.0, padV = 2.0;

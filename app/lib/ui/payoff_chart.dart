@@ -46,7 +46,7 @@ class PayoffChart extends StatelessWidget {
         SizedBox(
           height: 300,
           child: CustomPaint(
-            painter: _PayoffPainter(h, range, cs),
+            painter: _PayoffPainter(h, range, cs, font: Theme.of(context).textTheme.bodyMedium?.fontFamily),
             child: const SizedBox.expand(),
           ),
         ),
@@ -69,10 +69,11 @@ class PayoffChart extends StatelessWidget {
 }
 
 class _PayoffPainter extends CustomPainter {
-  _PayoffPainter(this.h, this.range, this.cs);
+  _PayoffPainter(this.h, this.range, this.cs, {this.font});
   final Holding h;
   final double range;
   final ColorScheme cs;
+  final String? font; // the app's font; canvas text doesn't inherit it
 
   double _payoff(double idx) => h.isIncomeNote
       ? h.couponRate
@@ -84,7 +85,7 @@ class _PayoffPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padL = 64.0, padR = 18.0, padT = 16.0, padB = 38.0;
+    const padL = 64.0, padR = 18.0, padT = 16.0, padB = 56.0;
     final w = size.width - padL - padR;
     final ht = size.height - padT - padB;
     final idxLo = -range, idxHi = range;
@@ -204,7 +205,9 @@ class _PayoffPainter extends CustomPainter {
     _label(canvas, '${pctSigned(h.indexGain)} → ${pctSigned(h.projGain)}',
         Offset((pt.dx + 10).clamp(padL, padL + w - 170), pt.dy - 20), accent: true);
 
-    _label(canvas, 'index →', Offset(padL + w - 4, padT + ht + 4), right: true);
+    // Axis title on its own line under the % ticks (beside them it printed
+    // over the last tick).
+    _label(canvas, 'index →', Offset(padL + w - 4, padT + ht + 24), right: true);
   }
 
   void _label(Canvas canvas, String t, Offset at,
@@ -213,6 +216,7 @@ class _PayoffPainter extends CustomPainter {
       text: TextSpan(
           text: t,
           style: TextStyle(
+              fontFamily: font,
               // The accent (marker) label sits on a filled chip, so use the
               // high-contrast tooltip foreground; plain labels use onSurface.
               color: accent ? cs.onInverseSurface : cs.onSurface,
