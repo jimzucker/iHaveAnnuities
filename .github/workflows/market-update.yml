@@ -6,7 +6,8 @@ name: market-update
 
 on:
   schedule:
-    # 21:00 & 22:00 UTC cover 5pm ET across DST; the script no-ops off-hours/days.
+    # 21:00 & 22:00 UTC cover 5pm ET across DST. GitHub may start these hours
+    # late; the script saves any time after 5pm ET on the latest quote's day.
     - cron: '0 21 * * 1-5'
     - cron: '0 22 * * 1-5'
   workflow_dispatch:
@@ -35,8 +36,9 @@ jobs:
           fi
       - name: publish to market-data branch
         run: |
-          # The script writes data/*.json ONLY on a real 5pm trading-day run
-          # (they aren't committed on main), so their absence means it skipped.
+          # The script writes data/*.json only once the latest close is final
+          # (after 5pm ET; they aren't committed on main), so their absence
+          # means it skipped.
           if [ ! -f data/market.json ] || [ ! -f data/history.json ]; then
             echo "no fresh prices (skipped)"
             exit 0

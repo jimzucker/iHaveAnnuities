@@ -3,9 +3,12 @@
 # Copyright 2026 Jim Zucker
 # SPDX-License-Identifier: LicenseRef-Proprietary
 #
-# Runs from the 5pm-ET trading-day GitHub Action. Without --force it is a no-op
-# unless "now" is 5pm ET (17:00) on a US trading day, so the two UTC cron entries
-# (21:00 & 22:00, covering DST) update at most once per day.
+# Runs from the 5pm-ET trading-day GitHub Action. Without --force it saves
+# nothing until 5pm ET on the day of the latest quote, so a run just after the
+# 4pm close never saves a not-yet-final price. Any later run saves — GitHub can
+# start scheduled runs hours late (Nov 2026: 3–6 hours, which stopped every run
+# under the old "5pm hour only" check). A second run the same evening writes
+# identical files, and the workflow skips the commit when nothing changed.
 
 import datetime as dt
 import json
@@ -64,13 +67,21 @@ def fetch_series(symbol: str, interval: str, rng: str) -> list[list]:
             for t, c in zip(ts, closes) if c is not None]
 
 
-def write_history() -> None:
+def prices_final(as_of_date: dt.date, now_et: dt.datetime) -> bool:
+    """True once it is 5pm ET or later on the latest quote's day — the close
+    is settled by then, however late the run started."""
+    return now_et >= dt.datetime.combine(as_of_date, dt.time(17), ET)
+
+
+def write_history(as_of_date: dt.date) -> None:
     """Daily (5y) + intraday (15m/5d) closes per index for the in-app charts."""
     daily, intraday = {}, {}
     for sym, ticker in HIST_SYMBOLS.items():
         daily[sym] = fetch_series(ticker, "1d", "5y")
         intraday[sym] = fetch_series(ticker, "15m", "5d")
-    data = {"asOf": dt.datetime.now(ET).date().isoformat(),
+    # Dated by the quote, not the clock, so a run after midnight ET writes
+    # the same file as one at 5pm and the workflow sees nothing changed.
+    data = {"asOf": as_of_date.isoformat(),
             "daily": daily, "intraday": intraday}
     with open(HIST_OUT, "w") as f:
         json.dump(data, f, separators=(",", ":"))
@@ -82,17 +93,14 @@ def write_history() -> None:
 def main() -> int:
     force = "--force" in sys.argv
     now_et = dt.datetime.now(ET)
-    if not force:
-        if not is_trading_day(now_et.date()):
-            print(f"skip: {now_et.date()} is not a trading day")
-            return 0
-        if now_et.hour != 17:
-            print(f"skip: ET hour {now_et.hour} != 17 (avoids double-run)")
-            return 0
-
     quotes = {k: fetch_quote(s) for k, s in SYMBOLS.items()}
     as_of = max(t for _, t in quotes.values())
     as_of_date = dt.datetime.fromtimestamp(as_of, ET).date()
+    if not force and not prices_final(as_of_date, now_et):
+        print(f"skip: prices for {as_of_date} are not final until 5pm ET "
+              f"(now {now_et:%Y-%m-%d %H:%M} ET)")
+        return 0
+
     data = {
         "asOf": as_of_date.isoformat(),
         "tradingDay": is_trading_day(as_of_date),
@@ -106,7 +114,7 @@ def main() -> int:
         json.dump(data, f, indent=2)
         f.write("\n")
     print("wrote", OUT, data)
-    write_history()
+    write_history(as_of_date)
     return 0
 
 
