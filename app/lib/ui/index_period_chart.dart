@@ -4,6 +4,7 @@
 // reset), with the strike, cap, and floor/buffer levels drawn as reference
 // lines and the no-loss / loss / capped zones shaded. Falls back to the structural
 // payoff diagram when history isn't available (or for income notes).
+// An optional support line marks the lowest close in the last 3 months.
 
 import 'package:material_ui/material_ui.dart';
 import 'package:http/http.dart' as http;
@@ -18,11 +19,21 @@ import 'payoff_chart.dart';
 const _padL = 80.0, _padR = 14.0, _padT = 18.0, _padB = 36.0;
 
 class IndexPeriodChart extends StatefulWidget {
-  const IndexPeriodChart({super.key, required this.holding, this.base = '', this.client});
+  const IndexPeriodChart(
+      {super.key,
+      required this.holding,
+      this.base = '',
+      this.client,
+      this.showSupport = false,
+      this.onSupportChanged});
 
   final Holding holding;
   final String base;
   final http.Client? client;
+
+  /// Draw the support line. [onSupportChanged] null hides the on/off chip.
+  final bool showSupport;
+  final ValueChanged<bool>? onSupportChanged;
 
   @override
   State<IndexPeriodChart> createState() => _IndexPeriodChartState();
@@ -70,6 +81,7 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
     }
 
     final lastLvl = pts.last.$2;
+    final support = widget.showSupport ? supportLevel(series) : null;
     final caption = 'Your index (${h.index}) since the last reset on '
         '${date(h.lastReset)}. '
         '${_hasNoLossZone(h) ? 'Green = no-loss zone' : 'Red = loss zone'}'
@@ -83,6 +95,14 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
         if (h.cap != null) _leg(capAmber, 'cap'),
         if (_hasNoLossZone(h)) _leg(gainGreen, 'no loss'),
         if (h.floor < 0 || !_hasNoLossZone(h)) _leg(lossRed, 'loss'),
+        if (widget.onSupportChanged != null)
+          FilterChip(
+            label: const Text('Support'),
+            tooltip: 'Lowest close in the last 3 months',
+            selected: widget.showSupport,
+            onSelected: widget.onSupportChanged,
+            visualDensity: VisualDensity.compact,
+          ),
       ]),
       const SizedBox(height: 8),
       SizedBox(
@@ -102,7 +122,7 @@ class _IndexPeriodChartState extends State<IndexPeriodChart> {
               onHorizontalDragStart: (d) => setCursor(d.localPosition.dx),
               onHorizontalDragUpdate: (d) => setCursor(d.localPosition.dx),
               child: CustomPaint(
-                painter: _IndexPeriodPainter(h, pts, cs, _cursorFrac),
+                painter: _IndexPeriodPainter(h, pts, cs, _cursorFrac, support),
                 child: const SizedBox.expand(),
               ),
             ),
@@ -146,12 +166,34 @@ bool _hasNoLossZone(Holding h) =>
     h.floorType != FloorType.none &&
     !(h.floorType == FloorType.floor && h.floor < 0);
 
+/// NDX ÷ QQQ. Measured on daily closes Nov 2021 – Nov 2026: 41.03 to 41.11.
+const ndxPerQqq = 41.1;
+
+/// The support level: the lowest close in the 3 months up to the latest
+/// close in [series] (oldest first). Null when there is no data.
+double? supportLevel(List<(DateTime, double)> series) {
+  if (series.isEmpty) return null;
+  final end = series.last.$1;
+  final from = DateTime(end.year, end.month - 3, end.day);
+  double? lo;
+  for (final p in series) {
+    if (!p.$1.isBefore(from) && (lo == null || p.$2 < lo)) lo = p.$2;
+  }
+  return lo;
+}
+
+/// The support line's label; NDX also shows the matching QQQ price.
+String supportLabel(double lvl, String baseIndex) => baseIndex == 'NDX'
+    ? 'support ${level(lvl)} (QQQ ≈ \$${(lvl / ndxPerQqq).round()})'
+    : 'support ${level(lvl)}';
+
 class _IndexPeriodPainter extends CustomPainter {
-  _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac);
+  _IndexPeriodPainter(this.h, this.pts, this.cs, this.cursorFrac, this.support);
   final Holding h;
   final List<(DateTime, double)> pts;
   final ColorScheme cs;
   final double? cursorFrac; // 0..1 across the plot; null when not hovering
+  final double? support; // null = support line off
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -168,7 +210,7 @@ class _IndexPeriodPainter extends CustomPainter {
       lo = lo < p.$2 ? lo : p.$2;
       hi = hi > p.$2 ? hi : p.$2;
     }
-    lo = [lo, strike, floorLvl ?? lo].reduce((a, b) => a < b ? a : b);
+    lo = [lo, strike, floorLvl ?? lo, support ?? lo].reduce((a, b) => a < b ? a : b);
     hi = [hi, strike, capLvl ?? hi].reduce((a, b) => a > b ? a : b);
     final span = (hi - lo) == 0 ? (hi == 0 ? 1.0 : hi.abs() * 0.02) : (hi - lo);
     final yLo = lo - span * 0.08, yHi = hi + span * 0.08;
@@ -209,11 +251,13 @@ class _IndexPeriodPainter extends CustomPainter {
     }
 
     // reference lines (dashed)
-    void refLine(double v, Color c, String label) {
+    void refLine(double v, Color c, String label, {bool left = false}) {
       final y = sy(v);
       _dashed(canvas, Offset(padL, y), Offset(padL + w, y),
           Paint()..color = c.withValues(alpha: 0.85)..strokeWidth = 1.2);
-      _txt(canvas, label, Offset(padL + w - 2, y - 12), anchor: _A.right, color: c);
+      left
+          ? _txt(canvas, label, Offset(padL + 2, y - 12), anchor: _A.left, color: c)
+          : _txt(canvas, label, Offset(padL + w - 2, y - 12), anchor: _A.right, color: c);
     }
 
     refLine(strike, cs.outline,
@@ -224,6 +268,14 @@ class _IndexPeriodPainter extends CustomPainter {
           h.floorType == FloorType.floor
               ? 'max loss ${pct(h.floor.abs())}'
               : 'floor ${pct(h.floor)}');
+    }
+    if (support != null) {
+      // Labels sit at the right end; if that would print over the strike,
+      // cap or floor label, put the support label at the left end instead.
+      final ys = [strike, ?capLvl, ?floorLvl].map(sy);
+      final clash = ys.any((y) => (y - sy(support!)).abs() < 14);
+      refLine(support!, cs.tertiary, supportLabel(support!, h.baseIndex),
+          left: clash);
     }
 
     // ---- index line ----
@@ -345,7 +397,10 @@ class _IndexPeriodPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _IndexPeriodPainter old) =>
-      old.pts != pts || old.h != h || old.cursorFrac != cursorFrac;
+      old.pts != pts ||
+      old.h != h ||
+      old.cursorFrac != cursorFrac ||
+      old.support != support;
 }
 
 enum _A { left, center, right }

@@ -149,7 +149,14 @@ class HoldingDetail extends StatelessWidget {
   Widget _chartCard(BuildContext context, Holding h, String base) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: IndexPeriodChart(holding: h, base: base),
+          child: IndexPeriodChart(
+            holding: h,
+            base: base,
+            // null in the app (default HTTP); tests supply a fake one.
+            client: context.read<PortfolioStore>().client,
+            showSupport: context.select<PortfolioStore, bool>((s) => s.showSupport),
+            onSupportChanged: (v) => context.read<PortfolioStore>().setShowSupport(v),
+          ),
         ),
       );
 

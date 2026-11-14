@@ -44,6 +44,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _fullColKey = 'fullColumns.v1';
   static const _groupByKey = 'groupBy.v1';
   static const _hideSummaryKey = 'hideSummary.v1';
+  static const _showSupportKey = 'showSupport.v1';
   static const _hiddenIdxKey = 'hiddenIndexes.v1';
   static const _resetHistKey = 'resetHistory.v1';
   static const _vaultMetaKey = 'vault.meta.v1';
@@ -117,6 +118,7 @@ class PortfolioStore extends ChangeNotifier {
   bool _fullColumns = true;
   String _groupBy = ''; // '' = no grouping; else a dimension label
   bool _hideSummary = false;
+  bool _showSupport = false;
   Set<String> _hiddenIndexes = {};
   List<ResetEvent> _resetHistory = [];
 
@@ -243,6 +245,17 @@ class PortfolioStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether the detail page's index chart draws the support line (the
+  /// lowest close in the last 3 months). Off by default.
+  bool get showSupport => _showSupport;
+
+  Future<void> setShowSupport(bool show) async {
+    _showSupport = show;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showSupportKey, show);
+    notifyListeners();
+  }
+
   Future<void> setFullColumns(bool full) async {
     _fullColumns = full;
     final prefs = await SharedPreferences.getInstance();
@@ -287,6 +300,7 @@ class PortfolioStore extends ChangeNotifier {
     _groupBy = prefs.getString(_groupByKey) ?? '';
     if (!groupDimensions.contains(_groupBy)) _groupBy = '';
     _hideSummary = prefs.getBool(_hideSummaryKey) ?? false;
+    _showSupport = prefs.getBool(_showSupportKey) ?? false;
     _hiddenIndexes = (prefs.getStringList(_hiddenIdxKey) ?? const []).toSet();
     _stayUnlockedDays = prefs.getInt(_stayDaysKey) ?? 30;
     _onboarded = prefs.getBool(_onboardedKey) ?? false;
