@@ -26,9 +26,14 @@ class HoldingDetail extends StatelessWidget {
         ? 'you take the full index loss (no protection)'
         : h.floor == 0
             ? 'no loss if it falls'
-            : (h.floorType == FloorType.soft
-                ? 'protected unless it falls past ${pct(h.floor.abs())} (then full loss)'
-                : 'a ${pct(h.floor.abs())} buffer absorbs the first losses');
+            : switch (h.floorType) {
+                FloorType.soft =>
+                  'protected unless it falls past ${pct(h.floor.abs())} (then full loss)',
+                // Max-loss floor: losses pass through until the floor, then stop.
+                FloorType.floor =>
+                  'losses count one for one, up to a maximum loss of ${pct(h.floor.abs())}',
+                _ => 'a ${pct(h.floor.abs())} buffer absorbs the first losses',
+              };
     final upside = h.isIncomeNote
         ? '${pct(h.couponRate)} monthly coupon'
         : 'gains $cap$part';

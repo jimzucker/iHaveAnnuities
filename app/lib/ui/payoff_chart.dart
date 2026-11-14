@@ -35,6 +35,8 @@ class PayoffChart extends StatelessWidget {
             if (h.cap != null) _legend(capAmber, 'cap', solid: false),
             if (h.floorType == FloorType.none)
               _legend(lossRed, 'full loss', solid: false)
+            else if (h.floor < 0 && h.floorType == FloorType.floor)
+              _legend(lossRed, 'max loss', solid: false)
             else if (h.floor < 0)
               _legend(h.floorType == FloorType.soft ? capAmber : gainGreen,
                   h.floorType == FloorType.soft ? 'barrier' : 'buffer',
@@ -141,6 +143,10 @@ class _PayoffPainter extends CustomPainter {
 
       if (h.floorType == FloorType.none) {
         band(idxLo, 0, lossRed, 'full loss'); // no protection — 1:1 downside
+      } else if (h.floorType == FloorType.floor && h.floor < 0) {
+        // max-loss floor: lose 1:1 down to the floor, then no further
+        band(h.floor, 0, lossRed, 'loss');
+        band(idxLo, h.floor, lossRed, 'max loss');
       } else {
         band(h.floor < 0 ? h.floor : idxLo, 0, gainGreen, 'no loss');
         if (h.floor < 0) {
@@ -163,9 +169,13 @@ class _PayoffPainter extends CustomPainter {
       _dashed(canvas, Offset(padL, sy(h.cap!)), Offset(padL + w, sy(h.cap!)),
           Paint()..color = capAmber.withValues(alpha: 0.85)..strokeWidth = 1.6);
     }
-    // barrier / buffer knee (dashed vertical at index = floor)
+    // barrier / buffer / max-loss knee (dashed vertical at index = floor)
     if (h.floor < 0 && h.floor > idxLo) {
-      final c = h.floorType == FloorType.soft ? capAmber : gainGreen;
+      final c = switch (h.floorType) {
+        FloorType.soft => capAmber,
+        FloorType.floor => lossRed,
+        _ => gainGreen,
+      };
       _dashed(canvas, Offset(sx(h.floor), padT), Offset(sx(h.floor), padT + ht),
           Paint()..color = c.withValues(alpha: 0.75)..strokeWidth = 1.6);
     }
