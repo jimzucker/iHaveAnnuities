@@ -3,7 +3,7 @@
 // Shown when the vault is locked: passphrase unlock, optional Touch ID, recovery
 // with the one-time code, and a last-resort "Forget & reset".
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../data/portfolio_store.dart';

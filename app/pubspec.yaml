@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.10+1
+version: 1.6.11+1
 
 environment:
   sdk: ^3.11.5
@@ -44,12 +44,11 @@ dependencies:
   file_saver: ^0.4.0
   shared_preferences: ^2.5.5
   intl: ^0.20.2
-  # Held at 2.x: data_table_2 3.x is built on the standalone `material_ui`
-  # package, so its DataRow/DataCell no longer interoperate with
-  # package:flutter/material. Adopting it means migrating the whole app
-  # off flutter/material — see .github/dependabot.yml.
-  data_table_2: ^2.7.2
+  data_table_2: ^3.0.0
   web: ^1.1.1
+  # Flutter 3.47+ deprecates package:flutter/material in favor of this.
+  # data_table_2 3.x is built on it too, so the two must move together.
+  material_ui: ^1.11.0
 
 dev_dependencies:
   flutter_test:

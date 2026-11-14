@@ -10,7 +10,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:provider/provider.dart';
@@ -37,6 +37,17 @@ ThemeData _theme(Brightness b) => ThemeData(
       useMaterial3: true,
     );
 
+
+// Same as golden_toolkit's materialAppWrapper, but built with material_ui's
+// types: that helper still uses package:flutter/material, whose ThemeData is
+// a different type from material_ui's.
+WidgetWrapper _app(Brightness b) => (child) => MaterialApp(
+      theme: _theme(b).copyWith(platform: TargetPlatform.android),
+      supportedLocales: const [Locale('en')],
+      debugShowCheckedModeBanner: false,
+      home: Material(child: child),
+    );
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -50,7 +61,7 @@ void main() {
     await loadAppFonts();
     await tester.pumpWidgetBuilder(
       ChangeNotifierProvider.value(value: seeded(), child: const PortfolioScreen()),
-      wrapper: materialAppWrapper(theme: _theme(Brightness.light)),
+      wrapper: _app(Brightness.light),
       surfaceSize: const Size(1320, 720),
     );
     await tester.pumpAndSettle();
@@ -64,7 +75,7 @@ void main() {
     await store.setHideSummary(true);
     await tester.pumpWidgetBuilder(
       ChangeNotifierProvider.value(value: store, child: const PortfolioScreen()),
-      wrapper: materialAppWrapper(theme: _theme(Brightness.light)),
+      wrapper: _app(Brightness.light),
       surfaceSize: const Size(1500, 700),
     );
     await tester.pumpAndSettle();
@@ -76,7 +87,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       ChangeNotifierProvider.value(
           value: seeded(), child: const Material(child: PortfolioHero())),
-      wrapper: materialAppWrapper(theme: _theme(Brightness.light)),
+      wrapper: _app(Brightness.light),
       surfaceSize: const Size(920, 188),
     );
     await tester.pumpAndSettle();
@@ -90,7 +101,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       ChangeNotifierProvider.value(
           value: store, child: HoldingDetail(holding: h)),
-      wrapper: materialAppWrapper(theme: _theme(Brightness.dark)),
+      wrapper: _app(Brightness.dark),
       surfaceSize: const Size(1100, 820),
     );
     await tester.pumpAndSettle();
@@ -103,7 +114,7 @@ void main() {
     await store.setHideSummary(true); // collapse the quotes banner for a clean card shot
     await tester.pumpWidgetBuilder(
       ChangeNotifierProvider.value(value: store, child: const PortfolioScreen()),
-      wrapper: materialAppWrapper(theme: _theme(Brightness.light)),
+      wrapper: _app(Brightness.light),
       surfaceSize: const Size(400, 920),
     );
     await tester.pumpAndSettle();

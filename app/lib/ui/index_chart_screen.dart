@@ -5,7 +5,7 @@
 // show indexes (remembered) and 1D…Max range toggles. Data comes from the
 // Action-generated history.json on the `market-data` branch (raw URL, CORS-ok).
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 

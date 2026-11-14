@@ -5,7 +5,7 @@
 // to Next Reset ascending. Per-row edit/delete; tap a row to drill in.
 
 import 'package:data_table_2/data_table_2.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
