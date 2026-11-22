@@ -51,6 +51,7 @@ const headers = <String>[
   'Inception', // Y — original investment date (rolled contracts); optional
   'Broker', // Z — optional
   'Broker Fee', // AA — annual fee (fraction); optional
+  'P/L (\$000)', // AB — derived: realized + unrealized − broker fees so far
 ];
 
 /// Numeric sentinel for an uncapped CAP column (= 999%).
@@ -254,6 +255,7 @@ List<int> writeTracker(
       x.inceptionDate == null ? null : _dateCell(x.inceptionDate!), // Y Inception
       x.broker.isEmpty ? null : TextCellValue(x.broker), // Z Broker
       x.brokerFee == 0 ? null : DoubleCellValue(x.brokerFee), // AA Broker Fee
+      DoubleCellValue(x.profitLossK(asOf)), // AB P/L
     ]);
   }
 
@@ -267,6 +269,8 @@ List<int> writeTracker(
   total[6] = DoubleCellValue(totRealized); // G Realized
   total[7] = DoubleCellValue(totProjValue); // H Proj Value
   total[8] = DoubleCellValue(totProjValue - totInitial - totRealized); // I Proj $ Gain (unrealized)
+  total[headers.length - 1] = DoubleCellValue(
+      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf))); // AB P/L
   s.appendRow(total);
 
   _styleTracker(s, holdings.length);
@@ -284,7 +288,7 @@ void _styleTracker(Sheet s, int nRows) {
   final numF = NumFormat.standard_4; // #,##0.00
   final dateF = NumFormat.standard_15; // d-mmm-yy
   final byHeader = <String, NumFormat>{
-    'Initial (\$000)': curF, 'Realized (\$000)': curF,
+    'Initial (\$000)': curF, 'Realized (\$000)': curF, 'P/L (\$000)': curF,
     'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
     'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
     'CAP': pctF, 'Part.': pctF, 'Floor': pctF, 'Broker Fee': pctF,

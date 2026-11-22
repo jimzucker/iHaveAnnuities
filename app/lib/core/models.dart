@@ -135,6 +135,18 @@ class Holding {
   /// Broker fee over the whole term, in $000 = fee per year × term years.
   double get brokerFeeTermK => brokerFeePerYearK * termYears;
 
+  /// Broker fees charged so far, in $000: fee per year × years from
+  /// [returnStart] to [asOf] (no further than maturity).
+  double brokerFeesToDateK(DateTime asOf) {
+    final end = asOf.isBefore(maturity) ? asOf : maturity;
+    final days = end.difference(returnStart).inDays;
+    return days <= 0 ? 0 : brokerFeePerYearK * days / 365.25;
+  }
+
+  /// Profit or loss, in $000 = realized + unrealized − broker fees so far.
+  double profitLossK(DateTime asOf) =>
+      realized + projGainDollarsK - brokerFeesToDateK(asOf);
+
   /// Start date for life-to-date returns: the original inception when set, else
   /// the open date.
   DateTime get returnStart => inceptionDate ?? openDate;

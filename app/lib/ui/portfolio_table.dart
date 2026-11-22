@@ -48,16 +48,22 @@ class BandAggregates {
     required this.returnPct,
     required this.unrealizedPct,
     required this.indexGain,
+    this.profitLoss = 0,
   });
 
   final double initial, realized, projValue, unrealizedDollars;
 
+  /// Sum of each holding's P/L (realized + unrealized − fees so far).
+  final double profitLoss;
+
   /// Null when there is no principal to divide by (an empty/zero group).
   final double? returnPct, unrealizedPct, indexGain;
 
-  factory BandAggregates.of(Iterable<Holding> items) {
+  factory BandAggregates.of(Iterable<Holding> items, {DateTime? asOf}) {
     var initial = 0.0, realized = 0.0, projValue = 0.0, idxWeighted = 0.0;
+    var pl = 0.0;
     for (final h in items) {
+      if (asOf != null) pl += h.profitLossK(asOf);
       initial += h.initial;
       realized += h.realized;
       projValue += h.projValueK;
@@ -73,6 +79,7 @@ class BandAggregates {
       returnPct: hasBase ? (projValue - initial) / initial : null,
       unrealizedPct: hasBase ? unrealized / initial : null,
       indexGain: hasBase ? idxWeighted / initial : null,
+      profitLoss: pl,
     );
   }
 }
@@ -147,6 +154,12 @@ class PortfolioTable extends StatelessWidget {
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
             fixedWidth: 112),
+        // Profit or loss after broker fees charged so far.
+        _Col('P/L', true, (h, a) => h.profitLossK(a),
+            (h, a, cs) => DataCell(Text(moneyK(h.profitLossK(a)),
+                style: TextStyle(color: lossColor(h.profitLossK(a), cs)))),
+            fixedWidth: 112,
+            tooltip: 'Realized + Unrealized \$ − broker fees so far'),
         // "Total Value" = value projected at the next reset (today's levels);
         // the export keeps the precise "Proj Value @ Reset" label.
         _Col('Total Value', true, (h, _) => h.projValueK,
@@ -234,7 +247,7 @@ class PortfolioTable extends StatelessWidget {
   /// + the monitored reset countdown). Full view shows everything.
   static const _coreLabels = <String>{
     'Issuer', 'Type', 'Index', 'Protection',
-    'Initial', 'Realized', 'Unrealized \$', 'Total Value', 'Return %',
+    'Initial', 'Realized', 'Unrealized \$', 'P/L', 'Total Value', 'Return %',
     'Unrealized %', 'Index Gain', 'Yield', 'Next Reset', 'Days to Reset',
   };
 
@@ -328,6 +341,7 @@ class PortfolioTable extends StatelessWidget {
       // The group header carries the subtotals (name + count + summed money),
       // plus the group's money-weighted XIRR. A chevron toggles collapse.
       rows.add(_totalsBandRow(shown, members, cs,
+          asOf: asOf,
           label: groupLabel(value, members),
           bg: cs.primaryContainer,
           labelColor: cs.onPrimaryContainer,
@@ -403,7 +417,8 @@ class PortfolioTable extends StatelessWidget {
     final sortLabel = all[sortIdx].label;
     final entries = _grouped(items, store.groupBy).entries.toList();
     final aggOf = {
-      for (final e in entries) e.key: _groupAggregate(sortLabel, e.value, store)
+      for (final e in entries)
+        e.key: _groupAggregate(sortLabel, e.value, store, asOf)
     };
     if (aggOf.values.any((v) => v != null)) {
       final firstSeen = {for (final (i, e) in entries.indexed) e.key: i};
@@ -425,12 +440,14 @@ class PortfolioTable extends StatelessWidget {
   /// what the user sees. Null for columns with no band aggregate (identity,
   /// dates, static terms), which fall back to first-appearance order.
   static double? _groupAggregate(
-      String sortLabel, List<Holding> members, PortfolioStore store) {
-    final agg = BandAggregates.of(members);
+      String sortLabel, List<Holding> members, PortfolioStore store,
+      DateTime asOf) {
+    final agg = BandAggregates.of(members, asOf: asOf);
     return switch (sortLabel) {
       'Initial' => agg.initial,
       'Realized' => agg.realized,
       'Unrealized \$' => agg.unrealizedDollars,
+      'P/L' => agg.profitLoss,
       'Total Value' => agg.projValue,
       'Return %' => agg.returnPct,
       'Unrealized %' => agg.unrealizedPct,
@@ -482,6 +499,7 @@ class PortfolioTable extends StatelessWidget {
   /// Bold portfolio TOTAL row under the money columns.
   DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
       _totalsBandRow(shown, store.holdings, cs,
+          asOf: store.market?.asOf ?? DateTime(2026, 6, 14),
           label: 'TOTAL',
           bg: cs.surfaceContainerHigh,
           yieldXirr: store.portfolioXirr);
@@ -491,12 +509,13 @@ class PortfolioTable extends StatelessWidget {
   /// or the grand-total row. [bg]/[labelColor] style it.
   DataRow _totalsBandRow(List<_Col> shown, List<Holding> items, ColorScheme cs,
       {required String label,
+      required DateTime asOf,
       required Color bg,
       Color? labelColor,
       double? yieldXirr,
       IconData? chevron,
       VoidCallback? onToggle}) {
-    final agg = BandAggregates.of(items);
+    final agg = BandAggregates.of(items, asOf: asOf);
     return DataRow(
       color: WidgetStatePropertyAll(bg),
       // A collapsible group header taps to fold/unfold; the grand total doesn't.
@@ -521,6 +540,7 @@ class PortfolioTable extends StatelessWidget {
                 realized: agg.realized,
                 projValue: agg.projValue,
                 projGain: agg.unrealizedDollars,
+                profitLoss: agg.profitLoss,
                 returnPct: agg.returnPct,
                 unrealizedPct: agg.unrealizedPct,
                 indexGainW: agg.indexGain,
@@ -538,6 +558,7 @@ class PortfolioTable extends StatelessWidget {
       required double realized,
       required double projValue,
       required double projGain,
+      double profitLoss = 0,
       double? returnPct,
       double? unrealizedPct,
       double? indexGainW,
@@ -556,6 +577,9 @@ class PortfolioTable extends StatelessWidget {
       case 'Unrealized \$':
         t = moneyK(projGain);
         color = gainColor(projGain, cs);
+      case 'P/L':
+        t = moneyK(profitLoss);
+        color = gainColor(profitLoss, cs);
       // Weighted ratio aggregates (blank when undefined); losses flagged red.
       case 'Return %':
         if (returnPct != null) {

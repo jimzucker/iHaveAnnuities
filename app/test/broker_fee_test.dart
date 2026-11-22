@@ -20,6 +20,7 @@ import 'package:ihaveannuities/core/reset_rollover.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
+import 'package:ihaveannuities/data/xlsx_reader.dart';
 import 'package:ihaveannuities/ui/format.dart';
 import 'package:ihaveannuities/ui/holding_detail.dart';
 import 'package:ihaveannuities/ui/holding_form.dart';
@@ -193,8 +194,28 @@ void main() {
     });
 
     test('the new columns come last, after Inception', () {
-      expect(headers.sublist(headers.length - 3),
-          ['Inception', 'Broker', 'Broker Fee']);
+      expect(headers.sublist(headers.length - 4),
+          ['Inception', 'Broker', 'Broker Fee', 'P/L (\$000)']);
+    });
+
+    test('the export has each holding\'s P/L and the total', () {
+      final hs = [_h(broker: 'ACME', fee: 0.01), _h(issuer: 'OTHER')];
+      final asOf = DateTime(2028, 1, 1);
+      final rows = XlsxReader.decode(writeTracker(hs,
+          asOf: asOf,
+          prices: const {'SPX': 105, 'NDX': 1, 'RUT': 1}))['Annuity Tracker']!;
+      final hi = rows.indexWhere((r) => r.contains('Issuer'));
+      final col = rows[hi].indexOf('P/L (\$000)');
+      expect(rows[hi + 1][col], closeTo(hs[0].profitLossK(asOf), 1e-9));
+      expect(rows[hi + 2][col], closeTo(hs[1].profitLossK(asOf), 1e-9));
+      final total = rows.firstWhere((r) => r.isNotEmpty && r.first == 'TOTAL');
+      expect(total[col],
+          closeTo(hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf), 1e-9));
+      // Re-importing ignores the P/L column (it is worked out, not entered).
+      expect(parseTracker(writeTracker(hs,
+              asOf: asOf, prices: const {'SPX': 105, 'NDX': 1, 'RUT': 1}))
+          .first
+          .realized, 20);
     });
   });
 
@@ -259,6 +280,22 @@ void main() {
       expect(find.text('1.00%/yr'), findsOneWidget);
       expect(find.text('${moneyK(1.2)}/yr · ${moneyK(4.8)} over term'),
           findsOneWidget);
+    });
+
+    testWidgets('shows P/L, marked "after fees" when there is a fee',
+        (tester) async {
+      final h = _h(broker: 'ACME', fee: 0.01);
+      await pump(tester, h);
+      expect(find.text('P/L'), findsOneWidget);
+      expect(find.text(moneyK(h.profitLossK(_market.asOf))), findsOneWidget);
+      expect(find.text('after fees'), findsOneWidget);
+    });
+
+    testWidgets('shows P/L without "after fees" when there is no fee',
+        (tester) async {
+      await pump(tester, _h());
+      expect(find.text('P/L'), findsOneWidget);
+      expect(find.text('after fees'), findsNothing);
     });
 
     testWidgets('shows nothing about brokers when none was entered',
@@ -333,6 +370,117 @@ void main() {
       final h = await fill(tester, initial: _h(broker: 'ACME', fee: 0.01));
       expect(h!.broker, 'ACME');
       expect(h.brokerFee, closeTo(0.01, 1e-12));
+    });
+  });
+
+  group('P/L', () {
+    // _h: initial 100, realized 20, SPX 105 vs strike 100 → +5% on 120 = 6.0
+    test('fees so far run from the open date to today', () {
+      final h = _h(fee: 0.01); // 1.2 a year
+      expect(h.brokerFeesToDateK(DateTime(2028, 1, 1)),
+          closeTo(1.2 * 730 / 365.25, 1e-12));
+    });
+
+    test('no fees before the start; fees stop at maturity', () {
+      final h = _h(fee: 0.01);
+      expect(h.brokerFeesToDateK(DateTime(2025, 6, 1)), 0);
+      expect(h.brokerFeesToDateK(DateTime(2035, 1, 1)),
+          closeTo(h.brokerFeeTermK, 1e-12));
+    });
+
+    test('P/L is realized + unrealized − fees so far', () {
+      final h = _h(fee: 0.01);
+      final asOf = DateTime(2028, 1, 1);
+      expect(h.projGainDollarsK, closeTo(6.0, 1e-9));
+      expect(h.profitLossK(asOf),
+          closeTo(20 + 6.0 - 1.2 * 730 / 365.25, 1e-9));
+    });
+
+    test('with no fee, P/L is realized + unrealized', () {
+      expect(_h().profitLossK(DateTime(2028, 1, 1)), closeTo(26.0, 1e-9));
+    });
+
+    test('group and total P/L add up the holdings', () {
+      final hs = [_h(fee: 0.01), _h()];
+      final asOf = DateTime(2028, 1, 1);
+      expect(BandAggregates.of(hs, asOf: asOf).profitLoss,
+          closeTo(hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf), 1e-9));
+      expect(BandAggregates.of(hs).profitLoss, 0); // no date, no P/L
+    });
+
+    final cs = ColorScheme.fromSeed(seedColor: Colors.blue);
+
+    test('P/L sits after Unrealized \$, at the position the store expects', () {
+      final labels = PortfolioTable.columnLabels(cs);
+      expect(labels.indexOf('P/L'), PortfolioStore.plColumn);
+      expect(labels[PortfolioStore.plColumn - 1], 'Unrealized \$');
+      // The default sort is still Index Gain, as before P/L was added.
+      expect(labels[PortfolioStore.defaultSortColumn], 'Index Gain');
+    });
+
+    // Column order before P/L was added (saved sort settings use these).
+    const oldLabels = [
+      'Issuer', 'Type', 'Index', 'Protection', 'Initial', 'Realized',
+      'Unrealized \$', 'Total Value', 'Return %', 'Unrealized %',
+      'Index Gain', 'Yield', 'Next Reset', 'Days to Reset',
+    ];
+    for (final (old, name) in oldLabels.indexed) {
+      test('a sort saved by an older version on "$name" still sorts by "$name"',
+          () async {
+        SharedPreferences.setMockInitialValues({'sortColumn.v1': old});
+        final store = PortfolioStore();
+        await store.init();
+        expect(PortfolioTable.columnLabels(cs)[store.sortColumn], name);
+      });
+    }
+
+    test('a new sort is saved under the new setting and wins on reload',
+        () async {
+      SharedPreferences.setMockInitialValues({'sortColumn.v1': 3});
+      final store = PortfolioStore();
+      await store.init();
+      await store.setSort(PortfolioStore.plColumn, false);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('sortColumn.v2'), PortfolioStore.plColumn);
+      expect(prefs.getInt('sortColumn.v1'), 3); // older versions keep theirs
+      final again = PortfolioStore();
+      await again.init();
+      expect(again.sortColumn, PortfolioStore.plColumn);
+    });
+
+    test('sorting by P/L orders groups by their P/L subtotal', () async {
+      final store = PortfolioStore()
+        ..debugSeed([
+          _h(issuer: 'A', broker: 'SMALL', realized: 0),
+          _h(issuer: 'B', broker: 'BIG', realized: 50),
+        ], _market);
+      await store.setGroupBy('Broker');
+      await store.setSort(PortfolioStore.plColumn, false); // biggest first
+      final order = PortfolioTable.orderedHoldings(
+              store, _market.asOf, cs)
+          .map((h) => h.broker)
+          .toList();
+      expect(order, ['BIG', 'SMALL']);
+    });
+
+    testWidgets('the table shows P/L per row and in the TOTAL row',
+        (tester) async {
+      tester.view.physicalSize = const Size(2400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final hs = [_h(issuer: 'A', fee: 0.01), _h(issuer: 'B')];
+      final store = PortfolioStore()..debugSeed(hs, _market);
+      await store.setHideSummary(true);
+      await tester.pumpWidget(ChangeNotifierProvider.value(
+          value: store, child: const MaterialApp(home: PortfolioScreen())));
+      await tester.pumpAndSettle();
+      final asOf = _market.asOf;
+      expect(find.text('P/L'), findsWidgets);
+      expect(find.text(moneyK(hs[0].profitLossK(asOf))), findsOneWidget);
+      expect(find.text(moneyK(hs[1].profitLossK(asOf))), findsOneWidget);
+      expect(
+          find.text(moneyK(hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf))),
+          findsOneWidget);
     });
   });
 
