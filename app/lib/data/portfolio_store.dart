@@ -917,6 +917,7 @@ class PortfolioStore extends ChangeNotifier {
         _holdings,
         asOf: _market?.asOf ?? DateTime.now(),
         prices: _market?.bySymbol ?? const {'SPX': 0, 'NDX': 0, 'RUT': 0},
+        history: _resetHistory,
       );
 
   /// Export a polished, shareable report `.xlsx` (not re-importable). The caller

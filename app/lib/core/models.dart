@@ -7,6 +7,7 @@
 import 'dart:math' as math;
 
 import 'payoff.dart';
+import 'reset_event.dart';
 
 /// Account / tax treatment.
 enum AccountType { nonQual, ira, roth }
@@ -126,26 +127,61 @@ class Holding {
   /// projected value, returns or yields.
   double get brokerFeePerYearK => (initial + realized) * brokerFee;
 
-  /// Contract term in years, from [returnStart] (inception or open) to maturity.
-  double get termYears {
-    final days = maturity.difference(returnStart).inDays;
-    return days <= 0 ? 0 : days / 365.25;
+  /// Broker fee over the whole term (start to maturity), in $000, charged
+  /// the same way as [brokerFeesToDateK]. Years after today use today's
+  /// balance.
+  double brokerFeeTermK([List<ResetEvent> history = const []]) =>
+      brokerFeesToDateK(maturity, history);
+
+  /// Broker fees charged so far, in $000. Fee years run from [returnStart]
+  /// (inception, else the start date) on each anniversary. Each fee year is
+  /// charged [brokerFee] on the balance (initial + realized) on the day it
+  /// starts; a full year is charged the whole rate, the year in progress in
+  /// proportion to its days. Stops at maturity.
+  ///
+  /// The balance on a past date is today's realized minus the gains [history]
+  /// shows were credited after that date. Gains credited before the app kept
+  /// a history are not in it, so those years use the later balance.
+  double brokerFeesToDateK(DateTime asOf,
+      [List<ResetEvent> history = const []]) {
+    if (brokerFee == 0) return 0;
+    final end = asOf.isBefore(maturity) ? asOf : maturity;
+    final mine = history.where((e) => e.holdingKey == key).toList();
+    double balanceOn(DateTime d) =>
+        initial +
+        realized -
+        mine
+            .where((e) => e.date.isAfter(d))
+            .fold(0.0, (a, e) => a + e.realizedAddedK);
+    var fee = 0.0;
+    var from = returnStart;
+    for (var year = 1; from.isBefore(end); year++) {
+      final next = _addYears(returnStart, year);
+      final part =
+          next.isAfter(end) ? _days(from, end) / _days(from, next) : 1.0;
+      fee += brokerFee * balanceOn(from) * part;
+      from = next;
+    }
+    return fee;
   }
 
-  /// Broker fee over the whole term, in $000 = fee per year × term years.
-  double get brokerFeeTermK => brokerFeePerYearK * termYears;
+  /// Calendar days from [a] to [b]. Counted in UTC so a daylight-saving
+  /// change in between doesn't drop a day.
+  static int _days(DateTime a, DateTime b) =>
+      DateTime.utc(b.year, b.month, b.day)
+          .difference(DateTime.utc(a.year, a.month, a.day))
+          .inDays;
 
-  /// Broker fees charged so far, in $000: fee per year × years from
-  /// [returnStart] to [asOf] (no further than maturity).
-  double brokerFeesToDateK(DateTime asOf) {
-    final end = asOf.isBefore(maturity) ? asOf : maturity;
-    final days = end.difference(returnStart).inDays;
-    return days <= 0 ? 0 : brokerFeePerYearK * days / 365.25;
+  /// [d] plus [years], with Feb 29 moved to Feb 28 in non-leap years.
+  static DateTime _addYears(DateTime d, int years) {
+    final y = d.year + years;
+    final lastDay = DateTime(y, d.month + 1, 0).day;
+    return DateTime(y, d.month, d.day < lastDay ? d.day : lastDay);
   }
 
   /// Profit or loss, in $000 = realized + unrealized − broker fees so far.
-  double profitLossK(DateTime asOf) =>
-      realized + projGainDollarsK - brokerFeesToDateK(asOf);
+  double profitLossK(DateTime asOf, [List<ResetEvent> history = const []]) =>
+      realized + projGainDollarsK - brokerFeesToDateK(asOf, history);
 
   /// Start date for life-to-date returns: the original inception when set, else
   /// the open date.

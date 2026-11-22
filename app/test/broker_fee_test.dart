@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ihaveannuities/core/models.dart';
 import 'package:ihaveannuities/core/payoff.dart';
+import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/core/reset_rollover.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
@@ -69,16 +70,14 @@ void main() {
     });
 
     test('fee over the term runs from the open date to maturity', () {
-      final h = _h(fee: 0.01);
-      expect(h.termYears, closeTo(4.0, 1e-12));
-      expect(h.brokerFeeTermK, closeTo(4.8, 1e-12));
+      final h = _h(fee: 0.01); // 4 full years at 1.2 a year
+      expect(h.brokerFeeTermK(), closeTo(4.8, 1e-12));
     });
 
     test('a rolled contract counts the term from its inception date', () {
       // 2022-01-01 to 2030-01-01 = 2922 days = 8.0 years
       final h = _h(fee: 0.01, inception: DateTime(2022, 1, 1));
-      expect(h.termYears, closeTo(8.0, 1e-12));
-      expect(h.brokerFeeTermK, closeTo(9.6, 1e-12));
+      expect(h.brokerFeeTermK(), closeTo(9.6, 1e-12));
     });
 
     test('maturity on or before the start gives no term fee', () {
@@ -86,8 +85,7 @@ void main() {
         ..._h(fee: 0.01).toJson(),
         'maturity': DateTime(2025, 1, 1).toIso8601String(),
       });
-      expect(h.termYears, 0);
-      expect(h.brokerFeeTermK, 0);
+      expect(h.brokerFeeTermK(), 0);
     });
 
     test('the fee does not change value, returns or yield', () {
@@ -102,7 +100,8 @@ void main() {
 
     test('no fee entered means zero fees', () {
       expect(_h().brokerFeePerYearK, 0);
-      expect(_h().brokerFeeTermK, 0);
+      expect(_h().brokerFeeTermK(), 0);
+      expect(_h().brokerFeesToDateK(DateTime(2028, 1, 1)), 0);
     });
   });
 
@@ -277,8 +276,11 @@ void main() {
         (tester) async {
       await pump(tester, _h(broker: 'ACME', fee: 0.01));
       expect(find.text('ACME'), findsOneWidget);
-      expect(find.text('1.00%/yr'), findsOneWidget);
-      expect(find.text('${moneyK(1.2)}/yr · ${moneyK(4.8)} over term'),
+      expect(find.text('1.000%/yr'), findsOneWidget); // 3 decimals
+      // 2026-01-01 to 2026-06-12 is 162 of 365 days of the first year.
+      expect(
+          find.text('${moneyK(1.2 * 162 / 365)} to date · '
+              '${moneyK(4.8)} over term'),
           findsOneWidget);
     });
 
@@ -375,25 +377,74 @@ void main() {
 
   group('P/L', () {
     // _h: initial 100, realized 20, SPX 105 vs strike 100 → +5% on 120 = 6.0
-    test('fees so far run from the open date to today', () {
-      final h = _h(fee: 0.01); // 1.2 a year
-      expect(h.brokerFeesToDateK(DateTime(2028, 1, 1)),
-          closeTo(1.2 * 730 / 365.25, 1e-12));
+    test('0.6% on \$100,000 for 2 years is \$1,200', () {
+      final h = _h(fee: 0.006, initial: 100, realized: 0);
+      expect(h.brokerFeesToDateK(DateTime(2028, 1, 1)), closeTo(1.2, 1e-12));
+      expect(moneyK(h.brokerFeesToDateK(DateTime(2028, 1, 1))), r'$1,200');
+    });
+
+    test('a full year is the whole rate; the year in progress is by days',
+        () {
+      final h = _h(fee: 0.01); // 1.2 a year on 120
+      // 1 full year, then 2027-01-01 to 2027-07-01 = 181 of 365 days.
+      expect(h.brokerFeesToDateK(DateTime(2027, 7, 1)),
+          closeTo(1.2 + 1.2 * 181 / 365, 1e-12));
+    });
+
+    test('each year is charged on the balance when that year began', () {
+      // Realized is 20 today: 8 credited on 2027-01-01, 12 on 2028-01-01.
+      ResetEvent ev(DateTime d, double added, String key) => ResetEvent(
+          holdingKey: key,
+          label: 'x',
+          date: d,
+          isIncomeNote: false,
+          periodReturn: 0,
+          realizedAddedK: added,
+          realizedAfterK: 0);
+      final h = _h(fee: 0.006); // initial 100, realized 20
+      final history = [
+        ev(DateTime(2027, 1, 1), 8, h.key),
+        ev(DateTime(2028, 1, 1), 12, h.key),
+        ev(DateTime(2027, 1, 1), 999, 'another holding'), // ignored
+      ];
+      // Year 1 on 100, year 2 on 108 (the 2027-01-01 credit counts that day),
+      // year 3 on 120.
+      expect(h.brokerFeesToDateK(DateTime(2029, 1, 1), history),
+          closeTo(0.006 * (100 + 108 + 120), 1e-12));
+      // P/L uses the same fees.
+      expect(h.profitLossK(DateTime(2029, 1, 1), history),
+          closeTo(20 + h.projGainDollarsK - 0.006 * 328, 1e-12));
+      // Over the term, later years use today's balance: + 2029 on 120.
+      expect(h.brokerFeeTermK(history),
+          closeTo(0.006 * (100 + 108 + 120 + 120), 1e-12));
+      // Without the history every year uses today's balance.
+      expect(h.brokerFeesToDateK(DateTime(2029, 1, 1)),
+          closeTo(0.006 * 360, 1e-12));
+    });
+
+    test('a start on Feb 29 has its anniversaries on Feb 28', () {
+      final h = Holding.fromJson({
+        ..._h(fee: 0.01, realized: 0).toJson(),
+        'openDate': DateTime(2024, 2, 29).toIso8601String(),
+      });
+      // 2024-02-29 → 2025-02-28 is one full year, then 1 day into year two
+      // (2025-02-28 → 2026-02-28, 365 days).
+      expect(h.brokerFeesToDateK(DateTime(2025, 3, 1)),
+          closeTo(1.0 + 1.0 / 365, 1e-12));
     });
 
     test('no fees before the start; fees stop at maturity', () {
       final h = _h(fee: 0.01);
       expect(h.brokerFeesToDateK(DateTime(2025, 6, 1)), 0);
       expect(h.brokerFeesToDateK(DateTime(2035, 1, 1)),
-          closeTo(h.brokerFeeTermK, 1e-12));
+          closeTo(h.brokerFeeTermK(), 1e-12));
     });
 
     test('P/L is realized + unrealized − fees so far', () {
       final h = _h(fee: 0.01);
       final asOf = DateTime(2028, 1, 1);
       expect(h.projGainDollarsK, closeTo(6.0, 1e-9));
-      expect(h.profitLossK(asOf),
-          closeTo(20 + 6.0 - 1.2 * 730 / 365.25, 1e-9));
+      expect(h.profitLossK(asOf), closeTo(20 + 6.0 - 2.4, 1e-9)); // 2 years
     });
 
     test('with no fee, P/L is realized + unrealized', () {
@@ -521,7 +572,7 @@ void main() {
         expect(find.text('Fees to Date'), findsOneWidget);
         expect(find.text('Fee %'), findsOneWidget);
         expect(find.text('ACME'), findsOneWidget);
-        expect(find.text('1.00%'), findsOneWidget);
+        expect(find.text('1.000%'), findsOneWidget);
         expect(find.text(fees), findsNWidgets(2)); // the row and the TOTAL
       });
     }

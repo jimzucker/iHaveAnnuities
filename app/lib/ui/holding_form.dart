@@ -266,7 +266,7 @@ class _HoldingFormState extends State<HoldingForm> {
             _pair(
               _text('broker', 'Broker', helper: 'Optional, e.g. the firm that sold it'),
               _num('brokerFee', 'Annual fee %', min0: true,
-                  helper: 'Charged each year on initial + realized'),
+                  helper: 'e.g. 0.6 for 0.6% a year'),
             ),
 
             _section('Income note'),

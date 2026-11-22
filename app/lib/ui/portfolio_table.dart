@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../core/reset_event.dart';
 import '../data/portfolio_store.dart';
 import 'confirm.dart';
 import 'format.dart';
@@ -63,13 +64,14 @@ class BandAggregates {
   /// Null when there is no principal to divide by (an empty/zero group).
   final double? returnPct, unrealizedPct, indexGain;
 
-  factory BandAggregates.of(Iterable<Holding> items, {DateTime? asOf}) {
+  factory BandAggregates.of(Iterable<Holding> items,
+      {DateTime? asOf, List<ResetEvent> history = const []}) {
     var initial = 0.0, realized = 0.0, projValue = 0.0, idxWeighted = 0.0;
     var pl = 0.0, fees = 0.0;
     for (final h in items) {
       if (asOf != null) {
-        pl += h.profitLossK(asOf);
-        fees += h.brokerFeesToDateK(asOf);
+        pl += h.profitLossK(asOf, history);
+        fees += h.brokerFeesToDateK(asOf, history);
       }
       initial += h.initial;
       realized += h.realized;
@@ -128,7 +130,9 @@ class PortfolioTable extends StatelessWidget {
   // v1.2 order: Identity → Inputs → Outcome → Timing (monitor) → Terms (static).
   // Labels are short (the header length, not the data, drove the column width);
   // money is shown in full dollars on screen ($ in $000s only in the .xlsx).
-  static List<_Col> _columns(ColorScheme cs) => [
+  static List<_Col> _columns(ColorScheme cs,
+          [List<ResetEvent> history = const []]) =>
+      [
         // Identity
         // Issuer is styled as a link (underlined) to signal the row drills in.
         _Col('Issuer', false, (h, _) => h.issuer.toLowerCase(),
@@ -163,9 +167,10 @@ class PortfolioTable extends StatelessWidget {
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
             fixedWidth: 112),
         // Profit or loss after broker fees charged so far.
-        _Col('P/L', true, (h, a) => h.profitLossK(a),
-            (h, a, cs) => DataCell(Text(moneyK(h.profitLossK(a)),
-                style: TextStyle(color: lossColor(h.profitLossK(a), cs)))),
+        _Col('P/L', true, (h, a) => h.profitLossK(a, history),
+            (h, a, cs) => DataCell(Text(moneyK(h.profitLossK(a, history)),
+                style: TextStyle(
+                    color: lossColor(h.profitLossK(a, history), cs)))),
             fixedWidth: 112,
             tooltip: 'Realized + Unrealized \$ − broker fees so far'),
         // "Total Value" = value projected at the next reset (today's levels);
@@ -253,13 +258,15 @@ class PortfolioTable extends StatelessWidget {
         _Col('Broker', false, (h, _) => h.broker.toLowerCase(),
             (h, _, _) => _t(h.broker), fixedWidth: 120),
         _Col('Fee %', true, (h, _) => h.brokerFee,
-            (h, _, _) => _t(h.brokerFee == 0 ? '' : pct(h.brokerFee)),
+            (h, _, _) => _t(h.brokerFee == 0 ? '' : feePct(h.brokerFee)),
             fixedWidth: 80, tooltip: 'Broker\'s annual fee'),
-        _Col('Fees to Date', true, (h, a) => h.brokerFeesToDateK(a),
-            (h, a, _) => _t(h.brokerFee == 0 ? '' : moneyK(h.brokerFeesToDateK(a))),
+        _Col('Fees to Date', true, (h, a) => h.brokerFeesToDateK(a, history),
+            (h, a, _) => _t(h.brokerFee == 0
+                ? ''
+                : moneyK(h.brokerFeesToDateK(a, history))),
             fixedWidth: 104,
-            tooltip: 'Broker fees charged so far: fee % × (Initial + Realized) '
-                '× years since the start'),
+            tooltip: 'Broker fees charged so far: each year since the start, '
+                'fee % × the balance (Initial + Realized) when that year began'),
       ];
 
   /// Columns shown in the compact "core" view (identity + key inputs/outcome
@@ -279,7 +286,7 @@ class PortfolioTable extends StatelessWidget {
     final store = context.watch<PortfolioStore>();
     final asOf = store.market?.asOf ?? DateTime(2026, 6, 14);
     final cs = Theme.of(context).colorScheme;
-    final all = _columns(cs);
+    final all = _columns(cs, store.resetHistory);
     final shown =
         store.fullColumns ? all : all.where((c) => _coreLabels.contains(c.label)).toList();
 
@@ -362,6 +369,7 @@ class PortfolioTable extends StatelessWidget {
       // plus the group's money-weighted XIRR. A chevron toggles collapse.
       rows.add(_totalsBandRow(shown, members, cs,
           asOf: asOf,
+          history: store.resetHistory,
           label: groupLabel(value, members),
           bg: cs.primaryContainer,
           labelColor: cs.onPrimaryContainer,
@@ -421,7 +429,7 @@ class PortfolioTable extends StatelessWidget {
   /// both land on the same band order.
   static List<Holding> orderedHoldings(
       PortfolioStore store, DateTime asOf, ColorScheme cs) {
-    final all = _columns(cs);
+    final all = _columns(cs, store.resetHistory);
     final sortIdx = store.sortColumn.clamp(0, all.length - 1);
     final keyer = all[sortIdx].key;
     final items = [...store.holdings];
@@ -462,7 +470,8 @@ class PortfolioTable extends StatelessWidget {
   static double? _groupAggregate(
       String sortLabel, List<Holding> members, PortfolioStore store,
       DateTime asOf) {
-    final agg = BandAggregates.of(members, asOf: asOf);
+    final agg =
+        BandAggregates.of(members, asOf: asOf, history: store.resetHistory);
     return switch (sortLabel) {
       'Initial' => agg.initial,
       'Realized' => agg.realized,
@@ -521,6 +530,7 @@ class PortfolioTable extends StatelessWidget {
   DataRow _totalsRow(List<_Col> shown, PortfolioStore store, ColorScheme cs) =>
       _totalsBandRow(shown, store.holdings, cs,
           asOf: store.market?.asOf ?? DateTime(2026, 6, 14),
+          history: store.resetHistory,
           label: 'TOTAL',
           bg: cs.surfaceContainerHigh,
           yieldXirr: store.portfolioXirr);
@@ -531,12 +541,13 @@ class PortfolioTable extends StatelessWidget {
   DataRow _totalsBandRow(List<_Col> shown, List<Holding> items, ColorScheme cs,
       {required String label,
       required DateTime asOf,
+      List<ResetEvent> history = const [],
       required Color bg,
       Color? labelColor,
       double? yieldXirr,
       IconData? chevron,
       VoidCallback? onToggle}) {
-    final agg = BandAggregates.of(items, asOf: asOf);
+    final agg = BandAggregates.of(items, asOf: asOf, history: history);
     return DataRow(
       color: WidgetStatePropertyAll(bg),
       // A collapsible group header taps to fold/unfold; the grand total doesn't.

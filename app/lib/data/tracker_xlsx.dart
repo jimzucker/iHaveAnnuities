@@ -18,6 +18,7 @@ import 'package:excel/excel.dart';
 
 import '../core/models.dart';
 import '../core/payoff.dart';
+import '../core/reset_event.dart';
 import 'xlsx_reader.dart';
 
 const _sheetName = 'Annuity Tracker';
@@ -206,6 +207,7 @@ List<int> writeTracker(
   List<Holding> holdings, {
   required DateTime asOf,
   required Map<String, double> prices,
+  List<ResetEvent> history = const [],
 }) {
   final excel = Excel.createExcel();
   final def = excel.getDefaultSheet();
@@ -255,7 +257,7 @@ List<int> writeTracker(
       x.inceptionDate == null ? null : _dateCell(x.inceptionDate!), // Y Inception
       x.broker.isEmpty ? null : TextCellValue(x.broker), // Z Broker
       x.brokerFee == 0 ? null : DoubleCellValue(x.brokerFee), // AA Broker Fee
-      DoubleCellValue(x.profitLossK(asOf)), // AB P/L
+      DoubleCellValue(x.profitLossK(asOf, history)), // AB P/L
     ]);
   }
 
@@ -270,7 +272,7 @@ List<int> writeTracker(
   total[7] = DoubleCellValue(totProjValue); // H Proj Value
   total[8] = DoubleCellValue(totProjValue - totInitial - totRealized); // I Proj $ Gain (unrealized)
   total[headers.length - 1] = DoubleCellValue(
-      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf))); // AB P/L
+      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf, history))); // AB P/L
   s.appendRow(total);
 
   _styleTracker(s, holdings.length);
