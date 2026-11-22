@@ -262,10 +262,12 @@ class _KeyFigures extends StatelessWidget {
       cell('Current', level(h.currentLevel), big: true),
       if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: true),
       if (h.broker.isNotEmpty) cell('Broker', h.broker, big: true),
-      if (h.brokerFee != 0)
-        cell('Broker fee', '${feePct(h.brokerFee)}/yr', big: true,
-            sub: '${moneyK(h.brokerFeesToDateK(asOf, history))} to date · '
-                '${moneyK(h.brokerFeeTermK(history))} over term'),
+      if (h.brokerFee != 0 || h.brokerFeesPaidK != null) ...[
+        cell('Broker fee', '${feePct(h.brokerFee)}/yr', big: true),
+        cell('Fees to Date', moneyK(h.brokerFeesToDateK(asOf, history)),
+            big: true),
+        cell('Fees over Term', moneyK(h.brokerFeeTermK(history)), big: true),
+      ],
     ];
 
     // Wide layout: ONE table so columns 1..N line up between the two rows. The

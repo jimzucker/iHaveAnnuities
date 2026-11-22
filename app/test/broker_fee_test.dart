@@ -259,8 +259,9 @@ void main() {
   });
 
   group('detail page', () {
-    Future<void> pump(WidgetTester tester, Holding h) async {
-      tester.view.physicalSize = const Size(1400, 1600);
+    Future<void> pump(WidgetTester tester, Holding h,
+        {double width = 1400}) async {
+      tester.view.physicalSize = Size(width, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       final store = PortfolioStore(
@@ -280,10 +281,33 @@ void main() {
       expect(find.text('ACME'), findsOneWidget);
       expect(find.text('1.000%/yr'), findsOneWidget); // 3 decimals
       // 2026-01-01 to 2026-06-12 is 162 of 365 days of the first year.
-      expect(
-          find.text('${moneyK(1.2 * 162 / 365)} to date · '
-              '${moneyK(4.8)} over term'),
-          findsOneWidget);
+      // Fees are full figures with their own labels.
+      expect(find.text('Fees to Date'), findsOneWidget);
+      expect(find.text(moneyK(1.2 * 162 / 365)), findsOneWidget);
+      expect(find.text('Fees over Term'), findsOneWidget);
+      expect(find.text(moneyK(4.8)), findsOneWidget);
+    });
+
+    for (final width in [400.0, 800.0, 1400.0]) {
+      testWidgets('the fee figures fit at ${width.toInt()}px wide',
+          (tester) async {
+        await pump(tester, _h(broker: 'A LONG BROKER NAME', fee: 0.01),
+            width: width);
+        expect(tester.takeException(), isNull);
+        expect(find.text('Fees over Term'), findsOneWidget);
+      });
+    }
+
+    testWidgets('hand-entered fees show even with no fee %', (tester) async {
+      await pump(
+          tester,
+          Holding.fromJson({
+            ..._h().toJson(),
+            'brokerFeesPaidK': 1.9,
+            'brokerFeesPaidAsOf': DateTime(2026, 6, 1).toIso8601String(),
+          }));
+      expect(find.text('Fees to Date'), findsOneWidget);
+      expect(find.text(moneyK(1.9)), findsWidgets);
     });
 
     testWidgets('shows P/L, marked "after fees" when there is a fee',
