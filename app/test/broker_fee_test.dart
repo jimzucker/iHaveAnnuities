@@ -463,6 +463,69 @@ void main() {
       expect(order, ['BIG', 'SMALL']);
     });
 
+    test('Broker, Fee % and Fees to Date are the last three columns', () {
+      final labels = PortfolioTable.columnLabels(cs);
+      expect(labels.sublist(labels.length - 3),
+          ['Broker', 'Fee %', 'Fees to Date']);
+    });
+
+    test('grouping by Broker sorts by the Broker column', () {
+      expect(
+          PortfolioTable.columnLabels(cs)[
+              PortfolioTable.columnIndexForDimension('Broker', cs)],
+          'Broker');
+    });
+
+    test('group and total fees to date add up the holdings', () {
+      final hs = [_h(fee: 0.01), _h(fee: 0.02)];
+      final asOf = DateTime(2028, 1, 1);
+      expect(
+          BandAggregates.of(hs, asOf: asOf).feesToDate,
+          closeTo(
+              hs[0].brokerFeesToDateK(asOf) + hs[1].brokerFeesToDateK(asOf),
+              1e-9));
+    });
+
+    test('sorting by Fees to Date orders groups by their fee subtotal',
+        () async {
+      final store = PortfolioStore()
+        ..debugSeed([
+          _h(issuer: 'A', broker: 'LOW', fee: 0.005),
+          _h(issuer: 'B', broker: 'HIGH', fee: 0.02),
+        ], _market);
+      await store.setGroupBy('Broker');
+      await store.setSort(
+          PortfolioTable.columnLabels(cs).indexOf('Fees to Date'), false);
+      expect(
+          PortfolioTable.orderedHoldings(store, _market.asOf, cs)
+              .map((h) => h.broker)
+              .toList(),
+          ['HIGH', 'LOW']);
+    });
+
+    for (final full in [true, false]) {
+      testWidgets(
+          'the ${full ? 'full' : 'compact'} table shows broker, fee and fees '
+          'to date, with a fees total', (tester) async {
+        tester.view.physicalSize = const Size(3600, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        final hs = [_h(issuer: 'A', broker: 'ACME', fee: 0.01), _h(issuer: 'B')];
+        final store = PortfolioStore()..debugSeed(hs, _market);
+        await store.setHideSummary(true);
+        await store.setFullColumns(full);
+        await tester.pumpWidget(ChangeNotifierProvider.value(
+            value: store, child: const MaterialApp(home: PortfolioScreen())));
+        await tester.pumpAndSettle();
+        final fees = moneyK(hs[0].brokerFeesToDateK(_market.asOf));
+        expect(find.text('Fees to Date'), findsOneWidget);
+        expect(find.text('Fee %'), findsOneWidget);
+        expect(find.text('ACME'), findsOneWidget);
+        expect(find.text('1.00%'), findsOneWidget);
+        expect(find.text(fees), findsNWidgets(2)); // the row and the TOTAL
+      });
+    }
+
     testWidgets('the table shows P/L per row and in the TOTAL row',
         (tester) async {
       tester.view.physicalSize = const Size(2400, 900);

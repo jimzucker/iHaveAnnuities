@@ -49,6 +49,7 @@ class BandAggregates {
     required this.unrealizedPct,
     required this.indexGain,
     this.profitLoss = 0,
+    this.feesToDate = 0,
   });
 
   final double initial, realized, projValue, unrealizedDollars;
@@ -56,14 +57,20 @@ class BandAggregates {
   /// Sum of each holding's P/L (realized + unrealized − fees so far).
   final double profitLoss;
 
+  /// Sum of each holding's broker fees so far.
+  final double feesToDate;
+
   /// Null when there is no principal to divide by (an empty/zero group).
   final double? returnPct, unrealizedPct, indexGain;
 
   factory BandAggregates.of(Iterable<Holding> items, {DateTime? asOf}) {
     var initial = 0.0, realized = 0.0, projValue = 0.0, idxWeighted = 0.0;
-    var pl = 0.0;
+    var pl = 0.0, fees = 0.0;
     for (final h in items) {
-      if (asOf != null) pl += h.profitLossK(asOf);
+      if (asOf != null) {
+        pl += h.profitLossK(asOf);
+        fees += h.brokerFeesToDateK(asOf);
+      }
       initial += h.initial;
       realized += h.realized;
       projValue += h.projValueK;
@@ -80,6 +87,7 @@ class BandAggregates {
       unrealizedPct: hasBase ? unrealized / initial : null,
       indexGain: hasBase ? idxWeighted / initial : null,
       profitLoss: pl,
+      feesToDate: fees,
     );
   }
 }
@@ -241,6 +249,17 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 92,
             tooltip: 'Original investment date (for rolled contracts). When set, '
                 'Yield/CAGR and XIRR measure from here instead of Open.'),
+        // Broker columns go last so saved sort positions of the others hold.
+        _Col('Broker', false, (h, _) => h.broker.toLowerCase(),
+            (h, _, _) => _t(h.broker), fixedWidth: 120),
+        _Col('Fee %', true, (h, _) => h.brokerFee,
+            (h, _, _) => _t(h.brokerFee == 0 ? '' : pct(h.brokerFee)),
+            fixedWidth: 80, tooltip: 'Broker\'s annual fee'),
+        _Col('Fees to Date', true, (h, a) => h.brokerFeesToDateK(a),
+            (h, a, _) => _t(h.brokerFee == 0 ? '' : moneyK(h.brokerFeesToDateK(a))),
+            fixedWidth: 104,
+            tooltip: 'Broker fees charged so far: fee % × (Initial + Realized) '
+                '× years since the start'),
       ];
 
   /// Columns shown in the compact "core" view (identity + key inputs/outcome
@@ -249,6 +268,7 @@ class PortfolioTable extends StatelessWidget {
     'Issuer', 'Type', 'Index', 'Protection',
     'Initial', 'Realized', 'Unrealized \$', 'P/L', 'Total Value', 'Return %',
     'Unrealized %', 'Index Gain', 'Yield', 'Next Reset', 'Days to Reset',
+    'Broker', 'Fee %', 'Fees to Date',
   };
 
   /// The leading identity columns, frozen when scrolling horizontally.
@@ -448,6 +468,7 @@ class PortfolioTable extends StatelessWidget {
       'Realized' => agg.realized,
       'Unrealized \$' => agg.unrealizedDollars,
       'P/L' => agg.profitLoss,
+      'Fees to Date' => agg.feesToDate,
       'Total Value' => agg.projValue,
       'Return %' => agg.returnPct,
       'Unrealized %' => agg.unrealizedPct,
@@ -541,6 +562,7 @@ class PortfolioTable extends StatelessWidget {
                 projValue: agg.projValue,
                 projGain: agg.unrealizedDollars,
                 profitLoss: agg.profitLoss,
+                feesToDate: agg.feesToDate,
                 returnPct: agg.returnPct,
                 unrealizedPct: agg.unrealizedPct,
                 indexGainW: agg.indexGain,
@@ -559,6 +581,7 @@ class PortfolioTable extends StatelessWidget {
       required double projValue,
       required double projGain,
       double profitLoss = 0,
+      double feesToDate = 0,
       double? returnPct,
       double? unrealizedPct,
       double? indexGainW,
@@ -577,6 +600,8 @@ class PortfolioTable extends StatelessWidget {
       case 'Unrealized \$':
         t = moneyK(projGain);
         color = gainColor(projGain, cs);
+      case 'Fees to Date':
+        if (feesToDate != 0) t = moneyK(feesToDate);
       case 'P/L':
         t = moneyK(profitLoss);
         color = gainColor(profitLoss, cs);
