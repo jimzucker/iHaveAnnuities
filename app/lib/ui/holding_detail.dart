@@ -233,9 +233,13 @@ class _KeyFigures extends StatelessWidget {
           subColor: lossColor(h.realizedPct, cs)),
       cell('Unrealized \$', moneyK(h.projGainDollarsK),
           color: gainColor(h.projGainDollarsK, cs), big: true),
+      if (h.hasBrokerFees)
+        cell('Fees to Date', moneyK(-h.brokerFeesToDateK(asOf, history)),
+            color: lossColor(-h.brokerFeesToDateK(asOf, history), cs),
+            big: true),
       cell('P/L', moneyK(h.profitLossK(asOf, history)),
           color: gainColor(h.profitLossK(asOf, history), cs), big: true,
-          sub: h.brokerFee == 0 ? null : 'after fees'),
+          sub: h.hasBrokerFees ? 'after fees' : null),
       cell('Total Value', moneyK(h.projValueK), big: true,
           sub: h.initial <= 0 ? null : pctSigned(h.totalReturnPct),
           subColor: lossColor(h.totalReturnPct, cs)),
@@ -262,11 +266,10 @@ class _KeyFigures extends StatelessWidget {
       cell('Current', level(h.currentLevel), big: true),
       if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: true),
       if (h.broker.isNotEmpty) cell('Broker', h.broker, big: true),
-      if (h.brokerFee != 0 || h.brokerFeesPaidK != null) ...[
+      if (h.hasBrokerFees) ...[
         cell('Broker fee', '${pct(h.brokerFee)}/yr', big: true),
-        cell('Fees to Date', moneyK(h.brokerFeesToDateK(asOf, history)),
-            big: true),
-        cell('Fees over Term', moneyK(h.brokerFeeTermK(history)), big: true),
+        cell('Fees over Term', moneyK(-h.brokerFeeTermK(history)),
+            color: lossColor(-h.brokerFeeTermK(history), cs), big: true),
       ],
     ];
 

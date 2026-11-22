@@ -39,13 +39,15 @@ class PortfolioStore extends ChangeNotifier {
         biometric = biometric ?? defaultBiometric();
 
   static const _key = 'portfolio.v1';
-  // v2: the P/L column was added after Unrealized $, so column indices from
-  // 7 on moved up one. A v1 setting is carried over on load (see init).
+  // v2: Fees to Date and P/L were added after Unrealized $, so column
+  // indices from 7 on moved up two. A v1 setting is carried over on load.
   static const _sortKey = 'sortColumn.v2';
   static const _sortKeyV1 = 'sortColumn.v1';
 
-  /// Index of the P/L column; a saved v1 sort at or past it moves up one.
-  static const plColumn = 7;
+  /// Where the columns added in v2 start, and how many there are in that
+  /// spot; a saved v1 sort at or past it moves up by [newColumns].
+  static const firstNewColumn = 7;
+  static const newColumns = 2;
   static const _ascKey = 'sortAsc.v1';
   static const _fullColKey = 'fullColumns.v1';
   static const _groupByKey = 'groupBy.v1';
@@ -60,7 +62,7 @@ class PortfolioStore extends ChangeNotifier {
   static const _nudgedKey = 'nudgedEncryption.v1';
 
   /// Default sort column index = "Next Reset" in PortfolioTable's v1.2 column list.
-  static const defaultSortColumn = 11;
+  static const defaultSortColumn = 12;
 
   /// Hour (local, 24h) at/after which the once-per-day post-close refresh fires.
   /// 17:00 ≈ the 5 PM ET market-data publish (assumes an ET user).
@@ -302,7 +304,9 @@ class PortfolioStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final v1 = prefs.getInt(_sortKeyV1);
     _sortColumn = prefs.getInt(_sortKey) ??
-        (v1 == null ? defaultSortColumn : (v1 >= plColumn ? v1 + 1 : v1));
+        (v1 == null
+            ? defaultSortColumn
+            : (v1 >= firstNewColumn ? v1 + newColumns : v1));
     _sortAscending = prefs.getBool(_ascKey) ?? true;
     _fullColumns = prefs.getBool(_fullColKey) ?? true;
     _groupBy = prefs.getString(_groupByKey) ?? '';

@@ -234,7 +234,7 @@ void main() {
         () {
       final members = [_h(broker: 'ACME', fee: 0.01), _h(broker: 'ACME')];
       expect(PortfolioTable.groupLabel('ACME', members),
-          'ACME  (2) · fees ${moneyK(1.2)}/yr');
+          'ACME  (2) · fees ${moneyK(-1.2)}/yr');
       expect(PortfolioTable.groupLabel('X', [_h()]), 'X  (1)');
     });
 
@@ -253,7 +253,7 @@ void main() {
       await tester.pumpWidget(ChangeNotifierProvider.value(
           value: store, child: const MaterialApp(home: PortfolioScreen())));
       await tester.pumpAndSettle();
-      expect(find.text('ACME  (1) · fees ${moneyK(1.2)}/yr'), findsOneWidget);
+      expect(find.text('ACME  (1) · fees ${moneyK(-1.2)}/yr'), findsOneWidget);
       expect(find.text('No broker  (1)'), findsOneWidget);
     });
   });
@@ -283,9 +283,9 @@ void main() {
       // 2026-01-01 to 2026-06-12 is 162 of 365 days of the first year.
       // Fees are full figures with their own labels.
       expect(find.text('Fees to Date'), findsOneWidget);
-      expect(find.text(moneyK(1.2 * 162 / 365)), findsOneWidget);
+      expect(find.text(moneyK(-1.2 * 162 / 365)), findsOneWidget);
       expect(find.text('Fees over Term'), findsOneWidget);
-      expect(find.text(moneyK(4.8)), findsOneWidget);
+      expect(find.text(moneyK(-4.8)), findsOneWidget);
     });
 
     for (final width in [400.0, 800.0, 1400.0]) {
@@ -307,7 +307,7 @@ void main() {
             'brokerFeesPaidAsOf': DateTime(2026, 6, 1).toIso8601String(),
           }));
       expect(find.text('Fees to Date'), findsOneWidget);
-      expect(find.text(moneyK(1.9)), findsWidgets);
+      expect(find.text(moneyK(-1.9)), findsWidgets);
     });
 
     testWidgets('shows P/L, marked "after fees" when there is a fee',
@@ -317,6 +317,25 @@ void main() {
       expect(find.text('P/L'), findsOneWidget);
       expect(find.text(moneyK(h.profitLossK(_market.asOf))), findsOneWidget);
       expect(find.text('after fees'), findsOneWidget);
+    });
+
+    testWidgets('Fees to Date is a negative figure right after Unrealized \$',
+        (tester) async {
+      final h = _h(broker: 'ACME', fee: 0.01);
+      await pump(tester, h);
+      final fees = moneyK(-h.brokerFeesToDateK(_market.asOf));
+      expect(fees, startsWith('-'));
+      double x(String t) => tester.getTopLeft(find.text(t).first).dx;
+      expect(x('Unrealized \$'), lessThan(x('Fees to Date')));
+      expect(x('Fees to Date'), lessThan(x('P/L')));
+      expect(find.text(fees), findsOneWidget);
+    });
+
+    testWidgets('no Fees to Date figure when there are no fees',
+        (tester) async {
+      await pump(tester, _h(broker: 'ACME'));
+      expect(find.text('Fees to Date'), findsNothing);
+      expect(find.text('Fees over Term'), findsNothing);
     });
 
     testWidgets('shows P/L without "after fees" when there is no fee',
@@ -605,11 +624,14 @@ void main() {
 
     final cs = ColorScheme.fromSeed(seedColor: Colors.blue);
 
-    test('P/L sits after Unrealized \$, at the position the store expects', () {
+    int plCol() => PortfolioTable.columnLabels(cs).indexOf('P/L');
+
+    test('Fees to Date then P/L sit right after Unrealized \$', () {
       final labels = PortfolioTable.columnLabels(cs);
-      expect(labels.indexOf('P/L'), PortfolioStore.plColumn);
-      expect(labels[PortfolioStore.plColumn - 1], 'Unrealized \$');
-      // The default sort is still Index Gain, as before P/L was added.
+      const at = PortfolioStore.firstNewColumn;
+      expect(labels.sublist(at - 1, at + PortfolioStore.newColumns),
+          ['Unrealized \$', 'Fees to Date', 'P/L']);
+      // The default sort is still Index Gain, as before these were added.
       expect(labels[PortfolioStore.defaultSortColumn], 'Index Gain');
     });
 
@@ -634,13 +656,13 @@ void main() {
       SharedPreferences.setMockInitialValues({'sortColumn.v1': 3});
       final store = PortfolioStore();
       await store.init();
-      await store.setSort(PortfolioStore.plColumn, false);
+      await store.setSort(plCol(), false);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('sortColumn.v2'), PortfolioStore.plColumn);
+      expect(prefs.getInt('sortColumn.v2'), plCol());
       expect(prefs.getInt('sortColumn.v1'), 3); // older versions keep theirs
       final again = PortfolioStore();
       await again.init();
-      expect(again.sortColumn, PortfolioStore.plColumn);
+      expect(again.sortColumn, plCol());
     });
 
     test('sorting by P/L orders groups by their P/L subtotal', () async {
@@ -650,7 +672,7 @@ void main() {
           _h(issuer: 'B', broker: 'BIG', realized: 50),
         ], _market);
       await store.setGroupBy('Broker');
-      await store.setSort(PortfolioStore.plColumn, false); // biggest first
+      await store.setSort(plCol(), false); // biggest first
       final order = PortfolioTable.orderedHoldings(
               store, _market.asOf, cs)
           .map((h) => h.broker)
@@ -658,10 +680,9 @@ void main() {
       expect(order, ['BIG', 'SMALL']);
     });
 
-    test('Broker, Fee % and Fees to Date are the last three columns', () {
+    test('Broker and Fee % are the last two columns', () {
       final labels = PortfolioTable.columnLabels(cs);
-      expect(labels.sublist(labels.length - 3),
-          ['Broker', 'Fee %', 'Fees to Date']);
+      expect(labels.sublist(labels.length - 2), ['Broker', 'Fee %']);
     });
 
     test('grouping by Broker sorts by the Broker column', () {
@@ -681,7 +702,7 @@ void main() {
               1e-9));
     });
 
-    test('sorting by Fees to Date orders groups by their fee subtotal',
+    test('sorting Fees to Date up puts the biggest fees first',
         () async {
       final store = PortfolioStore()
         ..debugSeed([
@@ -690,7 +711,7 @@ void main() {
         ], _market);
       await store.setGroupBy('Broker');
       await store.setSort(
-          PortfolioTable.columnLabels(cs).indexOf('Fees to Date'), false);
+          PortfolioTable.columnLabels(cs).indexOf('Fees to Date'), true);
       expect(
           PortfolioTable.orderedHoldings(store, _market.asOf, cs)
               .map((h) => h.broker)
@@ -712,7 +733,7 @@ void main() {
         await tester.pumpWidget(ChangeNotifierProvider.value(
             value: store, child: const MaterialApp(home: PortfolioScreen())));
         await tester.pumpAndSettle();
-        final fees = moneyK(hs[0].brokerFeesToDateK(_market.asOf));
+        final fees = moneyK(-hs[0].brokerFeesToDateK(_market.asOf));
         expect(find.text('Fees to Date'), findsOneWidget);
         expect(find.text('Fee %'), findsOneWidget);
         expect(find.text('ACME'), findsOneWidget);
@@ -735,7 +756,7 @@ void main() {
       expect(find.byType(Card), findsNWidgets(2)); // the phone layout
       expect(find.text('ACME'), findsOneWidget);
       expect(find.text('0.60%'), findsOneWidget);
-      expect(find.text(moneyK(hs[0].brokerFeesToDateK(_market.asOf))),
+      expect(find.text(moneyK(-hs[0].brokerFeesToDateK(_market.asOf))),
           findsOneWidget);
       // Only the card with a broker or fee gets the broker row.
       expect(find.text('Fees to Date'), findsOneWidget);

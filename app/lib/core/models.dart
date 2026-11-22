@@ -200,6 +200,10 @@ class Holding {
     return DateTime(y, d.month, d.day < lastDay ? d.day : lastDay);
   }
 
+  /// Whether this holding has broker fees (a fee rate or fees entered by hand).
+  bool get hasBrokerFees =>
+      brokerFee != 0 || (brokerFeesPaidK != null && brokerFeesPaidAsOf != null);
+
   /// Profit or loss, in $000 = realized + unrealized − broker fees so far.
   double profitLossK(DateTime asOf, [List<ResetEvent> history = const []]) =>
       realized + projGainDollarsK - brokerFeesToDateK(asOf, history);

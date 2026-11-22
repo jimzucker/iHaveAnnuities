@@ -166,6 +166,17 @@ class PortfolioTable extends StatelessWidget {
             (h, _, cs) => DataCell(Text(moneyK(h.projGainDollarsK),
                 style: TextStyle(color: lossColor(h.projGainDollarsK, cs)))),
             fixedWidth: 112),
+        // Broker fees so far, shown as a negative amount (money out).
+        _Col('Fees to Date', true, (h, a) => -h.brokerFeesToDateK(a, history),
+            (h, a, cs) {
+          if (!h.hasBrokerFees) return _t('');
+          final v = -h.brokerFeesToDateK(a, history);
+          return DataCell(
+              Text(moneyK(v), style: TextStyle(color: lossColor(v, cs))));
+        },
+            fixedWidth: 112,
+            tooltip: 'Broker fees charged so far: each year since the start, '
+                'fee % × the balance (Initial + Realized) when that year began'),
         // Profit or loss after broker fees charged so far.
         _Col('P/L', true, (h, a) => h.profitLossK(a, history),
             (h, a, cs) => DataCell(Text(moneyK(h.profitLossK(a, history)),
@@ -254,19 +265,12 @@ class PortfolioTable extends StatelessWidget {
             fixedWidth: 92,
             tooltip: 'Original investment date (for rolled contracts). When set, '
                 'Yield/CAGR and XIRR measure from here instead of Open.'),
-        // Broker columns go last so saved sort positions of the others hold.
+        // Broker columns go last (see PortfolioStore.newColumns).
         _Col('Broker', false, (h, _) => h.broker.toLowerCase(),
             (h, _, _) => _t(h.broker), fixedWidth: 120),
         _Col('Fee %', true, (h, _) => h.brokerFee,
             (h, _, _) => _t(h.brokerFee == 0 ? '' : pct(h.brokerFee)),
             fixedWidth: 80, tooltip: 'Broker\'s annual fee'),
-        _Col('Fees to Date', true, (h, a) => h.brokerFeesToDateK(a, history),
-            (h, a, _) => _t(h.brokerFee == 0
-                ? ''
-                : moneyK(h.brokerFeesToDateK(a, history))),
-            fixedWidth: 104,
-            tooltip: 'Broker fees charged so far: each year since the start, '
-                'fee % × the balance (Initial + Realized) when that year began'),
       ];
 
   /// Columns shown in the compact "core" view (identity + key inputs/outcome
@@ -477,7 +481,7 @@ class PortfolioTable extends StatelessWidget {
       'Realized' => agg.realized,
       'Unrealized \$' => agg.unrealizedDollars,
       'P/L' => agg.profitLoss,
-      'Fees to Date' => agg.feesToDate,
+      'Fees to Date' => -agg.feesToDate,
       'Total Value' => agg.projValue,
       'Return %' => agg.returnPct,
       'Unrealized %' => agg.unrealizedPct,
@@ -513,7 +517,7 @@ class PortfolioTable extends StatelessWidget {
   static String groupLabel(String value, List<Holding> members) {
     final fee = members.fold(0.0, (a, h) => a + h.brokerFeePerYearK);
     final base = '$value  (${members.length})';
-    return fee == 0 ? base : '$base · fees ${moneyK(fee)}/yr';
+    return fee == 0 ? base : '$base · fees ${moneyK(-fee)}/yr';
   }
 
   /// Split [items] into groups in first-appearance order (so within-group order
@@ -612,7 +616,10 @@ class PortfolioTable extends StatelessWidget {
         t = moneyK(projGain);
         color = gainColor(projGain, cs);
       case 'Fees to Date':
-        if (feesToDate != 0) t = moneyK(feesToDate);
+        if (feesToDate != 0) {
+          t = moneyK(-feesToDate);
+          color = lossColor(-feesToDate, cs);
+        }
       case 'P/L':
         t = moneyK(profitLoss);
         color = gainColor(profitLoss, cs);
@@ -698,16 +705,16 @@ class PortfolioTable extends StatelessWidget {
                   _meta('Next Reset', '${x.daysToReset(asOf)}d · ${date(x.nextReset)}', cs),
                 ]),
                 // Broker row only for holdings that have a broker or a fee.
-                if (x.broker.isNotEmpty || x.brokerFee != 0) ...[
+                if (x.broker.isNotEmpty || x.hasBrokerFees) ...[
                   const SizedBox(height: 8),
                   Row(children: [
                     _meta('Broker', x.broker.isEmpty ? '—' : x.broker, cs),
                     _meta('Fee %', x.brokerFee == 0 ? '—' : pct(x.brokerFee), cs),
                     _meta(
                         'Fees to Date',
-                        x.brokerFee == 0
+                        !x.hasBrokerFees
                             ? '—'
-                            : moneyK(x.brokerFeesToDateK(asOf, store.resetHistory)),
+                            : moneyK(-x.brokerFeesToDateK(asOf, store.resetHistory)),
                         cs),
                   ]),
                 ],
