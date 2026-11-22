@@ -89,6 +89,8 @@ class Holding {
     this.inceptionDate, // original investment date (rolled contracts); else null
     this.broker = '', // who sold it / holds it; '' = none entered
     this.brokerFee = 0.0, // broker's annual fee (fraction per year); 0 = none
+    this.brokerFeesPaidK, // fees to date entered by hand ($000); null = work out
+    this.brokerFeesPaidAsOf, // the date [brokerFeesPaidK] is correct for
   }) : issuer = canonicalIssuer(issuer);
 
   final String issuer;
@@ -122,6 +124,11 @@ class Holding {
   final String broker;
   final double brokerFee;
 
+  /// Fees to date entered by hand, in $000, correct as of
+  /// [brokerFeesPaidAsOf]. Null (the usual case) = work them out.
+  final double? brokerFeesPaidK;
+  final DateTime? brokerFeesPaidAsOf;
+
   /// Broker fee per year, in $000: the annual fee on the balance the payoff
   /// applies to (initial + realized). Shown on its own; it does not change the
   /// projected value, returns or yields.
@@ -142,8 +149,22 @@ class Holding {
   /// The balance on a past date is today's realized minus the gains [history]
   /// shows were credited after that date. Gains credited before the app kept
   /// a history are not in it, so those years use the later balance.
+  ///
+  /// When fees to date were entered by hand ([brokerFeesPaidK]), that amount
+  /// is used as of [brokerFeesPaidAsOf], plus the fees worked out after it.
   double brokerFeesToDateK(DateTime asOf,
       [List<ResetEvent> history = const []]) {
+    final paid = brokerFeesPaidK, paidAsOf = brokerFeesPaidAsOf;
+    if (paid != null && paidAsOf != null) {
+      if (!asOf.isAfter(paidAsOf)) return paid;
+      return paid +
+          _feesWorkedOutK(asOf, history) -
+          _feesWorkedOutK(paidAsOf, history);
+    }
+    return _feesWorkedOutK(asOf, history);
+  }
+
+  double _feesWorkedOutK(DateTime asOf, List<ResetEvent> history) {
     if (brokerFee == 0) return 0;
     final end = asOf.isBefore(maturity) ? asOf : maturity;
     final mine = history.where((e) => e.holdingKey == key).toList();
@@ -341,6 +362,8 @@ class Holding {
         inceptionDate: inceptionDate,
         broker: broker,
         brokerFee: brokerFee,
+        brokerFeesPaidK: brokerFeesPaidK,
+        brokerFeesPaidAsOf: brokerFeesPaidAsOf,
       );
 
   Map<String, dynamic> toJson() => {
@@ -368,6 +391,10 @@ class Holding {
           'inceptionDate': inceptionDate!.toIso8601String(),
         if (broker.isNotEmpty) 'broker': broker,
         if (brokerFee != 0) 'brokerFee': brokerFee,
+        if (brokerFeesPaidK != null && brokerFeesPaidAsOf != null) ...{
+          'brokerFeesPaidK': brokerFeesPaidK,
+          'brokerFeesPaidAsOf': brokerFeesPaidAsOf!.toIso8601String(),
+        },
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
@@ -396,6 +423,10 @@ class Holding {
             : DateTime.parse(j['inceptionDate'] as String),
         broker: j['broker'] as String? ?? '',
         brokerFee: (j['brokerFee'] as num?)?.toDouble() ?? 0.0,
+        brokerFeesPaidK: (j['brokerFeesPaidK'] as num?)?.toDouble(),
+        brokerFeesPaidAsOf: j['brokerFeesPaidAsOf'] == null
+            ? null
+            : DateTime.parse(j['brokerFeesPaidAsOf'] as String),
       );
 }
 

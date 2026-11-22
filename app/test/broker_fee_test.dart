@@ -193,8 +193,10 @@ void main() {
     });
 
     test('the new columns come last, after Inception', () {
-      expect(headers.sublist(headers.length - 4),
-          ['Inception', 'Broker', 'Broker Fee', 'P/L (\$000)']);
+      expect(headers.sublist(headers.length - 6), [
+        'Inception', 'Broker', 'Broker Fee', 'Fees Paid (\$000)', 'Fees As Of',
+        'P/L (\$000)',
+      ]);
     });
 
     test('the export has each holding\'s P/L and the total', () {
@@ -310,7 +312,11 @@ void main() {
 
   group('form', () {
     Future<Holding?> fill(WidgetTester tester,
-        {Holding? initial, String? broker, String? fee}) async {
+        {Holding? initial,
+        String? broker,
+        String? fee,
+        String? feesPaid,
+        bool pickFeesDate = false}) async {
       tester.view.physicalSize = const Size(1000, 3000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -342,6 +348,18 @@ void main() {
         await tester.enterText(
             find.widgetWithText(TextFormField, 'Annual fee %'), fee);
       }
+      if (feesPaid != null) {
+        await tester.enterText(
+            find.widgetWithText(
+                TextFormField, 'Fees to date (\$000, optional)'),
+            feesPaid);
+      }
+      if (pickFeesDate) {
+        await tester.tap(find.text('Fees as of'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+      }
       await tester.tap(find.text('SAVE'));
       await tester.pumpAndSettle();
       return saved;
@@ -361,6 +379,44 @@ void main() {
       expect(h.brokerFee, 0.0);
     });
 
+    testWidgets('fees to date entered by hand are saved with their date',
+        (tester) async {
+      final now = DateTime.now();
+      final h = await fill(tester, feesPaid: '1.9', pickFeesDate: true);
+      expect(h!.brokerFeesPaidK, 1.9);
+      expect(h.brokerFeesPaidAsOf, DateTime(now.year, now.month, now.day));
+    });
+
+    testWidgets('blank fees to date are worked out (nothing saved)',
+        (tester) async {
+      final h = await fill(tester, feesPaid: '');
+      expect(h!.brokerFeesPaidK, isNull);
+      expect(h.brokerFeesPaidAsOf, isNull);
+    });
+
+    testWidgets('fees to date must be a number of zero or more',
+        (tester) async {
+      expect(await fill(tester, feesPaid: 'abc'), isNull);
+      expect(find.text('Number'), findsOneWidget);
+    });
+
+    testWidgets('negative fees to date are stopped', (tester) async {
+      expect(await fill(tester, feesPaid: '-2'), isNull);
+      expect(find.text('Must be ≥ 0'), findsOneWidget);
+    });
+
+    testWidgets('editing shows and keeps the entered fees and date',
+        (tester) async {
+      final start = Holding.fromJson({
+        ..._h(fee: 0.006).toJson(),
+        'brokerFeesPaidK': 1.9,
+        'brokerFeesPaidAsOf': DateTime(2026, 3, 1).toIso8601String(),
+      });
+      final h = await fill(tester, initial: start);
+      expect(h!.brokerFeesPaidK, 1.9);
+      expect(h.brokerFeesPaidAsOf, DateTime(2026, 3, 1));
+    });
+
     testWidgets('a negative fee is stopped with a message', (tester) async {
       final h = await fill(tester, fee: '-1');
       expect(h, isNull); // the form stayed open
@@ -372,6 +428,70 @@ void main() {
       final h = await fill(tester, initial: _h(broker: 'ACME', fee: 0.01));
       expect(h!.broker, 'ACME');
       expect(h.brokerFee, closeTo(0.01, 1e-12));
+    });
+  });
+
+  group('fees to date entered by hand', () {
+    Holding paid(double k, DateTime asOf) => Holding.fromJson({
+          ..._h(fee: 0.006).toJson(), // 0.72 a year on 120
+          'brokerFeesPaidK': k,
+          'brokerFeesPaidAsOf': asOf.toIso8601String(),
+        });
+
+    test('on and before its date, the entered amount is used as is', () {
+      final h = paid(1.9, DateTime(2028, 1, 1));
+      expect(h.brokerFeesToDateK(DateTime(2028, 1, 1)), 1.9);
+      expect(h.brokerFeesToDateK(DateTime(2027, 6, 1)), 1.9);
+    });
+
+    test('after its date, the worked-out fees for the later days are added',
+        () {
+      final h = paid(1.9, DateTime(2028, 1, 1));
+      // 2028-01-01 to 2029-01-01 is one full fee year: + 0.72.
+      expect(h.brokerFeesToDateK(DateTime(2029, 1, 1)),
+          closeTo(1.9 + 0.72, 1e-12));
+      expect(h.brokerFeeTermK(), closeTo(1.9 + 0.72 * 2, 1e-12));
+      expect(h.profitLossK(DateTime(2029, 1, 1)),
+          closeTo(20 + h.projGainDollarsK - (1.9 + 0.72), 1e-12));
+    });
+
+    test('an amount without a date is ignored', () {
+      final h = Holding.fromJson(
+          {..._h(fee: 0.006).toJson(), 'brokerFeesPaidK': 5.0});
+      expect(h.brokerFeesToDateK(DateTime(2028, 1, 1)), closeTo(1.44, 1e-12));
+      expect(h.toJson().containsKey('brokerFeesPaidK'), isFalse);
+    });
+
+    test('saves and loads; older saved data has none', () {
+      final h = paid(1.9, DateTime(2028, 1, 1));
+      final back = Holding.fromJson(
+          jsonDecode(jsonEncode(h.toJson())) as Map<String, dynamic>);
+      expect(back.brokerFeesPaidK, 1.9);
+      expect(back.brokerFeesPaidAsOf, DateTime(2028, 1, 1));
+      final old = Holding.fromJson(_h().toJson());
+      expect(old.brokerFeesPaidK, isNull);
+      expect(old.brokerFeesPaidAsOf, isNull);
+      expect(_h().toJson().keys, isNot(contains('brokerFeesPaidAsOf')));
+    });
+
+    test('a reset keeps the entered fees', () {
+      final h = paid(1.9, DateTime(2026, 6, 1));
+      final rolled = applyReset(h, (_, _) => 110.0).holding;
+      expect(rolled.brokerFeesPaidK, 1.9);
+      expect(rolled.brokerFeesPaidAsOf, DateTime(2026, 6, 1));
+    });
+
+    test('the spreadsheet carries the entered fees and their date', () {
+      final bytes = writeTracker(
+          [paid(1.9, DateTime(2028, 1, 1)), _h(issuer: 'OTHER')],
+          asOf: DateTime(2028, 1, 1),
+          prices: const {'SPX': 105, 'NDX': 1, 'RUT': 1});
+      final back = parseTracker(bytes);
+      expect(back[0].brokerFeesPaidK, 1.9);
+      final d = back[0].brokerFeesPaidAsOf!;
+      expect([d.year, d.month, d.day], [2028, 1, 1]);
+      expect(back[1].brokerFeesPaidK, isNull);
+      expect(back[1].brokerFeesPaidAsOf, isNull);
     });
   });
 

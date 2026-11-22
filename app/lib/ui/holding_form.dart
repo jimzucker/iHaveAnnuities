@@ -48,6 +48,7 @@ class _HoldingFormState extends State<HoldingForm> {
   }
   late DateTime _open, _lastReset, _maturity, _nextReset;
   DateTime? _inception; // optional original-investment date (rolled contracts)
+  late DateTime _feesAsOf; // date the hand-entered fees to date are correct for
 
   @override
   void initState() {
@@ -55,6 +56,9 @@ class _HoldingFormState extends State<HoldingForm> {
     final h = widget.initial;
     final now = DateTime(2026, 6, 14);
     _inception = h?.inceptionDate;
+    final today = DateTime.now();
+    _feesAsOf = h?.brokerFeesPaidAsOf ??
+        DateTime(today.year, today.month, today.day);
     _index = _indexOption(h?.index); // normalize tickers to a dropdown value
     _account = h?.account ?? AccountType.nonQual;
     _floorType = h?.floorType ?? FloorType.hard;
@@ -76,6 +80,8 @@ class _HoldingFormState extends State<HoldingForm> {
       'coupon': TextEditingController(text: ((h?.couponProj ?? 0.0) * 100).toString()),
       'broker': TextEditingController(text: h?.broker ?? ''),
       'brokerFee': TextEditingController(text: ((h?.brokerFee ?? 0.0) * 100).toString()),
+      'feesPaid': TextEditingController(
+          text: h?.brokerFeesPaidK == null ? '' : h!.brokerFeesPaidK.toString()),
     };
   }
 
@@ -135,6 +141,10 @@ class _HoldingFormState extends State<HoldingForm> {
       inceptionDate: _inception,
       broker: _c['broker']!.text.trim(),
       brokerFee: _n('brokerFee') / 100,
+      // Blank = work the fees out; a number = use it as of the chosen date.
+      brokerFeesPaidK: _c['feesPaid']!.text.trim().isEmpty ? null : _n('feesPaid'),
+      brokerFeesPaidAsOf:
+          _c['feesPaid']!.text.trim().isEmpty ? null : _feesAsOf,
     );
     Navigator.of(context).pop(h);
   }
@@ -267,6 +277,29 @@ class _HoldingFormState extends State<HoldingForm> {
               _text('broker', 'Broker', helper: 'Optional, e.g. the firm that sold it'),
               _num('brokerFee', 'Annual fee %', min0: true,
                   helper: 'e.g. 0.6 for 0.6% a year'),
+            ),
+            _pair(
+              Padding(
+                padding: _fieldPad,
+                child: TextFormField(
+                  controller: _c['feesPaid'],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: _dec('Fees to date (\$000, optional)',
+                      helper: 'Blank = worked out from the fee %'),
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return null;
+                    final d = double.tryParse(t);
+                    if (d == null) return 'Number';
+                    if (d < 0) return 'Must be ≥ 0';
+                    return null;
+                  },
+                ),
+              ),
+              _dateField('Fees as of', _feesAsOf,
+                  (d) => setState(() => _feesAsOf = d),
+                  helper: 'Fees after this date are added'),
             ),
 
             _section('Income note'),
