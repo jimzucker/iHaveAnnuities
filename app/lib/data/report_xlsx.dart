@@ -14,6 +14,7 @@ import 'package:xml/xml.dart';
 
 import '../core/models.dart';
 import '../core/payoff.dart' show FloorType;
+import '../core/reset_event.dart';
 import 'xirr.dart';
 
 const _navy = 'FF1F3A5F';
@@ -46,6 +47,8 @@ List<_RCol> _cols() => [
       _RCol('Principal', 14, _cur),
       _RCol('Realized', 13, _cur),
       _RCol('Unrealized \$', 14, _cur),
+      _RCol('Fees to Date', 13, _cur), // broker fees so far, negative
+      _RCol('P/L', 13, _cur), // realized + unrealized − fees to date
       _RCol('Projected Value', 15, _cur),
       _RCol('Index Gain', 11, _pctF),
       _RCol('Return %', 10, _pctF),
@@ -53,12 +56,16 @@ List<_RCol> _cols() => [
       _RCol('Strike', 11, _numF),
       _RCol('Maturity', 12, _dateF),
       _RCol('Next Reset', 12, _dateF),
+      _RCol('Broker', 16),
+      _RCol('Fee %', 9, _pctF), // broker's annual fee
     ];
 
 const _iCap = 3, _iPart = 4;
-const _iPrincipal = 5, _iRealized = 6, _iUnrealized = 7, _iProjValue = 8;
-const _iIndexGain = 9, _iReturn = 10, _iYield = 11;
-const _iStrike = 12, _iMaturity = 13, _iReset = 14;
+const _iPrincipal = 5, _iRealized = 6, _iUnrealized = 7;
+const _iFees = 8, _iPL = 9, _iProjValue = 10;
+const _iIndexGain = 11, _iReturn = 12, _iYield = 13;
+const _iStrike = 14, _iMaturity = 15, _iReset = 16;
+const _iBroker = 17, _iFeePct = 18;
 
 String _friendlyIndex(String index) {
   if (index.contains('/')) {
@@ -102,6 +109,7 @@ List<int> writeReport(
   String? preparedFor,
   String groupBy = '',
   String Function(Holding)? groupValueOf,
+  List<ResetEvent> history = const [],
 }) {
   final excel = Excel.createExcel();
   const sheetName = 'Portfolio Report';
@@ -170,6 +178,9 @@ List<int> writeReport(
   final totReal = holdings.fold(0.0, (a, h) => a + h.realized);
   final totProj = holdings.fold(0.0, (a, h) => a + h.projValueK);
   final totUnreal = totProj - totInit - totReal;
+  final totFees =
+      holdings.fold(0.0, (a, h) => a + h.brokerFeesToDateK(asOf, history));
+  final totPL = holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf, history));
   final xirrAll = _xirr(holdings, asOf);
   final mix = <String, double>{};
   for (final h in holdings) {
@@ -203,6 +214,11 @@ List<int> writeReport(
       fmt: _cur,
       pct: totInit <= 0 ? null : totUnreal / totInit,
       qualifier: totInit <= 0 ? null : 'of principal');
+  if (holdings.any((h) => h.hasBrokerFees)) {
+    kv('Fees to Date', DoubleCellValue(-totFees * 1000), fmt: _cur);
+  }
+  kv('P/L', DoubleCellValue(totPL * 1000),
+      fmt: _cur, qualifier: 'realized + unrealized − fees');
   kv('Protection mix', TextCellValue(mixText));
   row++; // spacer
 
@@ -227,6 +243,8 @@ List<int> writeReport(
     final real = items.fold(0.0, (a, h) => a + h.realized);
     final proj = items.fold(0.0, (a, h) => a + h.projValueK);
     final unreal = proj - init - real;
+    final fees = items.fold(0.0, (a, h) => a + h.brokerFeesToDateK(asOf, history));
+    final pl = items.fold(0.0, (a, h) => a + h.profitLossK(asOf, history));
     final idxW = init == 0
         ? 0.0
         : items.fold(0.0, (a, h) => a + h.indexGain * h.initial) / init;
@@ -242,6 +260,10 @@ List<int> writeReport(
     put(_iPrincipal, row, DoubleCellValue(init * 1000), style: band(f: _cur));
     put(_iRealized, row, DoubleCellValue(real * 1000), style: band(f: _cur));
     put(_iUnrealized, row, DoubleCellValue(unreal * 1000), style: band(f: _cur));
+    if (fees != 0) {
+      put(_iFees, row, DoubleCellValue(-fees * 1000), style: band(f: _cur));
+    }
+    put(_iPL, row, DoubleCellValue(pl * 1000), style: band(f: _cur));
     put(_iProjValue, row, DoubleCellValue(proj * 1000), style: band(f: _cur));
     put(_iIndexGain, row, DoubleCellValue(idxW), style: band(f: _pctF));
     if (init != 0) {
@@ -272,6 +294,13 @@ List<int> writeReport(
     put(_iPrincipal, row, DoubleCellValue(h.initial * 1000), style: cellStyle(_cur, fill: fill));
     put(_iRealized, row, DoubleCellValue(h.realized * 1000), style: cellStyle(_cur, fill: fill));
     put(_iUnrealized, row, DoubleCellValue(h.projGainDollarsK * 1000), style: cellStyle(_cur, fill: fill));
+    put(_iFees, row,
+        h.hasBrokerFees
+            ? DoubleCellValue(-h.brokerFeesToDateK(asOf, history) * 1000)
+            : null,
+        style: cellStyle(_cur, fill: fill));
+    put(_iPL, row, DoubleCellValue(h.profitLossK(asOf, history) * 1000),
+        style: cellStyle(_cur, fill: fill));
     put(_iProjValue, row, DoubleCellValue(h.projValueK * 1000), style: cellStyle(_cur, fill: fill));
     put(_iIndexGain, row, DoubleCellValue(h.indexGain), style: cellStyle(_pctF, fill: fill));
     put(_iReturn, row, DoubleCellValue(h.totalReturnPct), style: cellStyle(_pctF, fill: fill));
@@ -279,6 +308,10 @@ List<int> writeReport(
     put(_iStrike, row, DoubleCellValue(h.strike), style: cellStyle(_numF, fill: fill));
     put(_iMaturity, row, _date(h.maturity), style: cellStyle(_dateF, fill: fill));
     put(_iReset, row, _date(h.nextReset), style: cellStyle(_dateF, fill: fill));
+    put(_iBroker, row, h.broker.isEmpty ? null : TextCellValue(h.broker),
+        style: cellStyle(null, fill: fill));
+    put(_iFeePct, row, h.brokerFee == 0 ? null : DoubleCellValue(h.brokerFee),
+        style: cellStyle(_pctF, fill: fill));
     row++;
   }
 

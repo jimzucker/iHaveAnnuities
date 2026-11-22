@@ -159,7 +159,8 @@ void main() {
     expect(xml, contains('outlineLevel="1"'));
     expect(xml, isNot(contains('hidden="1"'))); // starts expanded
     expect(xml, contains('state="frozen"'));
-    expect(xml, contains('topLeftCell="G13"'));
+    // Header row 13 (the summary has a P/L line) → first scrollable cell G14.
+    expect(xml, contains('topLeftCell="G14"'));
     expect(() => Excel.decodeBytes(bytes), returnsNormally);
   });
 
@@ -177,8 +178,8 @@ void main() {
         (f) => f.name.contains('worksheets/') && f.name.endsWith('.xml'));
     final xml = utf8.decode(ws.content as List<int>);
     expect(xml, isNot(contains('outlineLevel="1"'))); // nothing grouped
-    // No owner line → header one row higher → freeze at G12.
-    expect(xml, contains('topLeftCell="G12"'));
+    // No owner line → header one row higher → freeze at G13.
+    expect(xml, contains('topLeftCell="G13"'));
   });
 
   test('no owner line when preparedFor is omitted or blank', () {
@@ -309,8 +310,8 @@ void main() {
       fail('no TOTAL band found');
     }
 
-    // col 5 = Principal, col 7 = Unrealized $, col 8 = Projected Value.
-    for (final col in const [5, 7, 8]) {
+    // 5 Principal, 7 Unrealized $, 8 Fees to Date, 9 P/L, 10 Projected Value.
+    for (final col in const [5, 7, 8, 9, 10]) {
       expect(groupSum(col), closeTo(totalOf(col), 1e-6),
           reason: 'column $col: group subtotals do not reconcile to TOTAL');
     }

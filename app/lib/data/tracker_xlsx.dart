@@ -52,9 +52,10 @@ const headers = <String>[
   'Inception', // Y — original investment date (rolled contracts); optional
   'Broker', // Z — optional
   'Broker Fee', // AA — annual fee (fraction); optional
-  'Fees Paid (\$000)', // AB — fees to date entered by hand; optional
-  'Fees As Of', // AC — the date Fees Paid is correct for
-  'P/L (\$000)', // AD — derived: realized + unrealized − broker fees so far
+  'Fees to Date Entered (\$000)', // AB — typed in by hand; optional
+  'Fees Entered As Of', // AC — the date the entered fees are correct for
+  'Fees to Date (\$000)', // AD — derived: broker fees so far, negative
+  'P/L (\$000)', // AE — derived: realized + unrealized − broker fees so far
 ];
 
 /// Numeric sentinel for an uncapped CAP column (= 999%).
@@ -197,8 +198,11 @@ List<Holding> parseTracker(List<int> bytes) {
       inceptionDate: _date(r, h, 'Inception'), // null when column absent
       broker: _str(r, h, 'Broker') ?? '', // '' when column absent
       brokerFee: _num(r, h, 'Broker Fee') ?? 0.0, // 0 when column absent
-      brokerFeesPaidK: _num(r, h, 'Fees Paid (\$000)'),
-      brokerFeesPaidAsOf: _date(r, h, 'Fees As Of'),
+      // 1.7.1 named these "Fees Paid ($000)" and "Fees As Of"; still read.
+      brokerFeesPaidK: _num(r, h, 'Fees to Date Entered (\$000)') ??
+          _num(r, h, 'Fees Paid (\$000)'),
+      brokerFeesPaidAsOf:
+          _date(r, h, 'Fees Entered As Of') ?? _date(r, h, 'Fees As Of'),
     ));
   }
   return out;
@@ -263,11 +267,14 @@ List<int> writeTracker(
       x.brokerFee == 0 ? null : DoubleCellValue(x.brokerFee), // AA Broker Fee
       x.brokerFeesPaidK == null || x.brokerFeesPaidAsOf == null
           ? null
-          : DoubleCellValue(x.brokerFeesPaidK!), // AB Fees Paid
+          : DoubleCellValue(x.brokerFeesPaidK!), // AB Fees to Date Entered
       x.brokerFeesPaidK == null || x.brokerFeesPaidAsOf == null
           ? null
-          : _dateCell(x.brokerFeesPaidAsOf!), // AC Fees As Of
-      DoubleCellValue(x.profitLossK(asOf, history)), // AD P/L
+          : _dateCell(x.brokerFeesPaidAsOf!), // AC Fees Entered As Of
+      x.hasBrokerFees
+          ? DoubleCellValue(-x.brokerFeesToDateK(asOf, history))
+          : null, // AD Fees to Date (negative)
+      DoubleCellValue(x.profitLossK(asOf, history)), // AE P/L
     ]);
   }
 
@@ -281,8 +288,10 @@ List<int> writeTracker(
   total[6] = DoubleCellValue(totRealized); // G Realized
   total[7] = DoubleCellValue(totProjValue); // H Proj Value
   total[8] = DoubleCellValue(totProjValue - totInitial - totRealized); // I Proj $ Gain (unrealized)
+  total[headers.length - 2] = DoubleCellValue(-holdings.fold(
+      0.0, (a, h) => a + h.brokerFeesToDateK(asOf, history))); // AD Fees to Date
   total[headers.length - 1] = DoubleCellValue(
-      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf, history))); // AD P/L
+      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf, history))); // AE P/L
   s.appendRow(total);
 
   _styleTracker(s, holdings.length);
@@ -301,7 +310,8 @@ void _styleTracker(Sheet s, int nRows) {
   final dateF = NumFormat.standard_15; // d-mmm-yy
   final byHeader = <String, NumFormat>{
     'Initial (\$000)': curF, 'Realized (\$000)': curF, 'P/L (\$000)': curF,
-    'Fees Paid (\$000)': curF, 'Fees As Of': dateF,
+    'Fees to Date Entered (\$000)': curF, 'Fees Entered As Of': dateF,
+    'Fees to Date (\$000)': curF,
     'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
     'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
     'CAP': pctF, 'Part.': pctF, 'Floor': pctF, 'Broker Fee': pctF,

@@ -285,8 +285,8 @@ class _HoldingFormState extends State<HoldingForm> {
                   controller: _c['feesPaid'],
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  decoration: _dec('Fees to date (\$000, optional)',
-                      helper: 'Blank = worked out from the fee %'),
+                  decoration: _dec('Fees to Date Entered (\$000)',
+                      helper: 'Optional. Blank = worked out from the fee %'),
                   validator: (v) {
                     final t = (v ?? '').trim();
                     if (t.isEmpty) return null;
@@ -297,7 +297,7 @@ class _HoldingFormState extends State<HoldingForm> {
                   },
                 ),
               ),
-              _dateField('Fees as of', _feesAsOf,
+              _dateField('Fees Entered As Of', _feesAsOf,
                   (d) => setState(() => _feesAsOf = d),
                   helper: 'Fees after this date are added'),
             ),
