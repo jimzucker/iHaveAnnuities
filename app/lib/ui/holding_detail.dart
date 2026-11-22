@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../core/reset_event.dart';
 import '../core/payoff.dart';
 import '../data/portfolio_store.dart';
 import 'format.dart';
@@ -93,7 +94,8 @@ class HoldingDetail extends StatelessWidget {
             child: Text(_summary(h, asOf),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.4)),
           ),
-          _KeyFigures(h: h, cs: cs, asOf: asOf),
+          _KeyFigures(
+              h: h, cs: cs, asOf: asOf, history: store.resetHistory),
           const SizedBox(height: 12),
           // Wide screens: chart and the fact cards side by side (everything
           // above the fold). Narrow: stacked.
@@ -176,10 +178,15 @@ class HoldingDetail extends StatelessWidget {
 /// contract terms/levels (folded in from the former grey strip), so everything
 /// lives in one card with no duplicated figures.
 class _KeyFigures extends StatelessWidget {
-  const _KeyFigures({required this.h, required this.cs, required this.asOf});
+  const _KeyFigures(
+      {required this.h,
+      required this.cs,
+      required this.asOf,
+      this.history = const []});
   final DateTime asOf;
   final Holding h;
   final ColorScheme cs;
+  final List<ResetEvent> history; // for the broker fees charged so far
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +233,13 @@ class _KeyFigures extends StatelessWidget {
           subColor: lossColor(h.realizedPct, cs)),
       cell('Unrealized \$', moneyK(h.projGainDollarsK),
           color: gainColor(h.projGainDollarsK, cs), big: true),
+      if (h.hasBrokerFees)
+        cell('Fees to Date', moneyK(-h.brokerFeesToDateK(asOf, history)),
+            color: lossColor(-h.brokerFeesToDateK(asOf, history), cs),
+            big: true),
+      cell('P/L', moneyK(h.profitLossK(asOf, history)),
+          color: gainColor(h.profitLossK(asOf, history), cs), big: true,
+          sub: h.hasBrokerFees ? 'after fees' : null),
       cell('Total Value', moneyK(h.projValueK), big: true,
           sub: h.initial <= 0 ? null : pctSigned(h.totalReturnPct),
           subColor: lossColor(h.totalReturnPct, cs)),
@@ -251,6 +265,12 @@ class _KeyFigures extends StatelessWidget {
       cell('Strike', level(h.strike), big: true),
       cell('Current', level(h.currentLevel), big: true),
       if (h.isIncomeNote) cell('Coupon', pct(h.couponRate), big: true),
+      if (h.broker.isNotEmpty) cell('Broker', h.broker, big: true),
+      if (h.hasBrokerFees) ...[
+        cell('Broker fee', '${pct(h.brokerFee)}/yr', big: true),
+        cell('Fees over Term', moneyK(-h.brokerFeeTermK(history)),
+            color: lossColor(-h.brokerFeeTermK(history), cs), big: true),
+      ],
     ];
 
     // Wide layout: ONE table so columns 1..N line up between the two rows. The

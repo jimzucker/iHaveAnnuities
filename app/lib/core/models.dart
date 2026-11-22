@@ -7,6 +7,7 @@
 import 'dart:math' as math;
 
 import 'payoff.dart';
+import 'reset_event.dart';
 
 /// Account / tax treatment.
 enum AccountType { nonQual, ira, roth }
@@ -86,6 +87,10 @@ class Holding {
     this.ndxStrike, // worst-of only; else null
     this.rutStrike, // worst-of only; else null
     this.inceptionDate, // original investment date (rolled contracts); else null
+    this.broker = '', // who sold it / holds it; '' = none entered
+    this.brokerFee = 0.0, // broker's annual fee (fraction per year); 0 = none
+    this.brokerFeesPaidK, // fees to date entered by hand ($000); null = work out
+    this.brokerFeesPaidAsOf, // the date [brokerFeesPaidK] is correct for
   }) : issuer = canonicalIssuer(issuer);
 
   final String issuer;
@@ -113,6 +118,95 @@ class Holding {
   /// prior period). Drives the CAGR/Yield start so a freshly-reset contract's
   /// life-to-date isn't measured from the roll date. Null → use [openDate].
   final DateTime? inceptionDate;
+
+  /// Broker name and annual fee (fraction per year). Both optional: data saved
+  /// before these existed loads as no broker and no fee.
+  final String broker;
+  final double brokerFee;
+
+  /// Fees to date entered by hand, in $000, correct as of
+  /// [brokerFeesPaidAsOf]. Null (the usual case) = work them out.
+  final double? brokerFeesPaidK;
+  final DateTime? brokerFeesPaidAsOf;
+
+  /// Broker fee per year, in $000: the annual fee on the balance the payoff
+  /// applies to (initial + realized). Shown on its own; it does not change the
+  /// projected value, returns or yields.
+  double get brokerFeePerYearK => (initial + realized) * brokerFee;
+
+  /// Broker fee over the whole term (start to maturity), in $000, charged
+  /// the same way as [brokerFeesToDateK]. Years after today use today's
+  /// balance.
+  double brokerFeeTermK([List<ResetEvent> history = const []]) =>
+      brokerFeesToDateK(maturity, history);
+
+  /// Broker fees charged so far, in $000. Fee years run from [returnStart]
+  /// (inception, else the start date) on each anniversary. Each fee year is
+  /// charged [brokerFee] on the balance (initial + realized) on the day it
+  /// starts; a full year is charged the whole rate, the year in progress in
+  /// proportion to its days. Stops at maturity.
+  ///
+  /// The balance on a past date is today's realized minus the gains [history]
+  /// shows were credited after that date. Gains credited before the app kept
+  /// a history are not in it, so those years use the later balance.
+  ///
+  /// When fees to date were entered by hand ([brokerFeesPaidK]), that amount
+  /// is used as of [brokerFeesPaidAsOf], plus the fees worked out after it.
+  double brokerFeesToDateK(DateTime asOf,
+      [List<ResetEvent> history = const []]) {
+    final paid = brokerFeesPaidK, paidAsOf = brokerFeesPaidAsOf;
+    if (paid != null && paidAsOf != null) {
+      if (!asOf.isAfter(paidAsOf)) return paid;
+      return paid +
+          _feesWorkedOutK(asOf, history) -
+          _feesWorkedOutK(paidAsOf, history);
+    }
+    return _feesWorkedOutK(asOf, history);
+  }
+
+  double _feesWorkedOutK(DateTime asOf, List<ResetEvent> history) {
+    if (brokerFee == 0) return 0;
+    final end = asOf.isBefore(maturity) ? asOf : maturity;
+    final mine = history.where((e) => e.holdingKey == key).toList();
+    double balanceOn(DateTime d) =>
+        initial +
+        realized -
+        mine
+            .where((e) => e.date.isAfter(d))
+            .fold(0.0, (a, e) => a + e.realizedAddedK);
+    var fee = 0.0;
+    var from = returnStart;
+    for (var year = 1; from.isBefore(end); year++) {
+      final next = _addYears(returnStart, year);
+      final part =
+          next.isAfter(end) ? _days(from, end) / _days(from, next) : 1.0;
+      fee += brokerFee * balanceOn(from) * part;
+      from = next;
+    }
+    return fee;
+  }
+
+  /// Calendar days from [a] to [b]. Counted in UTC so a daylight-saving
+  /// change in between doesn't drop a day.
+  static int _days(DateTime a, DateTime b) =>
+      DateTime.utc(b.year, b.month, b.day)
+          .difference(DateTime.utc(a.year, a.month, a.day))
+          .inDays;
+
+  /// [d] plus [years], with Feb 29 moved to Feb 28 in non-leap years.
+  static DateTime _addYears(DateTime d, int years) {
+    final y = d.year + years;
+    final lastDay = DateTime(y, d.month + 1, 0).day;
+    return DateTime(y, d.month, d.day < lastDay ? d.day : lastDay);
+  }
+
+  /// Whether this holding has broker fees (a fee rate or fees entered by hand).
+  bool get hasBrokerFees =>
+      brokerFee != 0 || (brokerFeesPaidK != null && brokerFeesPaidAsOf != null);
+
+  /// Profit or loss, in $000 = realized + unrealized − broker fees so far.
+  double profitLossK(DateTime asOf, [List<ResetEvent> history = const []]) =>
+      realized + projGainDollarsK - brokerFeesToDateK(asOf, history);
 
   /// Start date for life-to-date returns: the original inception when set, else
   /// the open date.
@@ -270,6 +364,10 @@ class Holding {
         ndxStrike: ndxStrike,
         rutStrike: rutStrike,
         inceptionDate: inceptionDate,
+        broker: broker,
+        brokerFee: brokerFee,
+        brokerFeesPaidK: brokerFeesPaidK,
+        brokerFeesPaidAsOf: brokerFeesPaidAsOf,
       );
 
   Map<String, dynamic> toJson() => {
@@ -295,6 +393,12 @@ class Holding {
         if (rutStrike != null) 'rutStrike': rutStrike,
         if (inceptionDate != null)
           'inceptionDate': inceptionDate!.toIso8601String(),
+        if (broker.isNotEmpty) 'broker': broker,
+        if (brokerFee != 0) 'brokerFee': brokerFee,
+        if (brokerFeesPaidK != null && brokerFeesPaidAsOf != null) ...{
+          'brokerFeesPaidK': brokerFeesPaidK,
+          'brokerFeesPaidAsOf': brokerFeesPaidAsOf!.toIso8601String(),
+        },
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
@@ -321,6 +425,12 @@ class Holding {
         inceptionDate: j['inceptionDate'] == null
             ? null
             : DateTime.parse(j['inceptionDate'] as String),
+        broker: j['broker'] as String? ?? '',
+        brokerFee: (j['brokerFee'] as num?)?.toDouble() ?? 0.0,
+        brokerFeesPaidK: (j['brokerFeesPaidK'] as num?)?.toDouble(),
+        brokerFeesPaidAsOf: j['brokerFeesPaidAsOf'] == null
+            ? null
+            : DateTime.parse(j['brokerFeesPaidAsOf'] as String),
       );
 }
 

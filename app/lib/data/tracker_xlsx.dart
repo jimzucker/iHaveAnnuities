@@ -18,6 +18,7 @@ import 'package:excel/excel.dart';
 
 import '../core/models.dart';
 import '../core/payoff.dart';
+import '../core/reset_event.dart';
 import 'xlsx_reader.dart';
 
 const _sheetName = 'Annuity Tracker';
@@ -49,6 +50,11 @@ const headers = <String>[
   'NDX_Strike', // W — populated only for worst-of
   'RUT_Strike', // X — populated only for worst-of
   'Inception', // Y — original investment date (rolled contracts); optional
+  'Broker', // Z — optional
+  'Broker Fee', // AA — annual fee (fraction); optional
+  'Fees Paid (\$000)', // AB — fees to date entered by hand; optional
+  'Fees As Of', // AC — the date Fees Paid is correct for
+  'P/L (\$000)', // AD — derived: realized + unrealized − broker fees so far
 ];
 
 /// Numeric sentinel for an uncapped CAP column (= 999%).
@@ -189,6 +195,10 @@ List<Holding> parseTracker(List<int> bytes) {
       ndxStrike: _num(r, h, 'NDX_Strike'),
       rutStrike: _num(r, h, 'RUT_Strike'),
       inceptionDate: _date(r, h, 'Inception'), // null when column absent
+      broker: _str(r, h, 'Broker') ?? '', // '' when column absent
+      brokerFee: _num(r, h, 'Broker Fee') ?? 0.0, // 0 when column absent
+      brokerFeesPaidK: _num(r, h, 'Fees Paid (\$000)'),
+      brokerFeesPaidAsOf: _date(r, h, 'Fees As Of'),
     ));
   }
   return out;
@@ -201,6 +211,7 @@ List<int> writeTracker(
   List<Holding> holdings, {
   required DateTime asOf,
   required Map<String, double> prices,
+  List<ResetEvent> history = const [],
 }) {
   final excel = Excel.createExcel();
   final def = excel.getDefaultSheet();
@@ -248,6 +259,15 @@ List<int> writeTracker(
       isWorstOf && x.ndxStrike != null ? DoubleCellValue(x.ndxStrike!) : null, // W
       isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null, // X
       x.inceptionDate == null ? null : _dateCell(x.inceptionDate!), // Y Inception
+      x.broker.isEmpty ? null : TextCellValue(x.broker), // Z Broker
+      x.brokerFee == 0 ? null : DoubleCellValue(x.brokerFee), // AA Broker Fee
+      x.brokerFeesPaidK == null || x.brokerFeesPaidAsOf == null
+          ? null
+          : DoubleCellValue(x.brokerFeesPaidK!), // AB Fees Paid
+      x.brokerFeesPaidK == null || x.brokerFeesPaidAsOf == null
+          ? null
+          : _dateCell(x.brokerFeesPaidAsOf!), // AC Fees As Of
+      DoubleCellValue(x.profitLossK(asOf, history)), // AD P/L
     ]);
   }
 
@@ -261,6 +281,8 @@ List<int> writeTracker(
   total[6] = DoubleCellValue(totRealized); // G Realized
   total[7] = DoubleCellValue(totProjValue); // H Proj Value
   total[8] = DoubleCellValue(totProjValue - totInitial - totRealized); // I Proj $ Gain (unrealized)
+  total[headers.length - 1] = DoubleCellValue(
+      holdings.fold(0.0, (a, h) => a + h.profitLossK(asOf, history))); // AD P/L
   s.appendRow(total);
 
   _styleTracker(s, holdings.length);
@@ -278,10 +300,11 @@ void _styleTracker(Sheet s, int nRows) {
   final numF = NumFormat.standard_4; // #,##0.00
   final dateF = NumFormat.standard_15; // d-mmm-yy
   final byHeader = <String, NumFormat>{
-    'Initial (\$000)': curF, 'Realized (\$000)': curF,
+    'Initial (\$000)': curF, 'Realized (\$000)': curF, 'P/L (\$000)': curF,
+    'Fees Paid (\$000)': curF, 'Fees As Of': dateF,
     'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
     'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
-    'CAP': pctF, 'Part.': pctF, 'Floor': pctF,
+    'CAP': pctF, 'Part.': pctF, 'Floor': pctF, 'Broker Fee': pctF,
     'Next Reset': dateF, 'Maturity': dateF, 'Start Date': dateF, 'Last Reset': dateF,
     'Inception': dateF,
     'Strike': numF, 'NDX_Strike': numF, 'RUT_Strike': numF,
