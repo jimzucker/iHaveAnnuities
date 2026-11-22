@@ -279,7 +279,7 @@ void main() {
         (tester) async {
       await pump(tester, _h(broker: 'ACME', fee: 0.01));
       expect(find.text('ACME'), findsOneWidget);
-      expect(find.text('1.000%/yr'), findsOneWidget); // 3 decimals
+      expect(find.text('1.00%/yr'), findsOneWidget); // 2 decimals
       // 2026-01-01 to 2026-06-12 is 162 of 365 days of the first year.
       // Fees are full figures with their own labels.
       expect(find.text('Fees to Date'), findsOneWidget);
@@ -716,7 +716,7 @@ void main() {
         expect(find.text('Fees to Date'), findsOneWidget);
         expect(find.text('Fee %'), findsOneWidget);
         expect(find.text('ACME'), findsOneWidget);
-        expect(find.text('1.000%'), findsOneWidget);
+        expect(find.text('1.00%'), findsOneWidget);
         expect(find.text(fees), findsNWidgets(2)); // the row and the TOTAL
       });
     }
@@ -734,7 +734,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(Card), findsNWidgets(2)); // the phone layout
       expect(find.text('ACME'), findsOneWidget);
-      expect(find.text('0.600%'), findsOneWidget);
+      expect(find.text('0.60%'), findsOneWidget);
       expect(find.text(moneyK(hs[0].brokerFeesToDateK(_market.asOf))),
           findsOneWidget);
       // Only the card with a broker or fee gets the broker row.
@@ -752,7 +752,7 @@ void main() {
           value: store, child: const MaterialApp(home: PortfolioScreen())));
       await tester.pumpAndSettle();
       expect(find.text('—'), findsOneWidget); // broker
-      expect(find.text('1.000%'), findsOneWidget);
+      expect(find.text('1.00%'), findsOneWidget);
     });
 
     testWidgets('a phone card with a broker but no fee shows dashes for fees',

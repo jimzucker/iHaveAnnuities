@@ -22,9 +22,6 @@ String moneyK(double thousands) => _money.format(thousands * 1000);
 /// $000 value shown as-is (matches the xls "$ in $000s" columns), e.g. $112.25.
 String money000(double v) => '\$${_level.format(v)}';
 String pct(double v) => '${(v * 100).toStringAsFixed(2)}%';
-
-/// A broker fee rate to 3 decimals, e.g. 0.006 → `0.600%`.
-String feePct(double v) => '${(v * 100).toStringAsFixed(3)}%';
 String pctSigned(double v) =>
     '${v > 0 ? '+' : ''}${(v * 100).toStringAsFixed(2)}%';
 String level(double v) => _level.format(v);

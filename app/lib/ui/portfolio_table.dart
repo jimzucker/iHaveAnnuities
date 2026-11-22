@@ -258,7 +258,7 @@ class PortfolioTable extends StatelessWidget {
         _Col('Broker', false, (h, _) => h.broker.toLowerCase(),
             (h, _, _) => _t(h.broker), fixedWidth: 120),
         _Col('Fee %', true, (h, _) => h.brokerFee,
-            (h, _, _) => _t(h.brokerFee == 0 ? '' : feePct(h.brokerFee)),
+            (h, _, _) => _t(h.brokerFee == 0 ? '' : pct(h.brokerFee)),
             fixedWidth: 80, tooltip: 'Broker\'s annual fee'),
         _Col('Fees to Date', true, (h, a) => h.brokerFeesToDateK(a, history),
             (h, a, _) => _t(h.brokerFee == 0
@@ -702,7 +702,7 @@ class PortfolioTable extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(children: [
                     _meta('Broker', x.broker.isEmpty ? '—' : x.broker, cs),
-                    _meta('Fee %', x.brokerFee == 0 ? '—' : feePct(x.brokerFee), cs),
+                    _meta('Fee %', x.brokerFee == 0 ? '—' : pct(x.brokerFee), cs),
                     _meta(
                         'Fees to Date',
                         x.brokerFee == 0
