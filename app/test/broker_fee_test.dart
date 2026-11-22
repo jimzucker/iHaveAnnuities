@@ -577,6 +577,54 @@ void main() {
       });
     }
 
+    testWidgets('phone cards show broker, fee and fees to date when set',
+        (tester) async {
+      tester.view.physicalSize = const Size(420, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final hs = [_h(issuer: 'A', broker: 'ACME', fee: 0.006), _h(issuer: 'B')];
+      final store = PortfolioStore()..debugSeed(hs, _market);
+      await store.setHideSummary(true);
+      await tester.pumpWidget(ChangeNotifierProvider.value(
+          value: store, child: const MaterialApp(home: PortfolioScreen())));
+      await tester.pumpAndSettle();
+      expect(find.byType(Card), findsNWidgets(2)); // the phone layout
+      expect(find.text('ACME'), findsOneWidget);
+      expect(find.text('0.600%'), findsOneWidget);
+      expect(find.text(moneyK(hs[0].brokerFeesToDateK(_market.asOf))),
+          findsOneWidget);
+      // Only the card with a broker or fee gets the broker row.
+      expect(find.text('Fees to Date'), findsOneWidget);
+    });
+
+    testWidgets('a phone card with a fee but no broker shows a dash',
+        (tester) async {
+      tester.view.physicalSize = const Size(420, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final store = PortfolioStore()..debugSeed([_h(fee: 0.01)], _market);
+      await store.setHideSummary(true);
+      await tester.pumpWidget(ChangeNotifierProvider.value(
+          value: store, child: const MaterialApp(home: PortfolioScreen())));
+      await tester.pumpAndSettle();
+      expect(find.text('—'), findsOneWidget); // broker
+      expect(find.text('1.000%'), findsOneWidget);
+    });
+
+    testWidgets('a phone card with a broker but no fee shows dashes for fees',
+        (tester) async {
+      tester.view.physicalSize = const Size(420, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final store = PortfolioStore()..debugSeed([_h(broker: 'ACME')], _market);
+      await store.setHideSummary(true);
+      await tester.pumpWidget(ChangeNotifierProvider.value(
+          value: store, child: const MaterialApp(home: PortfolioScreen())));
+      await tester.pumpAndSettle();
+      expect(find.text('ACME'), findsOneWidget);
+      expect(find.text('—'), findsNWidgets(2)); // fee % and fees to date
+    });
+
     testWidgets('the table shows P/L per row and in the TOTAL row',
         (tester) async {
       tester.view.physicalSize = const Size(2400, 900);

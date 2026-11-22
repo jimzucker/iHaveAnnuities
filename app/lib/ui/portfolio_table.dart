@@ -697,6 +697,20 @@ class PortfolioTable extends StatelessWidget {
                   _meta('Index Gain', pctSigned(x.indexGain), cs),
                   _meta('Next Reset', '${x.daysToReset(asOf)}d · ${date(x.nextReset)}', cs),
                 ]),
+                // Broker row only for holdings that have a broker or a fee.
+                if (x.broker.isNotEmpty || x.brokerFee != 0) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    _meta('Broker', x.broker.isEmpty ? '—' : x.broker, cs),
+                    _meta('Fee %', x.brokerFee == 0 ? '—' : feePct(x.brokerFee), cs),
+                    _meta(
+                        'Fees to Date',
+                        x.brokerFee == 0
+                            ? '—'
+                            : moneyK(x.brokerFeesToDateK(asOf, store.resetHistory)),
+                        cs),
+                  ]),
+                ],
                 Align(
                   alignment: Alignment.centerRight,
                   child: IconButton(
