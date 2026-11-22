@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:excel/excel.dart' hide Border, BorderStyle, TextSpan;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -195,7 +196,7 @@ void main() {
 
     test('the new columns come last, after Inception', () {
       expect(headers.sublist(headers.length - 7), [
-        'Inception', 'Broker', 'Broker Fee', 'Fees Paid (\$000)', 'Fees As Of',
+        'Inception', 'Broker', 'Broker Fee', 'Fees to Date Entered (\$000)', 'Fees Entered As Of',
         'Fees to Date (\$000)', 'P/L (\$000)',
       ]);
     });
@@ -414,11 +415,11 @@ void main() {
       if (feesPaid != null) {
         await tester.enterText(
             find.widgetWithText(
-                TextFormField, 'Fees to date (\$000, optional)'),
+                TextFormField, 'Fees to Date Entered (\$000)'),
             feesPaid);
       }
       if (pickFeesDate) {
-        await tester.tap(find.text('Fees as of'));
+        await tester.tap(find.text('Fees Entered As Of'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('OK'));
         await tester.pumpAndSettle();
@@ -862,8 +863,8 @@ void main() {
       // Fees to date: 1.9 entered as of 2027-01-01, plus 2027 on 120 = 0.72.
       expect(at(a, 'Broker'), 'ACME');
       expect(at(a, 'Broker Fee'), 0.006);
-      expect(at(a, 'Fees Paid (\$000)'), 1.9);
-      final d = at(a, 'Fees As Of') as DateTime;
+      expect(at(a, 'Fees to Date Entered (\$000)'), 1.9);
+      final d = at(a, 'Fees Entered As Of') as DateTime;
       expect([d.year, d.month, d.day], [2027, 1, 1]);
       expect(at(a, 'Fees to Date (\$000)'), closeTo(-(1.9 + 0.72), 1e-9));
       expect(at(a, 'P/L (\$000)'), closeTo(full.profitLossK(asOf), 1e-9));
@@ -871,7 +872,7 @@ void main() {
 
     test('a holding with no broker fields leaves them blank but has P/L', () {
       for (final col in const [
-        'Broker', 'Broker Fee', 'Fees Paid (\$000)', 'Fees As Of',
+        'Broker', 'Broker Fee', 'Fees to Date Entered (\$000)', 'Fees Entered As Of',
         'Fees to Date (\$000)',
       ]) {
         expect(at(b, col), isNull, reason: col);
@@ -885,7 +886,29 @@ void main() {
           closeTo(full.profitLossK(asOf) + none.profitLossK(asOf), 1e-9));
     });
 
-    test('import reads Broker, Broker Fee, Fees Paid and Fees As Of only', () {
+    test('a 1.7.1 file with the old column names still imports', () {
+      // Write a sheet with the 1.7.1 headers "Fees Paid ($000)" / "Fees As Of".
+      final excel = Excel.createExcel();
+      final sh = excel[excel.getDefaultSheet()!];
+      sh.appendRow([
+        TextCellValue('Issuer'), TextCellValue('Start Date'),
+        TextCellValue('Maturity'), TextCellValue('Fees Paid (\$000)'),
+        TextCellValue('Fees As Of'),
+      ]);
+      sh.appendRow([
+        TextCellValue('OLD'),
+        DateCellValue(year: 2026, month: 1, day: 1),
+        DateCellValue(year: 2030, month: 1, day: 1),
+        DoubleCellValue(1.9),
+        DateCellValue(year: 2027, month: 1, day: 1),
+      ]);
+      final h = parseTracker(excel.encode()!).single;
+      expect(h.brokerFeesPaidK, 1.9);
+      final d = h.brokerFeesPaidAsOf!;
+      expect([d.year, d.month, d.day], [2027, 1, 1]);
+    });
+
+    test('import reads Broker, Broker Fee and the entered fees only', () {
       final back = parseTracker(bytes);
       expect(back[0].broker, 'ACME');
       expect(back[0].brokerFee, 0.006);
