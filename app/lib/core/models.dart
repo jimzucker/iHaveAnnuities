@@ -86,6 +86,8 @@ class Holding {
     this.ndxStrike, // worst-of only; else null
     this.rutStrike, // worst-of only; else null
     this.inceptionDate, // original investment date (rolled contracts); else null
+    this.broker = '', // who sold it / holds it; '' = none entered
+    this.brokerFee = 0.0, // broker's annual fee (fraction per year); 0 = none
   }) : issuer = canonicalIssuer(issuer);
 
   final String issuer;
@@ -113,6 +115,25 @@ class Holding {
   /// prior period). Drives the CAGR/Yield start so a freshly-reset contract's
   /// life-to-date isn't measured from the roll date. Null → use [openDate].
   final DateTime? inceptionDate;
+
+  /// Broker name and annual fee (fraction per year). Both optional: data saved
+  /// before these existed loads as no broker and no fee.
+  final String broker;
+  final double brokerFee;
+
+  /// Broker fee per year, in $000: the annual fee on the balance the payoff
+  /// applies to (initial + realized). Shown on its own; it does not change the
+  /// projected value, returns or yields.
+  double get brokerFeePerYearK => (initial + realized) * brokerFee;
+
+  /// Contract term in years, from [returnStart] (inception or open) to maturity.
+  double get termYears {
+    final days = maturity.difference(returnStart).inDays;
+    return days <= 0 ? 0 : days / 365.25;
+  }
+
+  /// Broker fee over the whole term, in $000 = fee per year × term years.
+  double get brokerFeeTermK => brokerFeePerYearK * termYears;
 
   /// Start date for life-to-date returns: the original inception when set, else
   /// the open date.
@@ -270,6 +291,8 @@ class Holding {
         ndxStrike: ndxStrike,
         rutStrike: rutStrike,
         inceptionDate: inceptionDate,
+        broker: broker,
+        brokerFee: brokerFee,
       );
 
   Map<String, dynamic> toJson() => {
@@ -295,6 +318,8 @@ class Holding {
         if (rutStrike != null) 'rutStrike': rutStrike,
         if (inceptionDate != null)
           'inceptionDate': inceptionDate!.toIso8601String(),
+        if (broker.isNotEmpty) 'broker': broker,
+        if (brokerFee != 0) 'brokerFee': brokerFee,
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
@@ -321,6 +346,8 @@ class Holding {
         inceptionDate: j['inceptionDate'] == null
             ? null
             : DateTime.parse(j['inceptionDate'] as String),
+        broker: j['broker'] as String? ?? '',
+        brokerFee: (j['brokerFee'] as num?)?.toDouble() ?? 0.0,
       );
 }
 

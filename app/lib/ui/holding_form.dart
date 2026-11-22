@@ -74,6 +74,8 @@ class _HoldingFormState extends State<HoldingForm> {
       'initial': TextEditingController(text: (h?.initial ?? 100.0).toString()),
       'realized': TextEditingController(text: (h?.realized ?? 0.0).toString()),
       'coupon': TextEditingController(text: ((h?.couponProj ?? 0.0) * 100).toString()),
+      'broker': TextEditingController(text: h?.broker ?? ''),
+      'brokerFee': TextEditingController(text: ((h?.brokerFee ?? 0.0) * 100).toString()),
     };
   }
 
@@ -131,6 +133,8 @@ class _HoldingFormState extends State<HoldingForm> {
       isIncomeNote: _note,
       couponProj: _note ? _n('coupon') / 100 : 0,
       inceptionDate: _inception,
+      broker: _c['broker']!.text.trim(),
+      brokerFee: _n('brokerFee') / 100,
     );
     Navigator.of(context).pop(h);
   }
@@ -258,6 +262,13 @@ class _HoldingFormState extends State<HoldingForm> {
                   helper: 'Gains already taken, thousands'),
             ),
 
+            _section('Broker'),
+            _pair(
+              _text('broker', 'Broker', helper: 'Optional, e.g. the firm that sold it'),
+              _num('brokerFee', 'Annual fee %', min0: true,
+                  helper: 'Charged each year on initial + realized'),
+            ),
+
             _section('Income note'),
             _checkbox('Income note (coupon)', _note,
                 (v) => setState(() => _note = v),
@@ -303,7 +314,10 @@ class _HoldingFormState extends State<HoldingForm> {
       );
 
   Widget _num(String k, String label,
-          {bool positive = false, bool max0 = false, String? helper}) =>
+          {bool positive = false,
+          bool max0 = false,
+          bool min0 = false,
+          String? helper}) =>
       Padding(
         padding: _fieldPad,
         child: TextFormField(
@@ -315,6 +329,7 @@ class _HoldingFormState extends State<HoldingForm> {
             if (d == null) return 'Number';
             if (positive && d <= 0) return 'Must be > 0';
             if (max0 && d > 0) return 'Must be ≤ 0';
+            if (min0 && d < 0) return 'Must be ≥ 0';
             return null;
           },
         ),

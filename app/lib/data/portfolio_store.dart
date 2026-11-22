@@ -134,7 +134,7 @@ class PortfolioStore extends ChangeNotifier {
 
   /// The dimensions holdings can be grouped by (label → value extractor).
   static const groupDimensions = <String>[
-    'Issuer', 'Type', 'Index', 'Protection', 'Reset Freq',
+    'Issuer', 'Broker', 'Type', 'Index', 'Protection', 'Reset Freq',
   ];
 
   /// Expanded group values in the table's pivot view (in-memory only — a

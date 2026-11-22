@@ -328,7 +328,7 @@ class PortfolioTable extends StatelessWidget {
       // The group header carries the subtotals (name + count + summed money),
       // plus the group's money-weighted XIRR. A chevron toggles collapse.
       rows.add(_totalsBandRow(shown, members, cs,
-          label: '$value  (${members.length})',
+          label: groupLabel(value, members),
           bg: cs.primaryContainer,
           labelColor: cs.onPrimaryContainer,
           yieldXirr: store.xirrFor(members),
@@ -453,12 +453,21 @@ class PortfolioTable extends StatelessWidget {
   /// The value a holding falls under for the active group-by dimension.
   static String groupValueOf(Holding h, String dim) => switch (dim) {
         'Issuer' => h.issuer,
+        'Broker' => h.broker.isEmpty ? 'No broker' : h.broker,
         'Type' => h.account.label,
         'Index' => indexLabel(h.index),
         'Protection' => h.protectionType,
         'Reset Freq' => h.resetFreq.label,
         _ => '',
       };
+
+  /// Group header text: the value and count, plus the group's broker fees per
+  /// year when any member has a fee.
+  static String groupLabel(String value, List<Holding> members) {
+    final fee = members.fold(0.0, (a, h) => a + h.brokerFeePerYearK);
+    final base = '$value  (${members.length})';
+    return fee == 0 ? base : '$base · fees ${moneyK(fee)}/yr';
+  }
 
   /// Split [items] into groups in first-appearance order (so within-group order
   /// stays the current sort), keyed by [dim]'s value.

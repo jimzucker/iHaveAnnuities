@@ -49,6 +49,8 @@ const headers = <String>[
   'NDX_Strike', // W — populated only for worst-of
   'RUT_Strike', // X — populated only for worst-of
   'Inception', // Y — original investment date (rolled contracts); optional
+  'Broker', // Z — optional
+  'Broker Fee', // AA — annual fee (fraction); optional
 ];
 
 /// Numeric sentinel for an uncapped CAP column (= 999%).
@@ -189,6 +191,8 @@ List<Holding> parseTracker(List<int> bytes) {
       ndxStrike: _num(r, h, 'NDX_Strike'),
       rutStrike: _num(r, h, 'RUT_Strike'),
       inceptionDate: _date(r, h, 'Inception'), // null when column absent
+      broker: _str(r, h, 'Broker') ?? '', // '' when column absent
+      brokerFee: _num(r, h, 'Broker Fee') ?? 0.0, // 0 when column absent
     ));
   }
   return out;
@@ -248,6 +252,8 @@ List<int> writeTracker(
       isWorstOf && x.ndxStrike != null ? DoubleCellValue(x.ndxStrike!) : null, // W
       isWorstOf && x.rutStrike != null ? DoubleCellValue(x.rutStrike!) : null, // X
       x.inceptionDate == null ? null : _dateCell(x.inceptionDate!), // Y Inception
+      x.broker.isEmpty ? null : TextCellValue(x.broker), // Z Broker
+      x.brokerFee == 0 ? null : DoubleCellValue(x.brokerFee), // AA Broker Fee
     ]);
   }
 
@@ -281,7 +287,7 @@ void _styleTracker(Sheet s, int nRows) {
     'Initial (\$000)': curF, 'Realized (\$000)': curF,
     'Proj Value @ Reset (\$000)': curF, 'Proj \$ Gain @ Reset (\$000)': curF,
     'Proj Gain @ Reset': pctF, 'Index Gain %': pctF,
-    'CAP': pctF, 'Part.': pctF, 'Floor': pctF,
+    'CAP': pctF, 'Part.': pctF, 'Floor': pctF, 'Broker Fee': pctF,
     'Next Reset': dateF, 'Maturity': dateF, 'Start Date': dateF, 'Last Reset': dateF,
     'Inception': dateF,
     'Strike': numF, 'NDX_Strike': numF, 'RUT_Strike': numF,
