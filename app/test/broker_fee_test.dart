@@ -20,6 +20,7 @@ import 'package:ihaveannuities/core/reset_event.dart';
 import 'package:ihaveannuities/core/reset_rollover.dart';
 import 'package:ihaveannuities/data/market.dart';
 import 'package:ihaveannuities/data/portfolio_store.dart';
+import 'package:ihaveannuities/data/report_xlsx.dart';
 import 'package:ihaveannuities/data/tracker_xlsx.dart';
 import 'package:ihaveannuities/data/xlsx_reader.dart';
 import 'package:ihaveannuities/ui/format.dart';
@@ -193,10 +194,29 @@ void main() {
     });
 
     test('the new columns come last, after Inception', () {
-      expect(headers.sublist(headers.length - 6), [
+      expect(headers.sublist(headers.length - 7), [
         'Inception', 'Broker', 'Broker Fee', 'Fees Paid (\$000)', 'Fees As Of',
-        'P/L (\$000)',
+        'Fees to Date (\$000)', 'P/L (\$000)',
       ]);
+    });
+
+    test('the export has fees to date (negative) and their total', () {
+      final hs = [_h(broker: 'ACME', fee: 0.01), _h(issuer: 'OTHER')];
+      final asOf = DateTime(2028, 1, 1);
+      final bytes = writeTracker(hs,
+          asOf: asOf, prices: const {'SPX': 105, 'NDX': 1, 'RUT': 1});
+      final rows = XlsxReader.decode(bytes)['Annuity Tracker']!;
+      final hi = rows.indexWhere((r) => r.contains('Issuer'));
+      final col = rows[hi].indexOf('Fees to Date (\$000)');
+      expect(rows[hi + 1][col], closeTo(-2.4, 1e-9)); // 2 years at 1.2
+      expect(col < rows[hi + 2].length ? rows[hi + 2][col] : null,
+          isNull); // no fee → blank
+      final total = rows.firstWhere((r) => r.isNotEmpty && r.first == 'TOTAL');
+      expect(total[col], closeTo(-2.4, 1e-9));
+      // Import reads the fee % but not the worked-out fees to date.
+      final back = parseTracker(bytes).first;
+      expect(back.brokerFee, 0.01);
+      expect(back.brokerFeesPaidK, isNull);
     });
 
     test('the export has each holding\'s P/L and the total', () {
@@ -808,6 +828,186 @@ void main() {
       expect(
           find.text(moneyK(hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf))),
           findsOneWidget);
+    });
+  });
+
+  group('every new field in the data export', () {
+    // One holding with every broker field set, one with none.
+    final full = Holding.fromJson({
+      ..._h(issuer: 'A', broker: 'ACME', fee: 0.006).toJson(),
+      'brokerFeesPaidK': 1.9,
+      'brokerFeesPaidAsOf': DateTime(2027, 1, 1).toIso8601String(),
+    });
+    final none = _h(issuer: 'B');
+    final asOf = DateTime(2028, 1, 1);
+    late List<int> bytes;
+    late List<Object?> head, a, b, total;
+    setUp(() {
+      bytes = writeTracker([full, none],
+          asOf: asOf, prices: const {'SPX': 105, 'NDX': 1, 'RUT': 1});
+      final rows = XlsxReader.decode(bytes)['Annuity Tracker']!;
+      final hi = rows.indexWhere((r) => r.contains('Issuer'));
+      head = rows[hi];
+      a = rows[hi + 1];
+      b = rows[hi + 2];
+      total = rows.firstWhere((r) => r.isNotEmpty && r.first == 'TOTAL');
+    });
+    Object? at(List<Object?> r, String col) {
+      final i = head.indexOf(col);
+      expect(i, isNonNegative, reason: 'missing column "$col"');
+      return i < r.length ? r[i] : null;
+    }
+
+    test('each new column has the holding\'s value', () {
+      // Fees to date: 1.9 entered as of 2027-01-01, plus 2027 on 120 = 0.72.
+      expect(at(a, 'Broker'), 'ACME');
+      expect(at(a, 'Broker Fee'), 0.006);
+      expect(at(a, 'Fees Paid (\$000)'), 1.9);
+      final d = at(a, 'Fees As Of') as DateTime;
+      expect([d.year, d.month, d.day], [2027, 1, 1]);
+      expect(at(a, 'Fees to Date (\$000)'), closeTo(-(1.9 + 0.72), 1e-9));
+      expect(at(a, 'P/L (\$000)'), closeTo(full.profitLossK(asOf), 1e-9));
+    });
+
+    test('a holding with no broker fields leaves them blank but has P/L', () {
+      for (final col in const [
+        'Broker', 'Broker Fee', 'Fees Paid (\$000)', 'Fees As Of',
+        'Fees to Date (\$000)',
+      ]) {
+        expect(at(b, col), isNull, reason: col);
+      }
+      expect(at(b, 'P/L (\$000)'), closeTo(none.profitLossK(asOf), 1e-9));
+    });
+
+    test('the TOTAL row adds up fees to date and P/L', () {
+      expect(at(total, 'Fees to Date (\$000)'), closeTo(-(1.9 + 0.72), 1e-9));
+      expect(at(total, 'P/L (\$000)'),
+          closeTo(full.profitLossK(asOf) + none.profitLossK(asOf), 1e-9));
+    });
+
+    test('import reads Broker, Broker Fee, Fees Paid and Fees As Of only', () {
+      final back = parseTracker(bytes);
+      expect(back[0].broker, 'ACME');
+      expect(back[0].brokerFee, 0.006);
+      expect(back[0].brokerFeesPaidK, 1.9); // not the -2.62 Fees to Date
+      final d = back[0].brokerFeesPaidAsOf!;
+      expect([d.year, d.month, d.day], [2027, 1, 1]);
+      // Fees to Date and P/L are worked out again, so they match the export.
+      expect(back[0].brokerFeesToDateK(asOf), closeTo(1.9 + 0.72, 1e-9));
+      expect(back[0].profitLossK(asOf), closeTo(full.profitLossK(asOf), 1e-9));
+      expect(back[1].broker, '');
+      expect(back[1].brokerFee, 0.0);
+      expect(back[1].brokerFeesPaidK, isNull);
+    });
+  });
+
+  group('report export', () {
+    final asOf = DateTime(2028, 1, 1);
+    final hs = [
+      _h(issuer: 'A', broker: 'ACME', fee: 0.01),
+      _h(issuer: 'B'),
+    ];
+    List<List<Object?>> rowsOf(List<int> bytes) =>
+        XlsxReader.decode(bytes)['Portfolio Report']!;
+
+    test('has Fees to Date and P/L after Unrealized \$, Broker and Fee % last',
+        () {
+      final rows = rowsOf(writeReport(hs, asOf: asOf, generatedOn: asOf));
+      final head = rows.firstWhere((r) => r.contains('Unrealized \$'));
+      final names = head.whereType<String>().toList();
+      final u = names.indexOf('Unrealized \$');
+      expect(names.sublist(u, u + 4),
+          ['Unrealized \$', 'Fees to Date', 'P/L', 'Projected Value']);
+      expect(names.sublist(names.length - 2), ['Broker', 'Fee %']);
+    });
+
+    test('each row, group band and the total carry fees and P/L', () {
+      final rows = rowsOf(writeReport(hs,
+          asOf: asOf,
+          generatedOn: asOf,
+          groupBy: 'Broker',
+          groupValueOf: (h) => h.broker.isEmpty ? 'No broker' : h.broker));
+      final head = rows.firstWhere((r) => r.contains('Unrealized \$'));
+      final fees = head.indexOf('Fees to Date'), pl = head.indexOf('P/L');
+      final broker = head.indexOf('Broker'), feePct = head.indexOf('Fee %');
+      Object? at(List<Object?> r, int c) => c < r.length ? r[c] : null;
+      final a = rows.firstWhere((r) => r.isNotEmpty && r.first == 'A');
+      final b = rows.firstWhere((r) => r.isNotEmpty && r.first == 'B');
+      expect(at(a, fees), closeTo(-2400, 1e-6));
+      expect(at(a, pl), closeTo(hs[0].profitLossK(asOf) * 1000, 1e-6));
+      expect(at(a, broker), 'ACME');
+      expect(at(a, feePct), 0.01);
+      expect(at(b, fees), isNull); // no fee → blank
+      expect(at(b, broker), isNull);
+      expect(at(b, pl), closeTo(hs[1].profitLossK(asOf) * 1000, 1e-6));
+      final band = rows.firstWhere(
+          (r) => r.isNotEmpty && r.first.toString().startsWith('ACME'));
+      expect(at(band, fees), closeTo(-2400, 1e-6));
+      final noFeeBand = rows.firstWhere(
+          (r) => r.isNotEmpty && r.first.toString().startsWith('No broker'));
+      expect(at(noFeeBand, fees), isNull);
+      final total = rows.firstWhere((r) => r.isNotEmpty && r.first == 'TOTAL');
+      expect(at(total, fees), closeTo(-2400, 1e-6));
+      expect(
+          at(total, pl),
+          closeTo(
+              (hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf)) * 1000, 1e-6));
+    });
+
+    test('every new report column is present with a value', () {
+      final rows = rowsOf(writeReport(hs, asOf: asOf, generatedOn: asOf));
+      final head = rows.firstWhere((r) => r.contains('Unrealized \$'));
+      final a = rows.firstWhere((r) => r.isNotEmpty && r.first == 'A');
+      for (final (col, want) in [
+        ('Fees to Date', -2400.0),
+        ('P/L', hs[0].profitLossK(asOf) * 1000),
+        ('Broker', 'ACME'),
+        ('Fee %', 0.01),
+      ]) {
+        final i = head.indexOf(col);
+        expect(i, isNonNegative, reason: 'missing column "$col"');
+        want is double
+            ? expect(a[i], closeTo(want, 1e-6), reason: col)
+            : expect(a[i], want, reason: col);
+      }
+    });
+
+    test('the summary shows fees to date and P/L', () {
+      final rows = rowsOf(writeReport(hs, asOf: asOf, generatedOn: asOf));
+      final fees = rows.firstWhere((r) => r.isNotEmpty && r.first == 'Fees to Date');
+      expect(fees[1], closeTo(-2400, 1e-6));
+      final pl = rows.firstWhere((r) => r.isNotEmpty && r.first == 'P/L');
+      expect(pl[1],
+          closeTo((hs[0].profitLossK(asOf) + hs[1].profitLossK(asOf)) * 1000, 1e-6));
+    });
+
+    test('no fees → no fees line in the summary', () {
+      final rows =
+          rowsOf(writeReport([_h()], asOf: asOf, generatedOn: asOf));
+      expect(rows.where((r) => r.isNotEmpty && r.first == 'Fees to Date'),
+          isEmpty);
+      expect(rows.where((r) => r.isNotEmpty && r.first == 'P/L'), isNotEmpty);
+    });
+
+    test('the app\'s report uses the reset history for fees', () {
+      final h = _h(issuer: 'A', broker: 'ACME', fee: 0.006);
+      final store = PortfolioStore()
+        ..debugSeed([h], _market, resetHistory: [
+          ResetEvent(
+              holdingKey: h.key,
+              label: 'x',
+              date: DateTime(2026, 3, 1),
+              isIncomeNote: false,
+              periodReturn: 0,
+              realizedAddedK: 20,
+              realizedAfterK: 20),
+        ]);
+      final rows = rowsOf(store.exportReportXlsx(ordered: store.holdings));
+      final head = rows.firstWhere((r) => r.contains('Unrealized \$'));
+      final a = rows.firstWhere((r) => r.isNotEmpty && r.first == 'A');
+      // Year 1 began before the 20 was credited → charged on 100, not 120.
+      expect(a[head.indexOf('Fees to Date')],
+          closeTo(-0.006 * 100 * 162 / 365 * 1000, 1e-6));
     });
   });
 

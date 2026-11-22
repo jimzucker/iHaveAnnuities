@@ -940,5 +940,6 @@ class PortfolioStore extends ChangeNotifier {
         preparedFor: preparedFor,
         groupBy: groupBy,
         groupValueOf: groupValueOf,
+        history: _resetHistory,
       );
 }
