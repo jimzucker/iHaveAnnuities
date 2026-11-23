@@ -745,34 +745,34 @@ class PortfolioTable extends StatelessWidget {
     // The form pops itself when a delete goes through, so `edited` is null then.
     final edited = await Navigator.of(context).push<Holding>(MaterialPageRoute(
         builder: (_) =>
-            HoldingForm(initial: x, onDelete: () => _delete(context, store, x))));
+            HoldingForm(initial: x, onDelete: () => deleteHolding(context, store, x))));
     if (edited != null) await store.upsert(edited, replacing: x);
   }
+}
 
-  /// Confirm + delete [x]; returns true when it was actually removed (so the
-  /// edit panel knows to close). Keeps the typed-phrase guard, backup offer, and
-  /// encryption re-auth.
-  Future<bool> _delete(BuildContext context, PortfolioStore store, Holding x) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final ok = await confirmTyped(
-      context,
-      title: 'Delete holding?',
-      message: '⚠️ This permanently removes ${store.labelFor(x)} from your '
-          'locally stored portfolio and cannot be undone. Export a backup first '
-          'if you want to keep a copy.',
-      phrase: 'delete',
-      confirmLabel: 'Delete',
-      destructive: true,
-      verifyPassphrase: store.encryptionEnabled ? store.verifyPassphrase : null,
-      verifyBiometric: store.biometricEnabled ? store.verifyBiometric : null,
-      verifyRecoveryCode:
-          store.encryptionEnabled ? store.verifyRecoveryCode : null,
-      onBackup: () async {
-        await exportBackup(store);
-        messenger.showSnackBar(const SnackBar(content: Text('Backup exported')));
-      },
-    );
-    if (ok) await store.remove(x);
-    return ok;
-  }
+/// Confirm + delete [x]; returns true when it was actually removed (so the
+/// edit panel knows to close). Keeps the typed-phrase guard, backup offer, and
+/// encryption re-auth.
+Future<bool> deleteHolding(BuildContext context, PortfolioStore store, Holding x) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final ok = await confirmTyped(
+    context,
+    title: 'Delete holding?',
+    message: '⚠️ This permanently removes ${store.labelFor(x)} from your '
+        'locally stored portfolio and cannot be undone. Export a backup first '
+        'if you want to keep a copy.',
+    phrase: 'delete',
+    confirmLabel: 'Delete',
+    destructive: true,
+    verifyPassphrase: store.encryptionEnabled ? store.verifyPassphrase : null,
+    verifyBiometric: store.biometricEnabled ? store.verifyBiometric : null,
+    verifyRecoveryCode:
+        store.encryptionEnabled ? store.verifyRecoveryCode : null,
+    onBackup: () async {
+      await exportBackup(store);
+      messenger.showSnackBar(const SnackBar(content: Text('Backup exported')));
+    },
+  );
+  if (ok) await store.remove(x);
+  return ok;
 }

@@ -14,6 +14,7 @@ import '../data/portfolio_store.dart';
 import 'format.dart';
 import 'holding_form.dart';
 import 'index_period_chart.dart';
+import 'portfolio_table.dart' show deleteHolding;
 
 class HoldingDetail extends StatelessWidget {
   const HoldingDetail({super.key, required this.holding});
@@ -61,11 +62,17 @@ class HoldingDetail extends StatelessWidget {
           icon: const Icon(Icons.edit),
           tooltip: 'Edit',
           onPressed: () async {
+            var deleted = false;
             final edited = await Navigator.of(context).push<Holding>(
-                MaterialPageRoute(builder: (_) => HoldingForm(initial: h)));
-            if (edited != null) {
-              await store.upsert(edited, replacing: h);
-              if (context.mounted) Navigator.of(context).pop();
+                MaterialPageRoute(
+                    builder: (_) => HoldingForm(
+                        initial: h,
+                        onDelete: () async =>
+                            deleted = await deleteHolding(context, store, h))));
+            if (edited != null) await store.upsert(edited, replacing: h);
+            // Saved or deleted: this page shows a stale or missing holding.
+            if ((edited != null || deleted) && context.mounted) {
+              Navigator.of(context).pop();
             }
           },
         ),
