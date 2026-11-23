@@ -864,8 +864,16 @@ class PortfolioStore extends ChangeNotifier {
     await _catchUpResets();
   }
 
+  /// Where [h] is in the list. A price refresh rebuilds every holding as a new
+  /// copy, so a page opened before it holds an old copy: fall back to the
+  /// contract details (issuer, index, account, maturity).
+  int _find(Holding h) {
+    final i = _holdings.indexOf(h);
+    return i >= 0 ? i : _holdings.indexWhere((x) => x.key == h.key);
+  }
+
   Future<void> upsert(Holding h, {Holding? replacing}) async {
-    final i = replacing == null ? -1 : _holdings.indexOf(replacing);
+    final i = replacing == null ? -1 : _find(replacing);
     if (i >= 0) {
       _holdings[i] = h;
     } else {
@@ -877,7 +885,9 @@ class PortfolioStore extends ChangeNotifier {
   }
 
   Future<void> remove(Holding h) async {
-    _holdings.remove(h);
+    final i = _find(h);
+    if (i < 0) return;
+    _holdings.removeAt(i);
     await _persist();
     notifyListeners();
   }
