@@ -40,7 +40,7 @@ dependencies:
   xml: ^6.6.1
   provider: ^6.1.5+1
   http: ^1.6.0
-  file_picker: ^13.1.0
+  file_picker: ^13.4.1
   file_saver: ^0.7.0
   shared_preferences: ^2.5.6
   intl: ^0.20.2
@@ -48,7 +48,7 @@ dependencies:
   web: ^1.1.2
   # Flutter 3.47+ deprecates package:flutter/material in favor of this.
   # data_table_2 3.x is built on it too, so the two must move together.
-  material_ui: ^1.11.0
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
